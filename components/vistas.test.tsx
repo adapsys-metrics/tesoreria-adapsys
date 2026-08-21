@@ -276,3 +276,50 @@ describe("Chrome", () => {
     expect(screen.getAllByText(/fuera del flujo/).length).toBeGreaterThan(0);
   });
 });
+
+describe("Entrar a una cuenta desde el sidebar", () => {
+  const conSidebar = () =>
+    montar(
+      <>
+        <Cuentas />
+        <Registro />
+      </>
+    );
+
+  it("filtra los movimientos a esa cuenta y lo dice", () => {
+    conSidebar();
+    const antes = document.querySelectorAll("tbody tr").length;
+
+    fireEvent.click(screen.getByTitle("Ver los movimientos de CLA CONSULTORES PESOS"));
+
+    expect(screen.getByText(/Viendo solo/)).toBeDefined();
+    const despues = document.querySelectorAll("tbody tr").length;
+    expect(despues).toBeGreaterThan(0);
+    expect(despues).toBeLessThan(antes);
+  });
+
+  it("se vuelve a todas con «Ver todas»", () => {
+    conSidebar();
+    const antes = document.querySelectorAll("tbody tr").length;
+    fireEvent.click(screen.getByTitle("Ver los movimientos de CLA CONSULTORES PESOS"));
+    fireEvent.click(screen.getByText("Ver todas"));
+    expect(screen.queryByText(/Viendo solo/)).toBeNull();
+    expect(document.querySelectorAll("tbody tr").length).toBe(antes);
+  });
+
+  it("volver a hacer click en la misma cuenta la deselecciona", () => {
+    conSidebar();
+    const boton = screen.getByTitle("Ver los movimientos de CLA CONSULTORES PESOS");
+    fireEvent.click(boton);
+    fireEvent.click(screen.getByTitle("Salir de CLA CONSULTORES PESOS"));
+    expect(screen.queryByText(/Viendo solo/)).toBeNull();
+  });
+
+  it("hacer click en la empresa filtra a esa empresa", () => {
+    conSidebar();
+    fireEvent.click(screen.getByTitle("Ver solo CLA CONSULTORES"));
+    // Queda una sola empresa en el sidebar.
+    expect(screen.queryByText("CLA ADAPTACIÓN")).toBeNull();
+    expect(screen.getByText("CLA CONSULTORES")).toBeDefined();
+  });
+});

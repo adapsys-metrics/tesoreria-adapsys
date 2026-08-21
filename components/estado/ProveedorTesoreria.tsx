@@ -39,6 +39,9 @@ type Estado = {
   movimientos: Movimiento[];
   cuentas: CuentaConSaldo[];
   empresasSeleccionadas: string[];
+  /** Cuenta concreta a la que se está mirando, o null para todas las de las
+   *  empresas seleccionadas. Es el "entrar a la cuenta" del sidebar. */
+  cuentaSeleccionada: string | null;
   tc: number;
   tasas: Tasas;
 };
@@ -56,6 +59,8 @@ type Contexto = Estado & {
   comprometido: number;
   porConciliar: number;
   setEmpresasSeleccionadas: (ids: string[]) => void;
+  /** Entra a una cuenta concreta, o vuelve a todas con null. */
+  seleccionarCuenta: (cuenta_id: string | null) => void;
   setTc: (v: number) => void;
   setTasas: (t: Tasas) => void;
   pagar: (id: string) => void;
@@ -86,6 +91,7 @@ const estadoInicial = (): Estado => ({
   movimientos: MOVIMIENTOS_EJEMPLO,
   cuentas: CUENTAS.map((c) => ({ ...c, saldo: c.saldo_inicial })),
   empresasSeleccionadas: IDS_ADAPSYS,
+  cuentaSeleccionada: null,
   tc: TC_USD,
   tasas: TASAS,
 });
@@ -124,7 +130,8 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
     []
   );
 
-  const { movimientos, cuentas, empresasSeleccionadas, tc, tasas } = estado;
+  const { movimientos, cuentas, empresasSeleccionadas, cuentaSeleccionada, tc, tasas } =
+    estado;
 
   const pagar = useCallback((id: string) => {
     setEstado((p) => {
@@ -344,7 +351,11 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
   const derivados = useMemo(() => {
     const enSeleccion = <T extends { empresa_id: string }>(xs: T[]) =>
       xs.filter((x) => empresasSeleccionadas.includes(x.empresa_id));
-    const movimientosFiltrados = enSeleccion(movimientos);
+    // El filtro de cuenta se aplica sobre los movimientos, no sobre las cuentas: el
+    // sidebar tiene que seguir mostrando todas para poder cambiarse a otra.
+    const movimientosFiltrados = enSeleccion(movimientos).filter(
+      (m) => !cuentaSeleccionada || m.cuenta_id === cuentaSeleccionada
+    );
     const cuentasFiltradas = enSeleccion(cuentas);
     const bancos = cuentasFiltradas.filter((c) => c.tipo === "banco");
     const cxc = cuentasFiltradas.filter((c) => c.tipo === "cxc");
@@ -362,13 +373,18 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
         .reduce((s, m) => s + m.monto, 0),
       porConciliar: movimientosFiltrados.filter((m) => m.estado === "pagado").length,
     };
-  }, [movimientos, cuentas, empresasSeleccionadas]);
+  }, [movimientos, cuentas, empresasSeleccionadas, cuentaSeleccionada]);
 
   const valor: Contexto = {
     ...estado,
     ...derivados,
     cargando,
-    setEmpresasSeleccionadas: (ids) => setEstado((p) => ({ ...p, empresasSeleccionadas: ids })),
+    setEmpresasSeleccionadas: (ids) =>
+      // Se limpia la cuenta: si su empresa deja de estar seleccionada, quedaría un
+      // filtro invisible mostrando cero movimientos sin explicar por qué.
+      setEstado((p) => ({ ...p, empresasSeleccionadas: ids, cuentaSeleccionada: null })),
+    seleccionarCuenta: (cuenta_id) =>
+      setEstado((p) => ({ ...p, cuentaSeleccionada: cuenta_id })),
     setTc: (v) => setEstado((p) => ({ ...p, tc: v })),
     setTasas: (t) => setEstado((p) => ({ ...p, tasas: t })),
     pagar,

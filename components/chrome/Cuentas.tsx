@@ -1,5 +1,8 @@
 "use client";
 
+// Sidebar de saldos. Además de mostrar, navega: hacer click en una cuenta entra a
+// ella y las vistas pasan a mostrar solo sus movimientos.
+
 import { EMPRESAS } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Rotulo, clases } from "@/components/ui/primitivas";
@@ -7,16 +10,42 @@ import { clp, clpK } from "@/lib/formato";
 import css from "./chrome.module.css";
 
 export function Cuentas() {
-  const { cuentasFiltradas, porConciliar } = useTesoreria();
+  const {
+    cuentasFiltradas,
+    cuentaSeleccionada,
+    seleccionarCuenta,
+    setEmpresasSeleccionadas,
+    porConciliar,
+  } = useTesoreria();
 
   const porEmpresa = EMPRESAS.map((e) => ({
     empresa: e,
     cuentas: cuentasFiltradas.filter((c) => c.empresa_id === e.id && c.tipo === "banco"),
   })).filter((x) => x.cuentas.length);
 
+  const cuentaActiva = cuentasFiltradas.find((c) => c.id === cuentaSeleccionada);
+
   return (
     <aside className={css.sidebar}>
-      <Rotulo texto="Saldos por empresa" pad />
+      <div className={css.encabezadoSidebar}>
+        <Rotulo texto="Saldos por empresa" />
+        {cuentaActiva && (
+          <button
+            type="button"
+            onClick={() => seleccionarCuenta(null)}
+            className={css.verTodo}
+          >
+            Ver todas
+          </button>
+        )}
+      </div>
+
+      {cuentaActiva && (
+        <div className={css.avisoCuenta}>
+          Viendo solo <strong>{cuentaActiva.nombre}</strong>. Las vistas muestran únicamente
+          los movimientos de esta cuenta.
+        </div>
+      )}
 
       {porEmpresa.map(({ empresa, cuentas }) => {
         // El total por empresa es solo CLP: mezclar monedas en un total no dice nada.
@@ -25,7 +54,12 @@ export function Cuentas() {
           .reduce((s, c) => s + c.saldo, 0);
         return (
           <div key={empresa.id} className={css.empresa}>
-            <div className={css.empresaFila}>
+            <button
+              type="button"
+              onClick={() => setEmpresasSeleccionadas([empresa.id])}
+              title={`Ver solo ${empresa.nombre}`}
+              className={css.empresaFila}
+            >
               <span className={css.empresaNombre}>{empresa.nombre}</span>
               <span
                 className={css.empresaTotal}
@@ -33,22 +67,38 @@ export function Cuentas() {
               >
                 {clpK(total)}
               </span>
-            </div>
-            {cuentas.map((c) => (
-              <div
-                key={c.id}
-                className={clases(css.cuentaFila, c.moneda === "USD" && css.cuentaUsd)}
-              >
-                <span>
-                  {c.moneda}
-                  {c.moneda === "USD" && " · fuera del flujo"}
-                </span>
-                <span>
-                  {c.moneda === "USD" ? "US$" : "$"}
-                  {clp(c.saldo)}
-                </span>
-              </div>
-            ))}
+            </button>
+
+            {cuentas.map((c) => {
+              const activa = c.id === cuentaSeleccionada;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => seleccionarCuenta(activa ? null : c.id)}
+                  aria-pressed={activa}
+                  title={
+                    activa
+                      ? `Salir de ${c.nombre}`
+                      : `Ver los movimientos de ${c.nombre}`
+                  }
+                  className={clases(
+                    css.cuentaFila,
+                    c.moneda === "USD" && css.cuentaUsd,
+                    activa && css.cuentaActiva
+                  )}
+                >
+                  <span>
+                    {c.moneda}
+                    {c.moneda === "USD" && " · fuera del flujo"}
+                  </span>
+                  <span>
+                    {c.moneda === "USD" ? "US$" : "$"}
+                    {clp(c.saldo)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         );
       })}
@@ -70,8 +120,8 @@ export function Cuentas() {
 
       <div className={css.pieSidebar}>
         <div>
-          El flujo de caja se lleva sólo en CLP. Las cuentas en dólares se muestran en
-          su moneda y quedan fuera del flujo, salvo que actives la conversión.
+          El flujo de caja se lleva sólo en CLP. Las cuentas en dólares se muestran en su
+          moneda y quedan fuera del flujo, salvo que actives la conversión.
         </div>
       </div>
     </aside>
