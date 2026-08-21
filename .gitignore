@@ -17,6 +17,12 @@
 /supabase/.branches
 /supabase/.temp
 
+# exports de Quicken — historial financiero real de la empresa.
+# Nunca deben entrar al repo: quedarían en el historial de git para siempre,
+# visibles para cualquiera que clone. Solo se versiona el LEEME.
+/datos-quicken/*
+!/datos-quicken/LEEME.md
+
 # misc
 .DS_Store
 *.pem
