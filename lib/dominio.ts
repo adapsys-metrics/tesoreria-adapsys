@@ -1,7 +1,7 @@
 // Reglas de negocio — CLAUDE.md §4. Todo acá es TS puro y testeable: cuando se
 // cablee Supabase estas funciones no cambian, solo cambia de dónde vienen los datos.
 
-import type { Cuenta, Linea, LineaExpandida, Movimiento, Tasas } from "@/lib/tipos";
+import type { Cuenta, Linea, LineaExpandida, Moneda, Movimiento, Tasas } from "@/lib/tipos";
 import { pct } from "@/lib/formato";
 
 /** Tasas por defecto. La retención BHE es 15,25% para 2026 según la escala de la
@@ -136,9 +136,8 @@ export const descuadre = (m: Movimiento): number =>
 export const afectaSaldo = (m: Movimiento): boolean => m.estado !== "proyectado";
 
 /**
- * Cuenta desde la que sale o entra la plata de una empresa: la marcada como
- * principal, o cualquier cuenta bancaria suya si ninguna lo está. Es el orden de
- * resolución que usa `pagar` al sacar un movimiento de proyectado.
+ * Cuenta principal de una empresa: la marcada como tal, o cualquier cuenta bancaria
+ * suya si ninguna lo está. Es el default al registrar un movimiento nuevo.
  */
 export const cuentaPrincipalDe = (
   cuentas: Cuenta[],
@@ -147,3 +146,23 @@ export const cuentaPrincipalDe = (
   cuentas.find((c) => c.empresa_id === empresa_id && c.tipo === "banco" && c.principal) ??
   cuentas.find((c) => c.empresa_id === empresa_id && c.tipo === "banco") ??
   null;
+
+/**
+ * Cuenta bancaria de una empresa en una moneda. Cada empresa tiene a lo más una por
+ * moneda, así que el par (empresa, moneda) identifica una cuenta — es exactamente lo
+ * que la persona sabe cuando registra un pago: "esto lo paga CLA ADAPTACIÓN, en pesos".
+ *
+ * Devuelve null si la empresa no opera en esa moneda (CLA CONSULTORIA solo tiene pesos).
+ */
+export const cuentaBancariaDe = (
+  cuentas: Cuenta[],
+  empresa_id: string,
+  moneda: Moneda
+): Cuenta | null =>
+  cuentas.find(
+    (c) => c.empresa_id === empresa_id && c.tipo === "banco" && c.moneda === moneda
+  ) ?? null;
+
+/** Cuentas bancarias de una empresa, para poblar un selector. */
+export const cuentasBancariasDe = (cuentas: Cuenta[], empresa_id: string): Cuenta[] =>
+  cuentas.filter((c) => c.empresa_id === empresa_id && c.tipo === "banco");

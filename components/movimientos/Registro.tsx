@@ -5,7 +5,7 @@
 // pasa del pasado al futuro.
 
 import { Fragment, useMemo, useState } from "react";
-import { EMPRESAS } from "@/lib/catalogo";
+import { empresaDe } from "@/lib/catalogo-indices";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { descuadre, enCLP } from "@/lib/dominio";
 import { clp } from "@/lib/formato";
@@ -31,15 +31,18 @@ const COLUMNAS = [
 export function Registro() {
   const {
     movimientosFiltrados,
+    cuentas,
     tc,
     tasas,
     setTasas,
     editarMovimiento,
     editarLinea,
     agregarLinea,
+    cambiarCuenta,
     pagar,
   } = useTesoreria();
 
+  const cuentasBanco = useMemo(() => cuentas.filter((c) => c.tipo === "banco"), [cuentas]);
   const [busqueda, setBusqueda] = useState("");
   const [soloPendiente, setSoloPendiente] = useState(true);
   const [nuevo, setNuevo] = useState(false);
@@ -172,16 +175,19 @@ export function Registro() {
                     <tr className="fila">
                       <td className={clases(tabla.td, css.fecha)}>{fechaCorta(m.fecha)}</td>
 
+                      {/* Se elige la cuenta, no la empresa: la cuenta determina
+                          empresa y moneda a la vez. Se muestra el nombre corto de la
+                          empresa más la moneda, que es lo que distingue las cuentas. */}
                       <td className={tabla.td}>
                         <select
-                          value={m.empresa_id}
-                          aria-label="Empresa"
-                          onChange={(e) => editarMovimiento(m.id, "empresa_id", e.target.value)}
+                          value={m.cuenta_id}
+                          aria-label="Cuenta"
+                          onChange={(e) => cambiarCuenta(m.id, e.target.value)}
                           className={css.selectEmpresa}
                         >
-                          {EMPRESAS.map((e) => (
-                            <option key={e.id} value={e.id}>
-                              {e.corto}
+                          {cuentasBanco.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {empresaDe(c.empresa_id).corto} {c.moneda}
                             </option>
                           ))}
                         </select>

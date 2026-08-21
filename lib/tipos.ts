@@ -16,6 +16,9 @@ export type Empresa = {
   grupo: Grupo;
 };
 
+/** La moneda es propiedad de la cuenta y no cambia nunca. Cada empresa tiene a lo
+ *  más una cuenta bancaria por moneda, así que elegir la cuenta determina la moneda
+ *  del movimiento — no se eligen por separado. */
 export type Cuenta = {
   id: string;
   empresa_id: string;
@@ -53,13 +56,16 @@ export type Movimiento = {
   id: string;
   fecha: string; // YYYY-MM-DD
   empresa_id: string;
-  /** null mientras está proyectado: la cuenta se resuelve al marcarlo pagado. */
-  cuenta_id: string | null;
+  /** Obligatoria desde que se crea, incluso proyectado: la moneda sale de acá.
+   *  En Quicken eso lo resolvían las dos cuentas espejo PROY. EGRESOS CLP/USD. */
+  cuenta_id: string;
   contraparte: string | null;
   glosa: string | null;
   /** Líquido que entra o sale del banco. Puede diferir de la suma de líneas:
    *  el descuadre se avisa en la UI, no se corrige en silencio. */
   monto: number;
+  /** Siempre igual a la moneda de `cuenta_id`; la base lo garantiza con una foreign
+   *  key compuesta. No es un campo que se elija: se deriva de la cuenta. */
   moneda: Moneda;
   /** TC del día de la operación. Se conserva, no se recalcula (§4.5). */
   tipo_cambio: number | null;
@@ -75,7 +81,7 @@ export type LineaExpandida = {
   movimiento_id: string;
   fecha: string;
   empresa_id: string;
-  cuenta_id: string | null;
+  cuenta_id: string;
   estado: EstadoMovimiento;
   moneda: Moneda;
   tipo_cambio: number | null;

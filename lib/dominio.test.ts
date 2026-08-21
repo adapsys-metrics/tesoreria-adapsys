@@ -17,7 +17,7 @@ const mov = (parcial: Partial<Movimiento> = {}): Movimiento => ({
   id: "x1",
   fecha: "2026-08-20",
   empresa_id: "adap",
-  cuenta_id: null,
+  cuenta_id: "a1",
   contraparte: null,
   glosa: null,
   monto: 0,
@@ -243,11 +243,31 @@ describe("datos de ejemplo", () => {
     expect(MOVIMIENTOS_EJEMPLO.some((m) => m.moneda === "USD")).toBe(true);
   });
 
-  it("los proyectados no tienen cuenta y los conciliados sí (§4.1)", () => {
+  it("todo movimiento nombra su cuenta, incluso proyectado", () => {
+    // La moneda sale de la cuenta, así que la cuenta no puede faltar. En Quicken eso
+    // lo resolvían las dos cuentas espejo PROY. EGRESOS CLP/USD.
+    const ids = new Set(CUENTAS.map((c) => c.id));
     for (const m of MOVIMIENTOS_EJEMPLO) {
-      if (m.estado === "proyectado") expect(m.cuenta_id).toBeNull();
-      else expect(m.cuenta_id).not.toBeNull();
+      expect(ids.has(m.cuenta_id)).toBe(true);
     }
+  });
+
+  it("la moneda de cada movimiento es la de su cuenta", () => {
+    // Es el invariante que la base garantiza con la foreign key compuesta
+    // (cuenta_id, moneda). Un pago en dólares desde la cuenta en pesos no existe.
+    const monedaDe = new Map(CUENTAS.map((c) => [c.id, c.moneda]));
+    const inconsistentes = MOVIMIENTOS_EJEMPLO.filter(
+      (m) => monedaDe.get(m.cuenta_id) !== m.moneda
+    );
+    expect(inconsistentes.map((m) => `${m.id} ${m.contraparte}`)).toEqual([]);
+  });
+
+  it("la empresa del movimiento es la de su cuenta", () => {
+    const empresaDeCuenta = new Map(CUENTAS.map((c) => [c.id, c.empresa_id]));
+    const inconsistentes = MOVIMIENTOS_EJEMPLO.filter(
+      (m) => empresaDeCuenta.get(m.cuenta_id) !== m.empresa_id
+    );
+    expect(inconsistentes.map((m) => `${m.id} ${m.contraparte}`)).toEqual([]);
   });
 
   it("es determinista", () => {

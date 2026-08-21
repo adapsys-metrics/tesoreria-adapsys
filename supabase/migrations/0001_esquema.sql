@@ -12,6 +12,9 @@ create table empresas (
   grupo  text not null check (grupo in ('Adapsys', 'Relacionadas'))
 );
 
+-- La moneda es una propiedad de la cuenta y no cambia nunca: "CLA ADAPTACIÓN PESOS"
+-- es CLP y "CLA ADAPTACIÓN DÓLAR" es USD. Cada empresa tiene a lo más una cuenta
+-- bancaria por moneda, así que elegir la cuenta determina la moneda.
 create table cuentas (
   id            text primary key,
   empresa_id    text not null references empresas (id),
@@ -19,7 +22,10 @@ create table cuentas (
   moneda        text not null check (moneda in ('CLP', 'USD')),
   tipo          text not null check (tipo in ('banco', 'cxc')),
   saldo_inicial numeric not null default 0,
-  principal     boolean not null default false
+  principal     boolean not null default false,
+  -- Redundante con la PK, pero necesaria para que movimientos pueda apuntar a
+  -- (cuenta, moneda) con una foreign key. Ver movimientos más abajo.
+  unique (id, moneda)
 );
 
 create index cuentas_empresa_id_idx on cuentas (empresa_id);
@@ -55,9 +61,11 @@ create table movimientos (
   id             bigint generated always as identity primary key,
   fecha          date not null,
   empresa_id     text not null references empresas (id),
-  -- Nullable a propósito: un movimiento proyectado es un compromiso que todavía no
-  -- salió de ninguna cuenta (§4.1). La cuenta se resuelve al marcarlo pagado.
-  cuenta_id      text references cuentas (id),
+  -- Obligatoria desde el principio, incluso proyectado. En Quicken la moneda de un
+  -- gasto proyectado se sabe siempre — es la razón por la que existen dos registros
+  -- espejo, PROY. EGRESOS (CLP) y (USD). Acá el movimiento nombra su cuenta y de
+  -- ahí sale la moneda.
+  cuenta_id      text not null,
   contraparte    text,
   glosa          text,
   monto          numeric not null,
@@ -68,9 +76,15 @@ create table movimientos (
   creado_por     uuid references auth.users (id),
   creado_en      timestamptz not null default now(),
   actualizado_en timestamptz not null default now(),
-  constraint moneda_usd_requiere_tc check (moneda <> 'USD' or tipo_cambio is not null),
-  -- Si ya salió del banco, tiene que constar de qué cuenta salió.
-  constraint pagado_requiere_cuenta check (estado = 'proyectado' or cuenta_id is not null)
+  -- La moneda del movimiento TIENE que ser la de su cuenta. Esta foreign key
+  -- compuesta lo hace imposible de violar sin necesidad de un trigger: un
+  -- movimiento en USD solo puede apuntar a una cuenta cuya moneda es USD.
+  -- Sin esto se podía registrar un pago en dólares desde la cuenta en pesos, que
+  -- es un estado que no existe en la realidad y ensuciaría el flujo en silencio.
+  constraint movimientos_cuenta_moneda_fk
+    foreign key (cuenta_id, moneda) references cuentas (id, moneda),
+  -- Un movimiento en dólares conserva el TC del día en que ocurrió (§4.5).
+  constraint moneda_usd_requiere_tc check (moneda <> 'USD' or tipo_cambio is not null)
 );
 
 create index movimientos_fecha_idx on movimientos (fecha);

@@ -123,11 +123,18 @@ describe("Movimientos", () => {
     // Los campos de cabecera del movimiento, no solo sus líneas.
     expect(screen.getByLabelText("Monto del movimiento")).toBeDefined();
     expect(screen.getByText("Documento")).toBeDefined();
-    expect(screen.getByText("Moneda")).toBeDefined();
     // "Proveedor / Cliente" aparece dos veces: como columna y como campo del editor.
     expect(screen.getAllByText("Proveedor / Cliente")).toHaveLength(2);
     // Y las líneas siguen estando dentro del mismo editor.
     expect(screen.getAllByLabelText("Monto de la línea").length).toBeGreaterThan(0);
+  });
+
+  it("no hay campo de moneda: la determina la cuenta", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    // La moneda no se elige por movimiento — sale de la cuenta y no cambia nunca.
+    expect(screen.queryByText("Moneda")).toBeNull();
+    expect(screen.getAllByLabelText("Cuenta").length).toBeGreaterThan(0);
   });
 
   it("editar la glosa desde el editor se refleja en la fila", () => {
@@ -144,14 +151,25 @@ describe("Movimientos", () => {
     expect(screen.getAllByDisplayValue("Glosa corregida").length).toBeGreaterThan(0);
   });
 
-  it("pasar un movimiento a USD le exige tipo de cambio (§4.5)", () => {
+  it("mover el movimiento a una cuenta en dólares le pone el TC (§4.5)", () => {
     montar(<Registro />);
     fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
-    const moneda = screen.getByDisplayValue("CLP");
-    fireEvent.change(moneda, { target: { value: "USD" } });
-    // El TC aparece y queda seteado: el esquema no acepta USD sin tipo de cambio.
+    // Cambiar de cuenta cambia la moneda: es la misma decisión.
+    fireEvent.change(screen.getAllByLabelText("Cuenta")[0]!, { target: { value: "a2" } });
+    // El TC aparece y queda seteado: la base no acepta USD sin tipo de cambio.
     const tc = screen.getByLabelText("Tipo de cambio") as HTMLInputElement;
     expect(Number(tc.value)).toBeGreaterThan(0);
+  });
+
+  it("cambiar de cuenta arrastra empresa y moneda juntas", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    // b2 es CLA CONSULTORES DÓLAR: cambia la empresa y la moneda de una vez, así no
+    // queda un estado intermedio imposible.
+    fireEvent.change(screen.getAllByLabelText("Cuenta")[0]!, { target: { value: "b2" } });
+    expect(screen.getByLabelText("Tipo de cambio")).toBeDefined();
+    // La fila ahora muestra la cuenta de CONSULTORES en dólares.
+    expect((screen.getAllByLabelText("Cuenta")[0]! as HTMLSelectElement).value).toBe("b2");
   });
 
   it("editar el monto de una línea produce un descuadre visible (§3)", () => {

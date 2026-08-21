@@ -7,11 +7,12 @@
 import { useState } from "react";
 import { EMPRESAS } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
-import { conIva, conRetencion } from "@/lib/dominio";
+import { conIva, conRetencion, cuentaPrincipalDe } from "@/lib/dominio";
 import { clp, pct } from "@/lib/formato";
 import { HOY } from "@/lib/fechas";
 import type { DocTipo, Movimiento } from "@/lib/tipos";
 import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
+import { SelectorCuenta } from "./SelectorCuenta";
 import css from "./movimientos.module.css";
 
 const DOCS: { id: DocTipo; nombre: string; pista: string }[] = [
@@ -21,8 +22,11 @@ const DOCS: { id: DocTipo; nombre: string; pista: string }[] = [
 ];
 
 export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
-  const { empresasSeleccionadas, tasas, agregarMovimiento } = useTesoreria();
-  const [empresa, setEmpresa] = useState(empresasSeleccionadas[0] ?? EMPRESAS[0]!.id);
+  const { empresasSeleccionadas, cuentas, tc, tasas, agregarMovimiento } = useTesoreria();
+  const empresaInicial = empresasSeleccionadas[0] ?? EMPRESAS[0]!.id;
+  const [cuentaId, setCuentaId] = useState(
+    () => cuentaPrincipalDe(cuentas, empresaInicial)?.id ?? cuentas[0]!.id
+  );
   const [fecha, setFecha] = useState(HOY);
   const [contraparte, setContraparte] = useState("");
   const [glosa, setGlosa] = useState("");
@@ -44,17 +48,20 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
             lineas: [{ subcategoria_id: subcategoria, monto: montoBase, glosa: null }],
           };
 
+  const cuenta = cuentas.find((c) => c.id === cuentaId) ?? cuentas[0]!;
+
   const guardar = () => {
     if (!montoBase || !contraparte.trim()) return;
     const nuevo: Omit<Movimiento, "id"> = {
       fecha,
-      empresa_id: empresa,
-      cuenta_id: null,
+      // Empresa y moneda salen de la cuenta: no se eligen aparte.
+      empresa_id: cuenta.empresa_id,
+      cuenta_id: cuenta.id,
       contraparte: contraparte.trim(),
       glosa: glosa.trim() || null,
       monto: resultado.monto,
-      moneda: "CLP",
-      tipo_cambio: null,
+      moneda: cuenta.moneda,
+      tipo_cambio: cuenta.moneda === "USD" ? tc : null,
       estado: "proyectado",
       doc_tipo: doc,
       lineas: resultado.lineas,
@@ -78,18 +85,8 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
       </label>
 
       <label className={css.campo}>
-        <span className={css.etiquetaCampo}>Empresa</span>
-        <select
-          value={empresa}
-          onChange={(e) => setEmpresa(e.target.value)}
-          className={css.entrada}
-        >
-          {EMPRESAS.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.nombre}
-            </option>
-          ))}
-        </select>
+        <span className={css.etiquetaCampo}>Cuenta</span>
+        <SelectorCuenta valor={cuentaId} onChange={setCuentaId} />
       </label>
 
       <label className={css.campo}>
@@ -135,6 +132,7 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
       <label className={css.campo}>
         <span className={css.etiquetaCampo}>
           {doc === "afecta" ? "Neto" : doc === "honorario" ? "Bruto" : "Monto"}
+          {cuenta.moneda === "USD" ? " (US$)" : ""}
         </span>
         <input
           type="number"

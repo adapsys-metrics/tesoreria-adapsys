@@ -60,6 +60,8 @@ type Contexto = Estado & {
   setTasas: (t: Tasas) => void;
   pagar: (id: string) => void;
   conciliar: (id: string) => void;
+  /** Cambia cuenta, empresa y moneda juntas: la cuenta determina las otras dos. */
+  cambiarCuenta: (id: string, cuenta_id: string) => void;
   editarMovimiento: <K extends keyof Movimiento>(id: string, campo: K, valor: Movimiento[K]) => void;
   editarLinea: <K extends keyof Linea>(id: string, indice: number, campo: K, valor: Linea[K]) => void;
   agregarLinea: (id: string) => void;
@@ -124,36 +126,55 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
 
   const { movimientos, cuentas, empresasSeleccionadas, tc, tasas } = estado;
 
-  const pagar = useCallback(
-    (id: string) => {
-      setEstado((p) => {
-        const m = p.movimientos.find((x) => x.id === id);
-        if (!m || m.estado !== "proyectado") return p;
-        const cuenta =
-          (m.cuenta_id ? p.cuentas.find((c) => c.id === m.cuenta_id) : null) ??
-          (cuentaPrincipalDe(p.cuentas, m.empresa_id) as CuentaConSaldo | null);
-        if (!cuenta) return p;
-        // Si la cuenta es en dólares el saldo se mueve en dólares; si es en pesos, en
-        // pesos. Nunca se guarda un saldo mezclando monedas (§4.5).
-        const delta =
-          cuenta.moneda === "USD"
-            ? m.moneda === "USD"
-              ? m.monto
-              : m.monto / tc
-            : enCLP(m, tc);
-        return {
-          ...p,
-          cuentas: p.cuentas.map((c) =>
-            c.id === cuenta.id ? { ...c, saldo: c.saldo + delta } : c
-          ),
-          movimientos: p.movimientos.map((x) =>
-            x.id === id ? { ...x, estado: "pagado", cuenta_id: cuenta.id } : x
-          ),
-        };
-      });
-    },
-    [tc]
-  );
+  const pagar = useCallback((id: string) => {
+    setEstado((p) => {
+      const m = p.movimientos.find((x) => x.id === id);
+      if (!m || m.estado !== "proyectado") return p;
+      const cuenta = p.cuentas.find((c) => c.id === m.cuenta_id);
+      if (!cuenta) return p;
+      // El monto ya está en la moneda de la cuenta — la base lo garantiza con la
+      // foreign key compuesta (cuenta_id, moneda). Antes acá había una conversión
+      // según si las monedas coincidían: existía solo porque el modelo permitía que
+      // no coincidieran, que es un estado que no ocurre en la realidad.
+      return {
+        ...p,
+        cuentas: p.cuentas.map((c) =>
+          c.id === cuenta.id ? { ...c, saldo: c.saldo + m.monto } : c
+        ),
+        movimientos: p.movimientos.map((x) =>
+          x.id === id ? { ...x, estado: "pagado" } : x
+        ),
+      };
+    });
+  }, []);
+
+  /**
+   * Mueve un movimiento a otra cuenta. Es un solo mutador porque cuenta, empresa y
+   * moneda tienen que cambiar juntos: la cuenta es la elección atómica y de ella
+   * salen las otras dos. Hacerlo en tres pasos dejaría estados intermedios
+   * imposibles (moneda USD apuntando todavía a la cuenta en pesos).
+   */
+  const cambiarCuenta = useCallback((id: string, cuenta_id: string) => {
+    setEstado((p) => {
+      const cuenta = p.cuentas.find((c) => c.id === cuenta_id);
+      if (!cuenta) return p;
+      return {
+        ...p,
+        movimientos: p.movimientos.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                cuenta_id: cuenta.id,
+                empresa_id: cuenta.empresa_id,
+                moneda: cuenta.moneda,
+                // En dólares el TC es obligatorio; en pesos no corresponde.
+                tipo_cambio: cuenta.moneda === "USD" ? (m.tipo_cambio ?? p.tc) : null,
+              }
+            : m
+        ),
+      };
+    });
+  }, []);
 
   const conciliar = useCallback(
     (id: string) => mapMov(id, (m) => ({ ...m, estado: "conciliado" })),
@@ -352,6 +373,7 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
     setTasas: (t) => setEstado((p) => ({ ...p, tasas: t })),
     pagar,
     conciliar,
+    cambiarCuenta,
     editarMovimiento,
     editarLinea,
     agregarLinea,

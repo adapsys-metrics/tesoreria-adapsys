@@ -9,7 +9,7 @@
 // código produce siempre los mismos montos y los tests no parpadean.
 
 import { CUENTAS } from "@/lib/catalogo";
-import { conIva, conRetencion, cuentaPrincipalDe } from "@/lib/dominio";
+import { conIva, conRetencion, cuentaBancariaDe } from "@/lib/dominio";
 import { ANIO, MESES_CORTOS, fecha } from "@/lib/fechas";
 import type { Linea, Movimiento } from "@/lib/tipos";
 
@@ -109,21 +109,28 @@ const crear = (
   monto: number,
   extra: Extra = {}
 ): Movimiento => {
-  const estado = extra.estado ?? "proyectado";
+  // La moneda se decide primero porque de ella sale la cuenta, no al revés.
+  const moneda = extra.moneda ?? "CLP";
+  const cuenta = cuentaBancariaDe(CUENTAS, empresa_id, moneda);
+  if (!cuenta) {
+    // Falla al cargar el módulo, no en runtime: si alguien agrega un movimiento en
+    // una moneda en la que la empresa no opera, se entera acá y no con un flujo mal
+    // sumado. La base lo rechazaría igual por la foreign key compuesta.
+    throw new Error(
+      `Datos de ejemplo inconsistentes: ${empresa_id} no tiene cuenta bancaria en ${moneda} (${contraparte} · ${glosa})`
+    );
+  }
   const base: Movimiento = {
     id: "m" + ++secuencia,
     fecha: fechaMov,
     empresa_id,
-    // Un proyectado todavía no salió de ninguna cuenta; los demás se asignan a la
-    // cuenta principal de la empresa, que es lo que hace `pagar`.
-    cuenta_id:
-      estado === "proyectado" ? null : (cuentaPrincipalDe(CUENTAS, empresa_id)?.id ?? null),
+    cuenta_id: cuenta.id,
     contraparte,
     glosa,
     monto,
-    moneda: "CLP",
+    moneda,
     tipo_cambio: null,
-    estado,
+    estado: extra.estado ?? "proyectado",
     doc_tipo: null,
     lineas: [{ subcategoria_id: sub(subcategoria), monto, glosa: null }],
   };

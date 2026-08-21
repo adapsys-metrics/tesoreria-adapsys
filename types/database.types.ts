@@ -96,11 +96,12 @@ export type Database = {
           id: number;
           fecha: string;
           empresa_id: string;
-          /** null mientras está proyectado: no salió de ninguna cuenta todavía. */
-          cuenta_id: string | null;
+          /** Obligatoria desde que se crea: la moneda se deriva de la cuenta. */
+          cuenta_id: string;
           contraparte: string | null;
           glosa: string | null;
           monto: number;
+          /** Siempre igual a la moneda de la cuenta (foreign key compuesta). */
           moneda: Moneda;
           tipo_cambio: number | null;
           estado: EstadoMovimiento;
@@ -113,7 +114,7 @@ export type Database = {
           id?: number;
           fecha: string;
           empresa_id: string;
-          cuenta_id?: string | null;
+          cuenta_id: string;
           contraparte?: string | null;
           glosa?: string | null;
           monto: number;
@@ -259,7 +260,7 @@ export type Database = {
           movimiento_id: number;
           fecha: string;
           empresa_id: string;
-          cuenta_id: string | null;
+          cuenta_id: string;
           estado: EstadoMovimiento;
           moneda: Moneda;
           tipo_cambio: number | null;

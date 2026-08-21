@@ -6,13 +6,13 @@
 // proyectado a pagado mueve el saldo de la cuenta (§4.1), y eso no puede ocurrir
 // como efecto colateral de cambiar un <select>.
 
-import { EMPRESAS } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { enCLP } from "@/lib/dominio";
 import { clp } from "@/lib/formato";
-import type { DocTipo, Moneda, Movimiento } from "@/lib/tipos";
+import type { DocTipo, Movimiento } from "@/lib/tipos";
 import { Pill, clases } from "@/components/ui/primitivas";
 import { EditorSplits } from "./EditorSplits";
+import { SelectorCuenta } from "./SelectorCuenta";
 import css from "./movimientos.module.css";
 
 const DOCS: { id: DocTipo; nombre: string }[] = [
@@ -22,7 +22,7 @@ const DOCS: { id: DocTipo; nombre: string }[] = [
 ];
 
 export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) {
-  const { tc, editarMovimiento, pagar, conciliar } = useTesoreria();
+  const { tc, editarMovimiento, cambiarCuenta, pagar, conciliar } = useTesoreria();
 
   return (
     <div className={css.editor}>
@@ -37,19 +37,9 @@ export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) 
           />
         </label>
 
-        <label className={css.campo}>
-          <span className={css.etiquetaCampo}>Empresa</span>
-          <select
-            value={m.empresa_id}
-            onChange={(e) => editarMovimiento(m.id, "empresa_id", e.target.value)}
-            className={css.entrada}
-          >
-            {EMPRESAS.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.nombre}
-              </option>
-            ))}
-          </select>
+        <label className={clases(css.campo, css.campoAncho)}>
+          <span className={css.etiquetaCampo}>Cuenta</span>
+          <SelectorCuenta valor={m.cuenta_id} onChange={(id) => cambiarCuenta(m.id, id)} />
         </label>
 
         <label className={css.campo}>
@@ -83,26 +73,7 @@ export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) 
           />
         </label>
 
-        <label className={css.campo}>
-          <span className={css.etiquetaCampo}>Moneda</span>
-          <select
-            value={m.moneda}
-            onChange={(e) => {
-              const moneda = e.target.value as Moneda;
-              editarMovimiento(m.id, "moneda", moneda);
-              // Todo movimiento en dólares tiene que llevar su TC: lo exige el
-              // esquema y es lo que permite no recalcularlo después (§4.5).
-              if (moneda === "USD" && m.tipo_cambio === null) {
-                editarMovimiento(m.id, "tipo_cambio", tc);
-              }
-            }}
-            className={css.entrada}
-          >
-            <option value="CLP">CLP</option>
-            <option value="USD">USD</option>
-          </select>
-        </label>
-
+        {/* La moneda no es un campo: sale de la cuenta y no cambia nunca. */}
         {m.moneda === "USD" && (
           <label className={css.campo}>
             <span className={css.etiquetaCampo}>TC del día</span>
