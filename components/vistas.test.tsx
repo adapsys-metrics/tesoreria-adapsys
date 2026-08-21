@@ -1,0 +1,222 @@
+// Tests de render por ruta — CLAUDE.md §8: "Compilar no basta". El bundler valida
+// sintaxis pero no detecta un identificador usado antes de declararse ni una
+// referencia inexistente, y eso ya pasó en este proyecto (una constante usada 55
+// líneas antes de su declaración, que reventaba al cargar el módulo).
+//
+// Por eso cada vista se monta de verdad, con los paneles expandidos: expandir todas
+// las categorías, abrir el detalle de una celda y abrir un editor de splits.
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { ProveedorTesoreria } from "@/components/estado/ProveedorTesoreria";
+import { Flujo } from "@/components/flujo/Flujo";
+import { Registro } from "@/components/movimientos/Registro";
+import { Encabezado } from "@/components/chrome/Encabezado";
+import { Cuentas } from "@/components/chrome/Cuentas";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/flujo",
+}));
+
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+});
+
+const montar = (ui: React.ReactNode) =>
+  render(<ProveedorTesoreria>{ui}</ProveedorTesoreria>);
+
+describe("Flujo de caja", () => {
+  it("monta y muestra la tabla con sus secciones", () => {
+    montar(<Flujo />);
+    expect(screen.getByRole("heading", { name: "Flujo de caja" })).toBeDefined();
+    // Las tres naturalezas del catálogo (§4.2).
+    expect(screen.getByText("Ingresos")).toBeDefined();
+    expect(screen.getByText("Gastos Operativos")).toBeDefined();
+    expect(screen.getByText("Flujo neto del período")).toBeDefined();
+    expect(screen.getByText("Flujo acumulado")).toBeDefined();
+  });
+
+  it("expande todas las categorías sin romperse", () => {
+    montar(<Flujo />);
+    const antes = document.querySelectorAll("tbody tr").length;
+    fireEvent.click(screen.getByText("Expandir todo"));
+    const despues = document.querySelectorAll("tbody tr").length;
+    expect(despues).toBeGreaterThan(antes);
+    // El botón cambia de sentido y vuelve a colapsar.
+    fireEvent.click(screen.getByText("Colapsar todo"));
+    expect(document.querySelectorAll("tbody tr").length).toBe(antes);
+  });
+
+  it("abre el detalle de un monto y lista los movimientos que lo componen", () => {
+    montar(<Flujo />);
+    const clicables = screen.getAllByTitle("Ver el detalle de este monto");
+    expect(clicables.length).toBeGreaterThan(0);
+    fireEvent.click(clicables[0]!);
+
+    const panel = screen.getByRole("dialog");
+    expect(panel).toBeDefined();
+    // El panel permite reclasificar ahí mismo: el control existe y al accionarlo
+    // aparece la lista completa de subcategorías.
+    const selectores = within(panel).getAllByLabelText("Subcategoría");
+    expect(selectores.length).toBeGreaterThan(0);
+    fireEvent.click(selectores[0]!);
+    const abierto = within(panel).getAllByLabelText("Subcategoría")[0]!;
+    expect(abierto.tagName).toBe("SELECT");
+    expect(abierto.querySelectorAll("option").length).toBe(284);
+  });
+
+  it("cierra el detalle con Escape", () => {
+    montar(<Flujo />);
+    fireEvent.click(screen.getAllByTitle("Ver el detalle de este monto")[0]!);
+    expect(screen.queryByRole("dialog")).not.toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("cambia de granularidad semanal a mensual", () => {
+    montar(<Flujo />);
+    fireEvent.click(screen.getByText("Mensual"));
+    // Los encabezados pasan a ser meses.
+    expect(screen.getByText("sep")).toBeDefined();
+  });
+
+  it("aplica los presets de rango", () => {
+    montar(<Flujo />);
+    for (const preset of ["Año en curso", "Año completo", "Mes actual", "Últimos 12 meses"]) {
+      fireEvent.click(screen.getByText(preset));
+      expect(screen.getByRole("heading", { name: "Flujo de caja" })).toBeDefined();
+    }
+  });
+
+  it("avisa que los movimientos en dólares quedan fuera del flujo (§4.5)", () => {
+    montar(<Flujo />);
+    fireEvent.click(screen.getByText("Año completo"));
+    expect(screen.getByText("Fuera del flujo")).toBeDefined();
+  });
+});
+
+describe("Movimientos", () => {
+  it("monta y lista movimientos", () => {
+    montar(<Registro />);
+    expect(screen.getByRole("heading", { name: "Movimientos" })).toBeDefined();
+    expect(document.querySelectorAll("tbody tr").length).toBeGreaterThan(0);
+  });
+
+  it("abre el editor de splits con sus líneas y los botones de impuesto", () => {
+    montar(<Registro />);
+    const botonSplit = screen.getAllByText(/Split · \d+ líneas/)[0]!;
+    fireEvent.click(botonSplit);
+
+    // Las líneas del split aparecen con glosa, subcategoría y monto editables.
+    expect(screen.getAllByLabelText("Glosa de la línea").length).toBeGreaterThan(0);
+    expect(screen.getAllByLabelText("Monto de la línea").length).toBeGreaterThan(0);
+    expect(screen.getByText(/\+ IVA/)).toBeDefined();
+    expect(screen.getByText(/− Retención/)).toBeDefined();
+    expect(screen.getByText("cuadrado")).toBeDefined();
+  });
+
+  it("editar el monto de una línea produce un descuadre visible (§3)", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByText(/Split · \d+ líneas/)[0]!);
+    const montos = screen.getAllByLabelText("Monto de la línea");
+    fireEvent.change(montos[0]!, { target: { value: "1" } });
+    // Ya no cuadra, y aparece el botón para empujar la diferencia.
+    expect(screen.queryByText("cuadrado")).toBeNull();
+    expect(screen.getByText(/^dif /)).toBeDefined();
+    expect(screen.getByText("Cuadrar diferencia")).toBeDefined();
+  });
+
+  it("cuadrar la diferencia la vuelve a dejar en cero", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByText(/Split · \d+ líneas/)[0]!);
+    fireEvent.change(screen.getAllByLabelText("Monto de la línea")[0]!, {
+      target: { value: "1" },
+    });
+    fireEvent.click(screen.getByText("Cuadrar diferencia"));
+    expect(screen.getByText("cuadrado")).toBeDefined();
+  });
+
+  it("el pegado masivo agrega líneas (§4.3)", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByText(/Split · \d+ líneas/)[0]!);
+    const antes = screen.getAllByLabelText("Monto de la línea").length;
+
+    fireEvent.click(screen.getByText("Pegar detalle"));
+    fireEvent.change(screen.getByLabelText("Detalle a pegar"), {
+      target: { value: "Anthropic Claude   96.400\nUber corporativo   72.100" },
+    });
+    fireEvent.click(screen.getByText("Crear líneas"));
+
+    expect(screen.getAllByLabelText("Monto de la línea").length).toBe(antes + 2);
+  });
+
+  it("marcar pagado saca el movimiento de proyectado (§4.1)", () => {
+    montar(<Registro />);
+    const botones = screen.getAllByText("Marcar pagado");
+    const antes = botones.length;
+    fireEvent.click(botones[0]!);
+    expect(screen.getAllByText("Marcar pagado").length).toBe(antes - 1);
+    expect(screen.getAllByText("Pagado").length).toBeGreaterThan(0);
+  });
+
+  it("la búsqueda filtra y el vacío se explica", () => {
+    montar(<Registro />);
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "Sueldos" } });
+    expect(document.querySelectorAll("tbody tr").length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "zzzz-no-existe" } });
+    expect(screen.getByText(/No hay movimientos que coincidan/)).toBeDefined();
+  });
+
+  it("no esconde las facturas impagas con fecha pasada", () => {
+    // GTD es del 14 de agosto y sigue proyectada al 20: filtrar solo por fecha la
+    // habría escondido, y es justo la que hay que pagar.
+    montar(<Registro />);
+    expect(screen.getByText("GTD")).toBeDefined();
+  });
+
+  it("desactivar el filtro trae el histórico conciliado", () => {
+    montar(<Registro />);
+    const antes = document.querySelectorAll("tbody tr").length;
+    fireEvent.click(screen.getByLabelText("Solo pendiente y futuro"));
+    expect(document.querySelectorAll("tbody tr").length).toBeGreaterThan(antes);
+  });
+
+  it("el formulario de alta calcula el IVA antes de guardar", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getByText("+ Nuevo"));
+
+    const docs = screen.getByLabelText("Documento") as HTMLSelectElement;
+    fireEvent.change(docs, { target: { value: "afecta" } });
+    fireEvent.change(screen.getByLabelText("Neto"), { target: { value: "-306745" } });
+
+    // El resumen muestra el total del documento, que es lo que sale del banco.
+    expect(screen.getByText("−365.027")).toBeDefined();
+  });
+});
+
+describe("Chrome", () => {
+  it("el encabezado muestra los KPI y la navegación", () => {
+    montar(<Encabezado />);
+    expect(screen.getByText("Efectivo CLP")).toBeDefined();
+    expect(screen.getByText("Comprometido CLP")).toBeDefined();
+    expect(screen.getByText("Posición proyectada CLP")).toBeDefined();
+    expect(screen.getByText("Saldo USD")).toBeDefined();
+  });
+
+  it("el selector de empresas abre y filtra", () => {
+    montar(<Encabezado />);
+    fireEvent.click(screen.getByText("ADAPSYS"));
+    expect(screen.getByText("Empresas relacionadas")).toBeDefined();
+    // Los presets están disponibles.
+    expect(screen.getByText("Todas")).toBeDefined();
+  });
+
+  it("el sidebar muestra los saldos y separa las cuentas en dólares", () => {
+    montar(<Cuentas />);
+    expect(screen.getByText("Saldos por empresa")).toBeDefined();
+    expect(screen.getByText("Por conciliar")).toBeDefined();
+    expect(screen.getAllByText(/fuera del flujo/).length).toBeGreaterThan(0);
+  });
+});

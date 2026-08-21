@@ -1,0 +1,223 @@
+/* Primitivas de UI portadas de tesoreria.jsx. Los tamaños fraccionarios (9.5px,
+   11.5px) son del prototipo y son intencionales: la densidad es lo que hace que
+   esto se sienta un instrumento financiero y no una landing (CLAUDE.md §8). */
+
+.chip {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 3px;
+  white-space: nowrap;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.chipChico {
+  font-size: 9px;
+  padding: 4px 7px;
+}
+
+.chipActivo {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.pill {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.pillConciliado {
+  color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.pillPagado {
+  color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.pillProyectado {
+  color: var(--muted);
+  background: var(--rule-soft);
+}
+
+.cabecera {
+  margin-bottom: 14px;
+}
+
+.cabecera h1 {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.cabecera p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  max-width: 760px;
+  line-height: 1.5;
+}
+
+.aviso {
+  border-left: 2px solid var(--rule);
+  padding: 9px 13px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  border-radius: 0 3px 3px 0;
+  background: var(--rule-soft);
+}
+
+.avisoTeal {
+  border-left-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.avisoBrick {
+  border-left-color: var(--brick);
+  background: var(--brick-soft);
+}
+
+.avisoAmber {
+  border-left-color: var(--amber);
+  background: var(--amber-soft);
+}
+
+.nota {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 10px;
+  line-height: 1.6;
+  max-width: 780px;
+}
+
+.vacio {
+  border: 1px dashed var(--rule);
+  border-radius: 4px;
+  padding: 34px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  background: var(--surface);
+}
+
+.rotulo {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rotuloPad {
+  padding: 0 16px 8px;
+}
+
+.cifraRotulo {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cifraValor {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cifraFuerte {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+/* Fila de checkbox. En el prototipo el hover se hacía mutando el style desde
+   onMouseEnter/onMouseLeave; acá es CSS, que además cubre el foco por teclado. */
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 11.5px;
+}
+
+.check:hover,
+.check:focus-within {
+  background: var(--paper);
+}
+
+.checkSangria {
+  padding-left: 20px;
+}
+
+.check input {
+  accent-color: var(--teal);
+}
+
+.botonFantasma {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 5px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--muted);
+}
+
+.botonFantasma:hover {
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+.insignia {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+  color: var(--muted);
+  background: var(--rule-soft);
+  white-space: nowrap;
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 5px);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.09);
+  padding: 8px;
+  z-index: var(--z-popover);
+}
+
+.botonMini {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--muted);
+}

@@ -1,0 +1,163 @@
+/* Estilos de tabla compartidos por flujo y movimientos.
+   Las columnas fijas respetan la escalera de z-index de globals.css: celda 2 <
+   header 3 < header de la app 30 < popover 45 < panel 80. */
+
+.envoltorio {
+  overflow-x: auto;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.tabla {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+/* La tabla del flujo crece con sus columnas en vez de comprimirlas. */
+.tablaAncha {
+  width: max-content;
+  min-width: 100%;
+}
+
+.th {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+  text-align: left;
+  background: var(--surface);
+}
+
+.thNum {
+  text-align: right;
+}
+
+/* Primera columna del thead: fija en horizontal. */
+.thFijo {
+  composes: th;
+  position: sticky;
+  left: 0;
+  z-index: var(--z-header-sticky);
+  border-right: 1px solid var(--rule);
+  min-width: 200px;
+}
+
+.td {
+  padding: 6px 10px;
+  vertical-align: middle;
+  font-size: 12px;
+}
+
+.tdNum {
+  composes: td;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Primera columna del tbody: fija en horizontal. Hereda el fondo de la fila para
+   que al scrollear no se vea el contenido pasando por debajo. */
+.tdFijo {
+  composes: td;
+  position: sticky;
+  left: 0;
+  z-index: var(--z-celda-sticky);
+  background: inherit;
+  border-right: 1px solid var(--rule);
+}
+
+/* Fondos de fila. Van acá y no inline para que el :hover de globals.css los
+   pueda pisar sin necesidad de !important. */
+.filaCategoria {
+  background: var(--surface);
+  border-top: 1px solid var(--rule-soft);
+}
+
+.filaSubcategoria {
+  background: var(--fila-anidada);
+}
+
+.filaSeccion > td {
+  background: var(--seccion);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 7px 10px;
+  position: sticky;
+  left: 0;
+}
+
+.filaTotal {
+  background: var(--teal-soft);
+  font-weight: 600;
+}
+
+.filaTotal .td,
+.filaTotal .tdNum,
+.filaTotal .tdFijo {
+  background: var(--teal-soft);
+}
+
+/* Nombre de categoría con su botón de colapso. */
+.botonColapso {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: inherit;
+  text-align: left;
+}
+
+.conteo {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--tenue);
+  font-weight: 400;
+}
+
+.sangria {
+  padding-left: 34px;
+}
+
+/* Monto clicable que abre el detalle de la celda. */
+.montoClicable {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--subrayado);
+  text-underline-offset: 2px;
+}
+
+.montoClicable:hover {
+  text-decoration-color: var(--teal);
+  color: var(--teal);
+}
+
+.cero {
+  color: var(--cero);
+}
+
+.negativo {
+  color: var(--brick);
+}
+
+.positivo {
+  color: var(--teal);
+}

@@ -1,0 +1,223 @@
+.header {
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+}
+
+.filaSuperior {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px 0;
+}
+
+.marca {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.marca span {
+  color: var(--teal);
+}
+
+.cifras {
+  display: flex;
+  gap: 22px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.reset {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--rule);
+  padding: 4px 7px;
+  border-radius: 3px;
+}
+
+.nav {
+  display: flex;
+  gap: 2px;
+  padding: 10px 20px 0;
+  overflow-x: auto;
+}
+
+.tab {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  color: var(--muted);
+  text-decoration: none;
+  display: inline-block;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tabActivo {
+  border-bottom-color: var(--teal);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tabPendiente {
+  color: var(--tenue);
+  cursor: default;
+}
+
+.tabPendiente:hover {
+  color: var(--tenue);
+}
+
+/* ── Selector de empresas ── */
+
+.selectorEnvoltorio {
+  position: relative;
+}
+
+.selectorBoton {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 10px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.selectorFlecha {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.selectorPopover {
+  left: 0;
+  min-width: 230px;
+}
+
+.selectorPresets {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.selectorGrupo {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 6px 6px 3px;
+}
+
+/* ── Sidebar de cuentas ── */
+
+.sidebar {
+  width: 244px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--rule);
+  background: var(--surface);
+  min-height: calc(100vh - var(--alto-header));
+  padding: 16px 0;
+}
+
+.empresa {
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.empresaFila {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.empresaNombre {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.empresaTotal {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cuentaFila {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.cuentaUsd {
+  color: var(--muted-claro);
+}
+
+.bloqueConciliar {
+  padding: 14px 16px;
+  margin-top: 6px;
+}
+
+.conteoConciliar {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.glosaConciliar {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin-top: 2px;
+}
+
+.pieSidebar {
+  padding: 0 16px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.pieSidebar > div {
+  border-top: 1px solid var(--rule-soft);
+  padding-top: 12px;
+}
+
+/* ── Layout ── */
+
+.cuerpo {
+  display: flex;
+  align-items: flex-start;
+}
+
+.principal {
+  flex: 1;
+  min-width: 0;
+  padding: 18px 20px 60px;
+}

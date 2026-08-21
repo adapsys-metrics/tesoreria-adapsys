@@ -1,0 +1,114 @@
+.filtros {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.fecha {
+  padding: 4px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--surface);
+  font-size: 11px;
+  width: 126px;
+}
+
+.separador {
+  width: 1px;
+  height: 18px;
+  background: var(--rule);
+  margin: 0 4px;
+}
+
+.separadorTexto {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.empuje {
+  margin-left: auto;
+}
+
+.rotuloAviso {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.anio {
+  font-size: 9px;
+  color: var(--tenue);
+  font-weight: 400;
+}
+
+/* Celdas de monto. El padding va en el hijo para que el botón ocupe toda la celda
+   y el área clicable sea la celda entera, no solo el texto. */
+.celda {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: right;
+  padding: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  background: inherit;
+}
+
+.celdaBorde {
+  border-left: 1px solid var(--rule);
+}
+
+.valor {
+  display: block;
+  width: 100%;
+  padding: 5px 9px;
+  text-align: right;
+  font: inherit;
+  color: inherit;
+}
+
+.botonValor {
+  background: none;
+  border: none;
+  border-radius: 2px;
+  text-decoration: underline;
+  text-decoration-color: var(--subrayado);
+  text-underline-offset: 3px;
+  color: inherit;
+}
+
+.botonValor:hover {
+  text-decoration-color: var(--teal);
+  background: var(--teal-soft);
+}
+
+.fuerte {
+  font-weight: 600;
+}
+
+.flecha {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.nombreSub {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.etiquetaTotal {
+  font-weight: 600;
+}
+
+.filaNeto > td {
+  border-top: 2px solid var(--ink);
+}

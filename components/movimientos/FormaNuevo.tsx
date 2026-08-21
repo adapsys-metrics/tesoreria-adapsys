@@ -1,0 +1,173 @@
+"use client";
+
+// Alta de movimiento. El tipo de documento decide si se agrega la línea de IVA o la
+// de retención (§4.3), y el resumen muestra el líquido que va a salir del banco —
+// que es el número que la persona está mirando en la factura o la boleta.
+
+import { useState } from "react";
+import { EMPRESAS } from "@/lib/catalogo";
+import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
+import { conIva, conRetencion } from "@/lib/dominio";
+import { clp, pct } from "@/lib/formato";
+import { HOY } from "@/lib/fechas";
+import type { DocTipo, Movimiento } from "@/lib/tipos";
+import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
+import css from "./movimientos.module.css";
+
+const DOCS: { id: DocTipo; nombre: string; pista: string }[] = [
+  { id: "exento", nombre: "Exento", pista: "el monto es el final, sin línea de impuesto" },
+  { id: "afecta", nombre: "Afecta", pista: "se ingresa el neto y se agrega el IVA" },
+  { id: "honorario", nombre: "Honorario", pista: "se ingresa el bruto y se resta la retención" },
+];
+
+export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
+  const { empresasSeleccionadas, tasas, agregarMovimiento } = useTesoreria();
+  const [empresa, setEmpresa] = useState(empresasSeleccionadas[0] ?? EMPRESAS[0]!.id);
+  const [fecha, setFecha] = useState(HOY);
+  const [contraparte, setContraparte] = useState("");
+  const [glosa, setGlosa] = useState("");
+  const [subcategoria, setSubcategoria] = useState("sueldos");
+  const [base, setBase] = useState("");
+  const [doc, setDoc] = useState<DocTipo>("exento");
+
+  const montoBase = Number(base) || 0;
+
+  // Previsualización con los mismos helpers que usa el guardado: lo que se muestra
+  // es exactamente lo que se va a grabar.
+  const resultado =
+    doc === "afecta"
+      ? conIva(montoBase, subcategoria, tasas.iva)
+      : doc === "honorario"
+        ? conRetencion(montoBase, subcategoria, tasas.bhe)
+        : {
+            monto: montoBase,
+            lineas: [{ subcategoria_id: subcategoria, monto: montoBase, glosa: null }],
+          };
+
+  const guardar = () => {
+    if (!montoBase || !contraparte.trim()) return;
+    const nuevo: Omit<Movimiento, "id"> = {
+      fecha,
+      empresa_id: empresa,
+      cuenta_id: null,
+      contraparte: contraparte.trim(),
+      glosa: glosa.trim() || null,
+      monto: resultado.monto,
+      moneda: "CLP",
+      tipo_cambio: null,
+      estado: "proyectado",
+      doc_tipo: doc,
+      lineas: resultado.lineas,
+    };
+    agregarMovimiento(nuevo);
+    cerrar();
+  };
+
+  const pista = DOCS.find((d) => d.id === doc)!.pista;
+
+  return (
+    <div className={css.forma}>
+      <label className={css.campo}>
+        <span className={css.etiquetaCampo}>Fecha</span>
+        <input
+          type="date"
+          value={fecha}
+          onChange={(e) => setFecha(e.target.value)}
+          className={css.entrada}
+        />
+      </label>
+
+      <label className={css.campo}>
+        <span className={css.etiquetaCampo}>Empresa</span>
+        <select
+          value={empresa}
+          onChange={(e) => setEmpresa(e.target.value)}
+          className={css.entrada}
+        >
+          {EMPRESAS.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.nombre}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={css.campo}>
+        <span className={css.etiquetaCampo}>Proveedor / Cliente</span>
+        <input
+          value={contraparte}
+          onChange={(e) => setContraparte(e.target.value)}
+          placeholder="GTD"
+          className={css.entrada}
+        />
+      </label>
+
+      <label className={css.campo}>
+        <span className={css.etiquetaCampo}>Glosa</span>
+        <input
+          value={glosa}
+          onChange={(e) => setGlosa(e.target.value)}
+          placeholder="FA3109609 Internet oficina"
+          className={css.entrada}
+        />
+      </label>
+
+      <label className={css.campo}>
+        <span className={css.etiquetaCampo}>Subcategoría</span>
+        <SelectorSubcategoria valor={subcategoria} onChange={setSubcategoria} />
+      </label>
+
+      <label className={css.campo}>
+        <span className={css.etiquetaCampo}>Documento</span>
+        <select
+          value={doc}
+          onChange={(e) => setDoc(e.target.value as DocTipo)}
+          className={css.entrada}
+        >
+          {DOCS.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.nombre}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={css.campo}>
+        <span className={css.etiquetaCampo}>
+          {doc === "afecta" ? "Neto" : doc === "honorario" ? "Bruto" : "Monto"}
+        </span>
+        <input
+          type="number"
+          value={base}
+          onChange={(e) => setBase(e.target.value)}
+          placeholder="-306745"
+          className={css.entrada}
+        />
+      </label>
+
+      <div className={css.campo}>
+        <span className={css.etiquetaCampo}>&nbsp;</span>
+        <button type="button" onClick={guardar} className={css.guardar}>
+          Guardar
+        </button>
+      </div>
+
+      <div className={css.resumenForma}>
+        <span>{pista}.</span>
+        {doc !== "exento" && montoBase !== 0 && (
+          <span>
+            {doc === "afecta" ? `IVA ${pct(tasas.iva)}` : `Retención ${pct(tasas.bhe)}`}:{" "}
+            <strong>{clp(resultado.lineas[1]?.monto ?? 0)}</strong>
+          </span>
+        )}
+        <span>
+          {doc === "honorario" ? "Líquido a pagar" : "Total"}:{" "}
+          <span className={css.resumenMonto}>{clp(resultado.monto)}</span>
+        </span>
+        <button type="button" onClick={cerrar} className={css.botonAmpliar}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}

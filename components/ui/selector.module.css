@@ -1,0 +1,40 @@
+.selector {
+  font-size: 11px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 2px 5px;
+  background: var(--paper);
+  max-width: 320px;
+}
+
+.compacto {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  max-width: 200px;
+}
+
+/* Subcategoría que ya no existe en el catálogo, o línea sin clasificar: hay que
+   verla para poder reasignarla. */
+.huerfana {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+/* Estado de reposo: se lee como texto, no como control, pero deja claro al pasar por
+   encima que es editable. */
+.comoTexto {
+  text-align: left;
+  border-color: transparent;
+  background: none;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comoTexto:hover,
+.comoTexto:focus-visible {
+  border-color: var(--rule);
+  background: var(--paper);
+}
