@@ -55,7 +55,9 @@ create table movimientos (
   id             bigint generated always as identity primary key,
   fecha          date not null,
   empresa_id     text not null references empresas (id),
-  cuenta_id      text not null references cuentas (id),
+  -- Nullable a propósito: un movimiento proyectado es un compromiso que todavía no
+  -- salió de ninguna cuenta (§4.1). La cuenta se resuelve al marcarlo pagado.
+  cuenta_id      text references cuentas (id),
   contraparte    text,
   glosa          text,
   monto          numeric not null,
@@ -66,7 +68,9 @@ create table movimientos (
   creado_por     uuid references auth.users (id),
   creado_en      timestamptz not null default now(),
   actualizado_en timestamptz not null default now(),
-  constraint moneda_usd_requiere_tc check (moneda <> 'USD' or tipo_cambio is not null)
+  constraint moneda_usd_requiere_tc check (moneda <> 'USD' or tipo_cambio is not null),
+  -- Si ya salió del banco, tiene que constar de qué cuenta salió.
+  constraint pagado_requiere_cuenta check (estado = 'proyectado' or cuenta_id is not null)
 );
 
 create index movimientos_fecha_idx on movimientos (fecha);

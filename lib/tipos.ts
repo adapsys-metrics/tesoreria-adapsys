@@ -1,0 +1,102 @@
+// Tipos del dominio. Los nombres de campo son los mismos que las columnas de
+// supabase/migrations/0001_esquema.sql a propósito: cuando se cablee Supabase las
+// filas entran directo, sin capa de traducción.
+
+export type Moneda = "CLP" | "USD";
+export type TipoCuenta = "banco" | "cxc";
+export type Naturaleza = "ingreso" | "inversion" | "operativo";
+export type EstadoMovimiento = "proyectado" | "pagado" | "conciliado";
+export type DocTipo = "exento" | "afecta" | "honorario";
+export type Grupo = "Adapsys" | "Relacionadas";
+
+export type Empresa = {
+  id: string;
+  nombre: string;
+  corto: string;
+  grupo: Grupo;
+};
+
+export type Cuenta = {
+  id: string;
+  empresa_id: string;
+  nombre: string;
+  moneda: Moneda;
+  tipo: TipoCuenta;
+  saldo_inicial: number;
+  principal: boolean;
+};
+
+export type Categoria = {
+  id: string;
+  nombre: string;
+  orden: number;
+  controlado: boolean;
+};
+
+export type Subcategoria = {
+  id: string;
+  categoria_id: string;
+  nombre: string;
+  naturaleza: Naturaleza;
+  activa: boolean;
+};
+
+/** Una línea del split. Siempre tiene subcategoría: "sin clasificar" se
+ *  representa con un movimiento sin líneas (§3), no con una línea sin sub. */
+export type Linea = {
+  subcategoria_id: string;
+  monto: number;
+  glosa: string | null;
+};
+
+export type Movimiento = {
+  id: string;
+  fecha: string; // YYYY-MM-DD
+  empresa_id: string;
+  /** null mientras está proyectado: la cuenta se resuelve al marcarlo pagado. */
+  cuenta_id: string | null;
+  contraparte: string | null;
+  glosa: string | null;
+  /** Líquido que entra o sale del banco. Puede diferir de la suma de líneas:
+   *  el descuadre se avisa en la UI, no se corrige en silencio. */
+  monto: number;
+  moneda: Moneda;
+  /** TC del día de la operación. Se conserva, no se recalcula (§4.5). */
+  tipo_cambio: number | null;
+  estado: EstadoMovimiento;
+  doc_tipo: DocTipo | null;
+  /** Vacío = sin clasificar. Una línea = simple. Dos o más = split. */
+  lineas: Linea[];
+};
+
+/** Fila resultante de expandir un movimiento a sus líneas. Equivale a la vista
+ *  v_lineas_expandidas: toda agregación por subcategoría parte de acá (§3). */
+export type LineaExpandida = {
+  movimiento_id: string;
+  fecha: string;
+  empresa_id: string;
+  cuenta_id: string | null;
+  estado: EstadoMovimiento;
+  moneda: Moneda;
+  tipo_cambio: number | null;
+  /** null cuando el movimiento no tiene líneas: sin clasificar. */
+  subcategoria_id: string | null;
+  monto: number;
+  glosa: string | null;
+  contraparte: string | null;
+  /** Índice de la línea dentro del movimiento; null si es implícita.
+   *  Es la ruta de vuelta para editar la línea desde una vista agregada. */
+  indice_linea: number | null;
+};
+
+export type Tasas = {
+  iva: number;
+  bhe: number;
+};
+
+export type LineaPresupuesto = {
+  monto: number;
+  monto_anterior: number;
+  responsable: string;
+  nota: string;
+};

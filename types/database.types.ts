@@ -9,6 +9,9 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
+// Los tipos del dominio viven en lib/tipos.ts (son los mismos valores); se
+// re-exportan acá para que este archivo siga siendo autocontenido cuando se
+// reemplace por el output de `npm run db:types`.
 export type Grupo = "Adapsys" | "Relacionadas";
 export type Moneda = "CLP" | "USD";
 export type TipoCuenta = "banco" | "cxc";
@@ -93,7 +96,8 @@ export type Database = {
           id: number;
           fecha: string;
           empresa_id: string;
-          cuenta_id: string;
+          /** null mientras está proyectado: no salió de ninguna cuenta todavía. */
+          cuenta_id: string | null;
           contraparte: string | null;
           glosa: string | null;
           monto: number;
@@ -109,7 +113,7 @@ export type Database = {
           id?: number;
           fecha: string;
           empresa_id: string;
-          cuenta_id: string;
+          cuenta_id?: string | null;
           contraparte?: string | null;
           glosa?: string | null;
           monto: number;
@@ -255,7 +259,7 @@ export type Database = {
           movimiento_id: number;
           fecha: string;
           empresa_id: string;
-          cuenta_id: string;
+          cuenta_id: string | null;
           estado: EstadoMovimiento;
           moneda: Moneda;
           tipo_cambio: number | null;

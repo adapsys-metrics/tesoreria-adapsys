@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Genera supabase/seed.sql a partir del catálogo real embebido en tesoreria.jsx
-(EMPRESAS, CUENTAS, CATS_INI, SUBS_INI). Ver CLAUDE.md §5 y §11 — el catálogo de
-284 subcategorías es el que el equipo ya usa en Quicken; no se re-inventa.
+Genera supabase/seed.sql a partir de lib/catalogo.ts, que es la fuente de verdad del
+catálogo (ver CLAUDE.md §5 y §11). Si el catálogo cambia, se edita el TS y se corre
+este script; nunca al revés.
 
 Uso: python3 scripts/gen_seed.py
 """
@@ -10,95 +10,91 @@ import re
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
-FUENTE = RAIZ / "tesoreria.jsx"
+FUENTE = RAIZ / "lib" / "catalogo.ts"
 SALIDA = RAIZ / "supabase" / "seed.sql"
 
 
-def extraer_bloque(texto, nombre_const):
-    m = re.search(rf"const {nombre_const} = \[(.*?)\n\];", texto, re.S)
+def extraer_bloque(texto, declaracion):
+    m = re.search(rf"export const {declaracion} = \[(.*?)\n\];", texto, re.S)
     if not m:
-        raise SystemExit(f"No encontré {nombre_const} en {FUENTE}")
+        raise SystemExit(f"No encontré '{declaracion}' en {FUENTE}")
     return m.group(1)
 
 
 def extraer_objetos(bloque):
-    """Cada línea del array fuente es un objeto plano { clave: valor, ... }.
-    No hay objetos anidados en estos catálogos, así que un regex por línea basta."""
+    """Cada línea del array es un objeto plano { clave: valor, ... }."""
     objetos = []
     for linea in bloque.splitlines():
         linea = linea.strip().rstrip(",")
         if not linea.startswith("{"):
             continue
-        contenido = linea.strip("{} ")
         campos = {}
-        for parte in re.findall(r'(\w+):\s*("(?:[^"\\]|\\.)*"|true|false|-?\d+)', contenido):
-            clave, valor = parte
+        for clave, valor in re.findall(
+            r'(\w+):\s*("(?:[^"\\]|\\.)*"|true|false|-?\d+)', linea.strip("{} ")
+        ):
             if valor.startswith('"'):
-                valor = valor[1:-1].replace('\\"', '"')
+                campos[clave] = valor[1:-1].replace('\\"', '"')
             elif valor in ("true", "false"):
-                valor = valor == "true"
+                campos[clave] = valor == "true"
             else:
-                valor = int(valor)
-            campos[clave] = valor
+                campos[clave] = int(valor)
         objetos.append(campos)
     return objetos
 
 
-def sql_str(v):
-    if v is None:
-        return "null"
+def sql(v):
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, int):
+        return str(v)
     return "'" + str(v).replace("'", "''") + "'"
-
-
-def sql_bool(v):
-    return "true" if v else "false"
 
 
 def main():
     texto = FUENTE.read_text(encoding="utf-8")
+    empresas = extraer_objetos(extraer_bloque(texto, r"EMPRESAS: Empresa\[\]"))
+    cuentas = extraer_objetos(extraer_bloque(texto, r"CUENTAS: Cuenta\[\]"))
+    categorias = extraer_objetos(extraer_bloque(texto, r"CATEGORIAS: Categoria\[\]"))
+    subcategorias = extraer_objetos(extraer_bloque(texto, r"SUBCATEGORIAS: Subcategoria\[\]"))
 
-    empresas = extraer_objetos(extraer_bloque(texto, "EMPRESAS"))
-    cuentas = extraer_objetos(extraer_bloque(texto, "CUENTAS"))
-    categorias = extraer_objetos(extraer_bloque(texto, "CATS_INI"))
-    subcategorias = extraer_objetos(extraer_bloque(texto, "SUBS_INI"))
+    out = [
+        "-- Generado por scripts/gen_seed.py desde lib/catalogo.ts — no editar a mano.",
+        "-- Re-generar con: python3 scripts/gen_seed.py",
+        "",
+    ]
 
-    out = []
-    out.append("-- Generado por scripts/gen_seed.py a partir de tesoreria.jsx — no editar a mano.")
-    out.append("-- Re-generar con: python3 scripts/gen_seed.py\n")
+    def tabla(nombre, columnas, filas, clave_por_columna):
+        out.append(f"insert into {nombre} ({', '.join(columnas)}) values")
+        cuerpo = []
+        for f in filas:
+            valores = ", ".join(sql(clave_por_columna(f, c)) for c in columnas)
+            cuerpo.append(f"  ({valores})")
+        out.append(",\n".join(cuerpo) + ";\n")
 
-    out.append("insert into empresas (id, nombre, corto, grupo) values")
-    out.append(
-        ",\n".join(
-            f"  ({sql_str(e['id'])}, {sql_str(e['nombre'])}, {sql_str(e['corto'])}, {sql_str(e['grupo'])})"
-            for e in empresas
-        )
-        + ";\n"
+    tabla(
+        "empresas",
+        ["id", "nombre", "corto", "grupo"],
+        empresas,
+        lambda f, c: f[c],
     )
-
-    out.append("insert into cuentas (id, empresa_id, nombre, moneda, tipo, saldo_inicial, principal) values")
-    filas = []
-    for c in cuentas:
-        filas.append(
-            f"  ({sql_str(c['id'])}, {sql_str(c['empresa'])}, {sql_str(c['nombre'])}, "
-            f"{sql_str(c['moneda'])}, {sql_str(c['tipo'])}, {c['saldo']}, {sql_bool(c.get('principal', False))})"
-        )
-    out.append(",\n".join(filas) + ";\n")
-
-    out.append("insert into categorias (id, nombre, orden, controlado) values")
-    filas = []
-    for i, cat in enumerate(categorias):
-        filas.append(
-            f"  ({sql_str(cat['id'])}, {sql_str(cat['nombre'])}, {i}, {sql_bool(cat.get('controlado', True))})"
-        )
-    out.append(",\n".join(filas) + ";\n")
-
-    out.append("insert into subcategorias (id, categoria_id, nombre, naturaleza, activa) values")
-    filas = []
-    for s in subcategorias:
-        filas.append(
-            f"  ({sql_str(s['id'])}, {sql_str(s['cat'])}, {sql_str(s['nombre'])}, {sql_str(s['nat'])}, true)"
-        )
-    out.append(",\n".join(filas) + ";\n")
+    tabla(
+        "cuentas",
+        ["id", "empresa_id", "nombre", "moneda", "tipo", "saldo_inicial", "principal"],
+        cuentas,
+        lambda f, c: f.get(c, False if c == "principal" else f.get(c)),
+    )
+    tabla(
+        "categorias",
+        ["id", "nombre", "orden", "controlado"],
+        categorias,
+        lambda f, c: f.get(c, True if c == "controlado" else f.get(c)),
+    )
+    tabla(
+        "subcategorias",
+        ["id", "categoria_id", "nombre", "naturaleza", "activa"],
+        subcategorias,
+        lambda f, c: f.get(c, True if c == "activa" else f.get(c)),
+    )
 
     out.append(
         "-- Parámetros con vigencia por año (§9) — verificar la tasa BHE vigente con el SII\n"
@@ -110,8 +106,10 @@ def main():
     )
 
     SALIDA.write_text("\n".join(out), encoding="utf-8")
-    print(f"Escribí {SALIDA} — {len(empresas)} empresas, {len(cuentas)} cuentas, "
-          f"{len(categorias)} categorías, {len(subcategorias)} subcategorías.")
+    print(
+        f"Escribí {SALIDA} — {len(empresas)} empresas, {len(cuentas)} cuentas, "
+        f"{len(categorias)} categorías, {len(subcategorias)} subcategorías."
+    )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
--- Generado por scripts/gen_seed.py a partir de tesoreria.jsx — no editar a mano.
+-- Generado por scripts/gen_seed.py desde lib/catalogo.ts — no editar a mano.
 -- Re-generar con: python3 scripts/gen_seed.py
 
 insert into empresas (id, nombre, corto, grupo) values
@@ -6,7 +6,7 @@ insert into empresas (id, nombre, corto, grupo) values
   ('cons', 'CLA CONSULTORES', 'CONS', 'Adapsys'),
   ('clting', 'CLA CONSULTING', 'CLTG', 'Adapsys'),
   ('ctria', 'CLA CONSULTORIA', 'CTRIA', 'Adapsys'),
-  ('sm', 'SANTA MARÍA', 'SM', 'Empresas relacionadas');
+  ('sm', 'SANTA MARÍA', 'SM', 'Relacionadas');
 
 insert into cuentas (id, empresa_id, nombre, moneda, tipo, saldo_inicial, principal) values
   ('a1', 'adap', 'CLA ADAPTACIÓN PESOS', 'CLP', 'banco', 199673281, true),

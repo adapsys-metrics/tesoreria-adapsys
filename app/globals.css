@@ -1,5 +1,7 @@
-/* Tokens portados de tesoreria.jsx — ver §8 de CLAUDE.md ("la densidad sí es sagrada"). */
+/* Tokens portados de tesoreria.jsx — ver §8 de CLAUDE.md ("la densidad sí es sagrada").
+   Las fuentes --fuente-sans / --fuente-mono las inyecta next/font desde app/layout.tsx. */
 :root {
+  /* Paleta base (el objeto `C` del prototipo) */
   --ink: #15181c;
   --paper: #f7f7f4;
   --surface: #ffffff;
@@ -14,8 +16,31 @@
   --amber-soft: #f6efdc;
   --seccion: #dde6e3;
 
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* Grises que en el prototipo estaban hardcodeados fuera de `C` */
+  --fila-anidada: #fcfcfa;
+  --fila-split: #fbfcfa;
+  --fila-categoria: #edeeea;
+  --tenue: #b8bdb6;
+  --borde-control: #c3c7c0;
+  --cero: #c9cdc6;
+  --rule-medio: #d2d6cf;
+  --subrayado: #d8dcd6;
+  --muted-claro: #a9aea7;
+  --scrollbar: #cfd2cb;
+
+  --font-sans: var(--fuente-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--fuente-mono), ui-monospace, monospace;
+
+  /* Alto del header sticky. El sidebar de cuentas lo resta para su minHeight;
+     en el prototipo estaba hardcodeado como calc(100vh - 92px). */
+  --alto-header: 92px;
+
+  /* Escalera de z-index — respetar el orden del prototipo */
+  --z-celda-sticky: 2;
+  --z-header-sticky: 3;
+  --z-header: 30;
+  --z-popover: 45;
+  --z-panel: 80;
 }
 
 * {
@@ -29,6 +54,20 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
+  font-size: 13px;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
 }
 
 table {
@@ -37,4 +76,22 @@ table {
 
 a {
   color: inherit;
+}
+
+::-webkit-scrollbar {
+  height: 9px;
+  width: 9px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 6px;
+}
+
+/* Hover de fila de tabla. En el prototipo era `.row:hover` con !important porque
+   competía con backgrounds inline; acá los fondos de fila viven en clases de
+   módulo, así que la especificidad del selector alcanza sin !important.
+   Es global porque lo comparten todas las tablas (flujo, movimientos, ...). */
+tbody tr.fila:hover {
+  background: var(--teal-soft);
 }
