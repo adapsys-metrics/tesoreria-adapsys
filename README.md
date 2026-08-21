@@ -22,30 +22,56 @@ npm install
 
 ## 2. Crear el proyecto Supabase
 
-1. Crear un proyecto nuevo en [supabase.com](https://supabase.com).
-2. En **Project Settings → API**, copiar `Project URL` y `anon public key` a `.env.local`
-   (copiar `.env.example` como punto de partida).
-3. Instalar la CLI de Supabase si no la tienes (`npm install -g supabase` o vía Homebrew)
-   y enlazar el proyecto:
+### Opción A — por el dashboard (no requiere instalar nada)
 
-   ```bash
-   supabase login
-   supabase link --project-ref <tu-project-ref>
-   ```
+Es la vía recomendada si no tienes Node ni Homebrew en la máquina.
 
-4. Aplicar el esquema y los datos del catálogo:
+1. Crear un proyecto nuevo en [supabase.com](https://supabase.com) → **New project**.
+   - **Name**: `tesoreria-adapsys`
+   - **Database password**: genera una y guárdala en el gestor de contraseñas; se usa
+     solo para conectarse por SQL directo, no para la app.
+   - **Region**: `South America (São Paulo)` es la más cercana a Chile.
+2. Esperar a que termine de aprovisionar (un par de minutos).
+3. Ir a **SQL Editor → New query** y correr, **en este orden**, pegando el contenido
+   completo de cada archivo y apretando *Run*:
 
-   ```bash
-   supabase db push          # aplica supabase/migrations/*.sql
-   psql "$(supabase db url)" -f supabase/seed.sql   # carga empresas, cuentas, catálogo y parámetros
-   ```
+   | # | Archivo | Qué hace |
+   |---|---|---|
+   | 1 | `supabase/migrations/0001_esquema.sql` | Tablas, vistas, triggers y constraints |
+   | 2 | `supabase/migrations/0002_rls.sql` | Row Level Security por dominio corporativo |
+   | 3 | `supabase/seed.sql` | Empresas, cuentas, 284 subcategorías y parámetros |
 
-   (`supabase db reset` hace ambas cosas de una — pero solo funciona contra la base
-   local de desarrollo, no contra el proyecto remoto.)
+   Cada uno debe decir *Success. No rows returned*. Si alguno falla, **detenerse ahí**:
+   los siguientes dependen del anterior.
 
-El catálogo de 284 subcategorías en `supabase/seed.sql` está generado desde el
-prototipo con `python3 scripts/gen_seed.py` — si el catálogo cambia en
-`tesoreria.jsx`, re-correr ese script en vez de editar el SQL a mano.
+4. Verificar en **Table Editor** que `subcategorias` tenga 284 filas y `cuentas` 11.
+
+### Opción B — por la CLI (requiere Node o Homebrew)
+
+```bash
+supabase login
+supabase link --project-ref <tu-project-ref>
+supabase db push                                   # aplica migrations/*.sql
+psql "$(supabase db url)" -f supabase/seed.sql     # carga el catálogo
+```
+
+### Después, en cualquiera de las dos
+
+En **Project Settings → API**, copiar `Project URL` y `anon public key`. Van a
+`.env.local` para desarrollo (copiar `.env.example` como base) y a las variables de
+entorno de Vercel para producción.
+
+> El catálogo de `supabase/seed.sql` se genera desde `lib/catalogo.ts` con
+> `python3 scripts/gen_seed.py`. Si el catálogo cambia se edita el TS y se re-genera;
+> nunca al revés.
+
+### Sobre el esquema
+
+`supabase/esquema.test.ts` corre las tres migraciones contra un Postgres real
+(pglite) y verifica que las reglas del modelo se cumplan en la base: que la moneda
+de un movimiento sea la de su cuenta, que las líneas de un split cuadren, que los
+dominios cerrados rechacen valores inventados. Se ejecuta con `npm test` junto al
+resto, así que un error de SQL se detecta antes de aplicarlo en Supabase.
 
 ## 3. Configurar login con Google
 
