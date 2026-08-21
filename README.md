@@ -9,7 +9,8 @@ Next.js (App Router) + Supabase (Postgres, Auth, RLS), desplegado en Vercel.
 
 ## Requisitos
 
-- Node.js 20+
+- Node.js 22+ (lo exige `@supabase/supabase-js`; en Vercel: Project Settings →
+  General → Node.js Version → 22.x)
 - Una cuenta de Supabase (proyecto gratuito alcanza para el volumen actual)
 - Acceso a Google Cloud Console para el OAuth client (login corporativo)
 
