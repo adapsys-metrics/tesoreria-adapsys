@@ -17,7 +17,7 @@ export type EstadoMovimiento = "proyectado" | "pagado" | "conciliado";
 export type DocTipo = "exento" | "afecta" | "honorario";
 export type AccionAuditoria = "crear" | "modificar" | "anular";
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       empresas: {
@@ -278,4 +278,4 @@ export interface Database {
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
-}
+};
