@@ -116,6 +116,44 @@ describe("Movimientos", () => {
     expect(screen.getByText("cuadrado")).toBeDefined();
   });
 
+  it("la fila se expande al editor completo del movimiento", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+
+    // Los campos de cabecera del movimiento, no solo sus líneas.
+    expect(screen.getByLabelText("Monto del movimiento")).toBeDefined();
+    expect(screen.getByText("Documento")).toBeDefined();
+    expect(screen.getByText("Moneda")).toBeDefined();
+    // "Proveedor / Cliente" aparece dos veces: como columna y como campo del editor.
+    expect(screen.getAllByText("Proveedor / Cliente")).toHaveLength(2);
+    // Y las líneas siguen estando dentro del mismo editor.
+    expect(screen.getAllByLabelText("Monto de la línea").length).toBeGreaterThan(0);
+  });
+
+  it("editar la glosa desde el editor se refleja en la fila", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    const glosas = screen.getAllByText("Glosa");
+    expect(glosas.length).toBeGreaterThan(0);
+
+    const campo = screen
+      .getAllByRole("textbox")
+      .find((i) => (i as HTMLInputElement).value.startsWith("FA3109609"));
+    expect(campo).toBeDefined();
+    fireEvent.change(campo!, { target: { value: "Glosa corregida" } });
+    expect(screen.getAllByDisplayValue("Glosa corregida").length).toBeGreaterThan(0);
+  });
+
+  it("pasar un movimiento a USD le exige tipo de cambio (§4.5)", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    const moneda = screen.getByDisplayValue("CLP");
+    fireEvent.change(moneda, { target: { value: "USD" } });
+    // El TC aparece y queda seteado: el esquema no acepta USD sin tipo de cambio.
+    const tc = screen.getByLabelText("Tipo de cambio") as HTMLInputElement;
+    expect(Number(tc.value)).toBeGreaterThan(0);
+  });
+
   it("editar el monto de una línea produce un descuadre visible (§3)", () => {
     montar(<Registro />);
     fireEvent.click(screen.getAllByText(/Split · \d+ líneas/)[0]!);
@@ -123,7 +161,7 @@ describe("Movimientos", () => {
     fireEvent.change(montos[0]!, { target: { value: "1" } });
     // Ya no cuadra, y aparece el botón para empujar la diferencia.
     expect(screen.queryByText("cuadrado")).toBeNull();
-    expect(screen.getByText(/^dif /)).toBeDefined();
+    expect(screen.getByText(/^descuadre /)).toBeDefined();
     expect(screen.getByText("Cuadrar diferencia")).toBeDefined();
   });
 

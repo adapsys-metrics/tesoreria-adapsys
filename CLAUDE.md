@@ -280,10 +280,29 @@ mínimo. En la app real, tests de render por ruta.
 - Auditoría: quién cambió qué y cuándo. Nada se borra, se anula con contraasiento.
 - Distribución mensual del presupuesto anual: hoy la comparación contra el avance del año es
   lineal, y las líneas estacionales (retiros de socios en marzo/junio/agosto) dan falsa alarma.
-- Movimientos recurrentes por regla, en vez de escribirse uno a uno para todo el año.
-  Los pagos caen en fechas fijas (sueldos día 25, IVA día 30, honorarios día 20).
 - Autoclasificación por diccionario de proveedores. Ya existe uno construido para la conciliación
   de la tarjeta corporativa; reutilizarlo.
+
+### La proyección se genera del presupuesto, no de reglas por proveedor
+
+Decidido con el equipo. La tentación es modelar recurrencias por proveedor ("GTD, día 14,
+mensual") y generar la serie del año. **No sirve como mecanismo principal:** un proveedor puede
+cambiar, puede ser ocasional, o tener un único pago en el año. Modelar cada uno como regla
+obliga a mantener reglas que no se sostienen.
+
+El mecanismo es al revés: **la línea de presupuesto por subcategoría genera la proyección del
+año**, distribuida en el tiempo. El proveedor es el dato de la contraparte, no la unidad de
+proyección.
+
+Consecuencias a resolver cuando se implemente:
+- **Doble conteo.** Si la línea "Telefonía" está proyectada por presupuesto y además existe un
+  movimiento proyectado de GTD para septiembre, el mes queda contado dos veces. La proyección
+  generada tiene que ser el presupuesto **menos lo ya comprometido con movimientos concretos**,
+  por subcategoría y por período.
+- Un movimiento proyectado que viene del presupuesto y uno cargado a mano tienen que
+  distinguirse, para no pisar lo que alguien escribió.
+- Depende de la distribución mensual del presupuesto (el punto de más arriba): sin ella la
+  proyección generada sale lineal y las líneas estacionales quedan mal repartidas.
 
 **Por preguntar al equipo**
 - Estado de cuenta de tarjeta: ¿se carga como un movimiento con todas sus líneas al llegar, o se

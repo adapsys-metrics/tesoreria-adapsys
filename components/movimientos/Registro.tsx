@@ -12,7 +12,7 @@ import { clp } from "@/lib/formato";
 import { HOY, fechaCorta } from "@/lib/fechas";
 import { Cabecera, Nota, Pill, Vacio, clases } from "@/components/ui/primitivas";
 import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
-import { EditorSplits } from "./EditorSplits";
+import { EditorMovimiento } from "./EditorMovimiento";
 import { FormaNuevo } from "./FormaNuevo";
 import css from "./movimientos.module.css";
 import tabla from "@/components/ui/tabla.module.css";
@@ -25,6 +25,7 @@ const COLUMNAS = [
   "Subcategoría",
   "Monto",
   "Estado",
+  "",
 ];
 
 export function Registro() {
@@ -216,7 +217,7 @@ export function Registro() {
                             />
                             <button
                               type="button"
-                              title="Abrir como split para repartir en varias líneas"
+                              title="Repartir en varias líneas"
                               onClick={() => {
                                 if (!abierto) alternar(m.id);
                                 agregarLinea(m.id);
@@ -255,9 +256,27 @@ export function Registro() {
                           <Pill estado={m.estado} />
                         )}
                       </td>
+
+                      <td className={tabla.td}>
+                        <button
+                          type="button"
+                          onClick={() => alternar(m.id)}
+                          aria-expanded={abierto}
+                          title={abierto ? "Cerrar el editor" : "Editar el movimiento"}
+                          className={css.botonEditar}
+                        >
+                          {abierto ? "▾" : "▸"}
+                        </button>
+                      </td>
                     </tr>
 
-                    {abierto && <EditorSplits movimiento={m} />}
+                    {abierto && (
+                      <tr className={css.filaEditor}>
+                        <td colSpan={COLUMNAS.length}>
+                          <EditorMovimiento movimiento={m} />
+                        </td>
+                      </tr>
+                    )}
                   </Fragment>
                 );
               })}

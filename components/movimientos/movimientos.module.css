@@ -169,30 +169,104 @@
   color: var(--muted);
 }
 
-/* ── Editor de splits ── */
+.botonEditar {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--muted);
+}
 
-.filaLinea td {
+.botonEditar:hover {
+  border-color: var(--muted);
+  color: var(--ink);
+}
+
+/* ── Editor de movimiento (fila expandida) ── */
+
+.filaEditor > td {
   background: var(--fila-split);
+  border-bottom: 1px solid var(--rule);
+  padding: 0;
+}
+
+.editor {
+  padding: 14px 16px 16px;
+  border-left: 2px solid var(--teal);
+}
+
+.camposEditor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.campoAncho {
+  grid-column: span 2;
+}
+
+.equivalencia {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 640px;
+}
+
+.bloqueLineas {
+  margin-top: 14px;
+  border-top: 1px solid var(--rule);
+  padding-top: 10px;
+}
+
+.rotuloLineas {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 7px;
+}
+
+.lineas {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 9px;
+}
+
+.linea {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(140px, 220px) 110px 24px;
+  gap: 6px;
+  align-items: center;
 }
 
 .inputGlosa {
   width: 100%;
-  min-width: 130px;
+  min-width: 0;
   font-size: 11px;
-  padding: 2px 5px;
+  padding: 3px 6px;
   border: 1px solid var(--rule-soft);
   border-radius: 2px;
   background: var(--surface);
 }
 
 .inputMonto {
-  width: 104px;
+  width: 100%;
   text-align: right;
   font-family: var(--font-mono);
   font-size: 11px;
+  font-variant-numeric: tabular-nums;
   border: 1px solid var(--rule-soft);
   border-radius: 2px;
-  padding: 1px 4px;
+  padding: 3px 5px;
   background: var(--surface);
 }
 
@@ -211,11 +285,6 @@
 .quitar:disabled {
   color: var(--rule);
   cursor: default;
-}
-
-.filaAcciones td {
-  background: var(--fila-split);
-  border-bottom: 1px solid var(--rule);
 }
 
 .acciones {
@@ -258,9 +327,10 @@
 }
 
 .estadoCuadre {
-  text-align: right;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
   white-space: nowrap;
 }
 

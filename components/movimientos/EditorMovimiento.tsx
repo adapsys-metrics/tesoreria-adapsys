@@ -1,0 +1,178 @@
+"use client";
+
+// Editor completo de un movimiento, desplegado debajo de su fila.
+//
+// Las transiciones de estado no son un campo del formulario sino botones: pasar de
+// proyectado a pagado mueve el saldo de la cuenta (§4.1), y eso no puede ocurrir
+// como efecto colateral de cambiar un <select>.
+
+import { EMPRESAS } from "@/lib/catalogo";
+import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
+import { enCLP } from "@/lib/dominio";
+import { clp } from "@/lib/formato";
+import type { DocTipo, Moneda, Movimiento } from "@/lib/tipos";
+import { Pill, clases } from "@/components/ui/primitivas";
+import { EditorSplits } from "./EditorSplits";
+import css from "./movimientos.module.css";
+
+const DOCS: { id: DocTipo; nombre: string }[] = [
+  { id: "exento", nombre: "Exento" },
+  { id: "afecta", nombre: "Afecta" },
+  { id: "honorario", nombre: "Honorario" },
+];
+
+export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) {
+  const { tc, editarMovimiento, pagar, conciliar } = useTesoreria();
+
+  return (
+    <div className={css.editor}>
+      <div className={css.camposEditor}>
+        <label className={css.campo}>
+          <span className={css.etiquetaCampo}>Fecha</span>
+          <input
+            type="date"
+            value={m.fecha}
+            onChange={(e) => editarMovimiento(m.id, "fecha", e.target.value)}
+            className={css.entrada}
+          />
+        </label>
+
+        <label className={css.campo}>
+          <span className={css.etiquetaCampo}>Empresa</span>
+          <select
+            value={m.empresa_id}
+            onChange={(e) => editarMovimiento(m.id, "empresa_id", e.target.value)}
+            className={css.entrada}
+          >
+            {EMPRESAS.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={css.campo}>
+          <span className={css.etiquetaCampo}>Proveedor / Cliente</span>
+          <input
+            value={m.contraparte ?? ""}
+            onChange={(e) => editarMovimiento(m.id, "contraparte", e.target.value)}
+            className={css.entrada}
+          />
+        </label>
+
+        <label className={clases(css.campo, css.campoAncho)}>
+          <span className={css.etiquetaCampo}>Glosa</span>
+          <input
+            value={m.glosa ?? ""}
+            onChange={(e) => editarMovimiento(m.id, "glosa", e.target.value)}
+            className={css.entrada}
+          />
+        </label>
+
+        <label className={css.campo}>
+          <span className={css.etiquetaCampo}>
+            Monto {m.moneda === "USD" ? "(US$)" : "(CLP)"}
+          </span>
+          <input
+            type="number"
+            value={m.monto}
+            aria-label="Monto del movimiento"
+            onChange={(e) => editarMovimiento(m.id, "monto", Number(e.target.value) || 0)}
+            className={css.entrada}
+          />
+        </label>
+
+        <label className={css.campo}>
+          <span className={css.etiquetaCampo}>Moneda</span>
+          <select
+            value={m.moneda}
+            onChange={(e) => {
+              const moneda = e.target.value as Moneda;
+              editarMovimiento(m.id, "moneda", moneda);
+              // Todo movimiento en dólares tiene que llevar su TC: lo exige el
+              // esquema y es lo que permite no recalcularlo después (§4.5).
+              if (moneda === "USD" && m.tipo_cambio === null) {
+                editarMovimiento(m.id, "tipo_cambio", tc);
+              }
+            }}
+            className={css.entrada}
+          >
+            <option value="CLP">CLP</option>
+            <option value="USD">USD</option>
+          </select>
+        </label>
+
+        {m.moneda === "USD" && (
+          <label className={css.campo}>
+            <span className={css.etiquetaCampo}>TC del día</span>
+            <input
+              type="number"
+              value={m.tipo_cambio ?? tc}
+              aria-label="Tipo de cambio"
+              onChange={(e) =>
+                editarMovimiento(m.id, "tipo_cambio", Number(e.target.value) || null)
+              }
+              className={css.entrada}
+            />
+          </label>
+        )}
+
+        <label className={css.campo}>
+          <span className={css.etiquetaCampo}>Documento</span>
+          <select
+            value={m.doc_tipo ?? ""}
+            onChange={(e) =>
+              editarMovimiento(m.id, "doc_tipo", (e.target.value || null) as DocTipo | null)
+            }
+            className={css.entrada}
+          >
+            <option value="">—</option>
+            {DOCS.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className={css.campo}>
+          <span className={css.etiquetaCampo}>Estado</span>
+          <div className={css.acciones}>
+            <Pill estado={m.estado} />
+            {m.estado === "proyectado" && (
+              <button
+                type="button"
+                onClick={() => pagar(m.id)}
+                title="Salió del banco: pasa a afectar el saldo de la cuenta"
+                className={css.botonAmpliar}
+              >
+                Marcar pagado
+              </button>
+            )}
+            {m.estado === "pagado" && (
+              <button
+                type="button"
+                onClick={() => conciliar(m.id)}
+                title="Cuadrado contra la cartola"
+                className={css.botonAmpliar}
+              >
+                Conciliar
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {m.moneda === "USD" && (
+        <div className={css.equivalencia}>
+          Equivale a {clp(enCLP(m, tc))} CLP al TC de este movimiento. El flujo se lleva sólo en
+          pesos, así que en el reporte aparece convertido con este tipo de cambio, no con el del
+          día en que se mire.
+        </div>
+      )}
+
+      <EditorSplits movimiento={m} />
+    </div>
+  );
+}
