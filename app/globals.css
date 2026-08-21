@@ -1,0 +1,40 @@
+/* Tokens portados de tesoreria.jsx — ver §8 de CLAUDE.md ("la densidad sí es sagrada"). */
+:root {
+  --ink: #15181c;
+  --paper: #f7f7f4;
+  --surface: #ffffff;
+  --rule: #e3e4df;
+  --rule-soft: #efefeb;
+  --muted: #767c74;
+  --teal: #0f6e5c;
+  --teal-soft: #e4f0ec;
+  --brick: #b0432c;
+  --brick-soft: #f7e9e5;
+  --amber: #8a6a18;
+  --amber-soft: #f6efdc;
+  --seccion: #dde6e3;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+table {
+  font-variant-numeric: tabular-nums;
+}
+
+a {
+  color: inherit;
+}
