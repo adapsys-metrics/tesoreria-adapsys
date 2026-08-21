@@ -50,7 +50,8 @@ filas entran como movimientos en estado `proyectado`, por eso el nombre distinto
 |---|---|
 | `proy-egresos-clp.csv` | PROY. EGRESOS (CLP) |
 | `proy-egresos-usd.csv` | PROY. EGRESOS (USD) |
-| `proyectos-aprobados.csv` | PROYECTOS APROBADOS |
+| `proyectos-aprobados-clp.csv` | PROYECTOS APROBADOS (CLP) |
+| `proyectos-aprobados-usd.csv` | PROYECTOS APROBADOS (USD) |
 
 ## Cómo exportar
 
