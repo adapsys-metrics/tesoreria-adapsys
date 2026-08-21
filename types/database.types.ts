@@ -2,6 +2,10 @@
 // Cuando haya un proyecto Supabase real, reemplazar por el output de:
 //   npm run db:types
 // (requiere SUPABASE_PROJECT_ID en el entorno — ver package.json).
+//
+// El campo Relationships es obligatorio en cada tabla/vista: @supabase/supabase-js
+// lo exige para poder tipar el resultado de .select() (sin él, TypeScript no logra
+// resolver el tipo y cae a `never` — así se manifestó en el build de Vercel).
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -20,6 +24,7 @@ export interface Database {
         Row: { id: string; nombre: string; corto: string; grupo: Grupo };
         Insert: { id: string; nombre: string; corto: string; grupo: Grupo };
         Update: Partial<{ id: string; nombre: string; corto: string; grupo: Grupo }>;
+        Relationships: [];
       };
       cuentas: {
         Row: {
@@ -41,11 +46,21 @@ export interface Database {
           principal?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["cuentas"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "cuentas_empresa_id_fkey";
+            columns: ["empresa_id"];
+            isOneToOne: false;
+            referencedRelation: "empresas";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       categorias: {
         Row: { id: string; nombre: string; orden: number; controlado: boolean };
         Insert: { id: string; nombre: string; orden: number; controlado?: boolean };
         Update: Partial<Database["public"]["Tables"]["categorias"]["Insert"]>;
+        Relationships: [];
       };
       subcategorias: {
         Row: {
@@ -63,6 +78,15 @@ export interface Database {
           activa?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["subcategorias"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "subcategorias_categoria_id_fkey";
+            columns: ["categoria_id"];
+            isOneToOne: false;
+            referencedRelation: "categorias";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       movimientos: {
         Row: {
@@ -96,6 +120,22 @@ export interface Database {
           creado_por?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["movimientos"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "movimientos_empresa_id_fkey";
+            columns: ["empresa_id"];
+            isOneToOne: false;
+            referencedRelation: "empresas";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "movimientos_cuenta_id_fkey";
+            columns: ["cuenta_id"];
+            isOneToOne: false;
+            referencedRelation: "cuentas";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       movimiento_lineas: {
         Row: {
@@ -115,6 +155,22 @@ export interface Database {
           orden?: number;
         };
         Update: Partial<Database["public"]["Tables"]["movimiento_lineas"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "movimiento_lineas_movimiento_id_fkey";
+            columns: ["movimiento_id"];
+            isOneToOne: false;
+            referencedRelation: "movimientos";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "movimiento_lineas_subcategoria_id_fkey";
+            columns: ["subcategoria_id"];
+            isOneToOne: false;
+            referencedRelation: "subcategorias";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       presupuesto: {
         Row: {
@@ -136,11 +192,21 @@ export interface Database {
           nota?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["presupuesto"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "presupuesto_subcategoria_id_fkey";
+            columns: ["subcategoria_id"];
+            isOneToOne: false;
+            referencedRelation: "subcategorias";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       parametros: {
         Row: { clave: string; valor: number; vigencia_desde: string };
         Insert: { clave: string; valor: number; vigencia_desde: string };
         Update: Partial<{ clave: string; valor: number; vigencia_desde: string }>;
+        Relationships: [];
       };
       reportes_guardados: {
         Row: {
@@ -157,6 +223,7 @@ export interface Database {
           config?: Json;
         };
         Update: Partial<Database["public"]["Tables"]["reportes_guardados"]["Insert"]>;
+        Relationships: [];
       };
       auditoria: {
         Row: {
@@ -179,6 +246,7 @@ export interface Database {
           usuario_id?: string | null;
         };
         Update: never;
+        Relationships: [];
       };
     };
     Views: {
@@ -195,15 +263,19 @@ export interface Database {
           monto: number;
           glosa: string | null;
         };
+        Relationships: [];
       };
       v_movimientos_sin_clasificar: {
         Row: Database["public"]["Tables"]["movimientos"]["Row"];
+        Relationships: [];
       };
       v_lineas_categoria_inactiva: {
         Row: Database["public"]["Tables"]["movimiento_lineas"]["Row"];
+        Relationships: [];
       };
     };
     Functions: Record<string, never>;
     Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 }
