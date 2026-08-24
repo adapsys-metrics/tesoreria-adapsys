@@ -49,7 +49,11 @@ beforeAll(async () => {
   `);
   await db.exec(leer("migrations/0001_esquema.sql"));
   await db.exec(leer("migrations/0002_rls.sql"));
+  // El seed va antes que 0003 porque 0003 inserta catálogo y necesita las
+  // categorías. Sobre una base recién sembrada sus inserts no encuentran nada
+  // que agregar, lo que de paso verifica que se puede correr dos veces.
   await db.exec(leer("seed.sql"));
+  await db.exec(leer("migrations/0003_migracion_quicken.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -60,10 +64,22 @@ const contar = async (tabla: string): Promise<number> => {
 describe("migraciones y seed", () => {
   it("carga el catálogo real completo (§5)", async () => {
     expect(await contar("empresas")).toBe(5);
-    expect(await contar("cuentas")).toBe(11);
+    // 9 de banco + 4 auxiliares (facturas por cobrar y proyectos aprobados,
+    // CLP y USD cada una).
+    expect(await contar("cuentas")).toBe(13);
     expect(await contar("categorias")).toBe(16);
-    expect(await contar("subcategorias")).toBe(284);
+    // 284 del catálogo original + 9 que aparecieron en los movimientos reales.
+    expect(await contar("subcategorias")).toBe(293);
     expect(await contar("parametros")).toBe(3);
+  });
+
+  it("deja registrar un movimiento sin empresa (la bolsa de proyección)", async () => {
+    expect(
+      await intentar(
+        `insert into movimientos (fecha, cuenta_id, monto, moneda, origen)
+         values ('2026-09-14', 'a1', -365000, 'CLP', 'proy-egresos-clp.csv')`
+      )
+    ).toBeNull();
   });
 
   it("deja las tres vistas consultables", async () => {

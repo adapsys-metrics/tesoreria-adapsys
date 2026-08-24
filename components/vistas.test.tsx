@@ -13,6 +13,7 @@ import { Flujo } from "@/components/flujo/Flujo";
 import { Registro } from "@/components/movimientos/Registro";
 import { Encabezado } from "@/components/chrome/Encabezado";
 import { Cuentas } from "@/components/chrome/Cuentas";
+import { SUBCATEGORIAS } from "@/lib/catalogo";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/flujo",
@@ -63,7 +64,9 @@ describe("Flujo de caja", () => {
     fireEvent.click(selectores[0]!);
     const abierto = within(panel).getAllByLabelText("Subcategoría")[0]!;
     expect(abierto.tagName).toBe("SELECT");
-    expect(abierto.querySelectorAll("option").length).toBe(284);
+    // Contra el catálogo, no contra un número fijo: lo que se prueba es que el
+    // selector las muestre todas, no cuántas hay.
+    expect(abierto.querySelectorAll("option").length).toBe(SUBCATEGORIAS.length);
   });
 
   it("cierra el detalle con Escape", () => {

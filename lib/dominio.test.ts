@@ -198,9 +198,11 @@ describe("cuentaPrincipalDe", () => {
 });
 
 describe("integridad del catálogo (§5)", () => {
-  it("tiene las 16 categorías y 284 subcategorías reales", () => {
+  it("tiene las 16 categorías y 293 subcategorías reales", () => {
+    // 284 importadas de Quicken (§5) + 9 que aparecieron al leer los movimientos
+    // reales: 7 clientes nuevos y 2 que en Quicken eran tercer nivel.
     expect(CATEGORIAS).toHaveLength(16);
-    expect(SUBCATEGORIAS).toHaveLength(284);
+    expect(SUBCATEGORIAS).toHaveLength(293);
   });
 
   it("no tiene ids repetidos", () => {

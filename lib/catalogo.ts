@@ -28,18 +28,33 @@ export const PRESETS_EMPRESA = [
   { id: "rel", nombre: "Relacionadas", ids: ["sm"] },
 ];
 
+// saldo_inicial = la fila "Opening Balance" del registro de Quicken, no el saldo
+// de hoy: el saldo corriente sale de sumarle los movimientos importados. Cuatro
+// cuentas traen esa fila; el resto parte de cero porque su registro empieza con
+// el primer movimiento real.
 export const CUENTAS: Cuenta[] = [
-  { id: "a1", empresa_id: "adap", nombre: "CLA ADAPTACIÓN PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 199673281, principal: true },
-  { id: "a2", empresa_id: "adap", nombre: "CLA ADAPTACIÓN DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 53, principal: false },
-  { id: "b1", empresa_id: "cons", nombre: "CLA CONSULTORES PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 4866278, principal: true },
-  { id: "b2", empresa_id: "cons", nombre: "CLA CONSULTORES DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 4746, principal: false },
-  { id: "c1", empresa_id: "clting", nombre: "CLA CONSULTING PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 185642497, principal: true },
-  { id: "c2", empresa_id: "clting", nombre: "CLA CONSULTING DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 21, principal: false },
-  { id: "d1", empresa_id: "ctria", nombre: "CLA CONSULTORIA PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 2731975, principal: true },
-  { id: "e1", empresa_id: "sm", nombre: "SANTA MARÍA PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: -132518, principal: true },
-  { id: "e2", empresa_id: "sm", nombre: "SANTA MARÍA DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 1000, principal: false },
+  { id: "a1", empresa_id: "adap", nombre: "CLA ADAPTACIÓN PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 74220512, principal: true },
+  { id: "a2", empresa_id: "adap", nombre: "CLA ADAPTACIÓN DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 507.66, principal: false },
+  { id: "b1", empresa_id: "cons", nombre: "CLA CONSULTORES PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 53058579, principal: true },
+  { id: "b2", empresa_id: "cons", nombre: "CLA CONSULTORES DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 72000, principal: false },
+  { id: "c1", empresa_id: "clting", nombre: "CLA CONSULTING PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 0, principal: true },
+  { id: "c2", empresa_id: "clting", nombre: "CLA CONSULTING DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 0, principal: false },
+  { id: "d1", empresa_id: "ctria", nombre: "CLA CONSULTORIA PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 0, principal: true },
+  { id: "e1", empresa_id: "sm", nombre: "SANTA MARÍA PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 0, principal: true },
+  { id: "e2", empresa_id: "sm", nombre: "SANTA MARÍA DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 0, principal: false },
+  // Cuentas auxiliares: no son bancos, son la cartera de lo que está por entrar.
+  // Cuelgan de CLA ADAPTACIÓN por tener que colgar de alguna, pero sus movimientos
+  // llevan la empresa real en `empresa_id` — la cartera es de las cuatro.
+  //
+  // Facturas por cobrar y proyectos aprobados van separados a propósito: la
+  // factura es un documento emitido con número (FA273) y el proyecto aprobado es
+  // una estimación cuya fecha se mueve semana a semana según avanza el proyecto.
+  // Juntarlos haría que la proyección de ingresos trate como igual de firme algo
+  // que no lo es.
   { id: "x1", empresa_id: "adap", nombre: "Facturas por cobrar CLP", moneda: "CLP", tipo: "cxc", saldo_inicial: 0, principal: false },
-  { id: "x2", empresa_id: "adap", nombre: "Facturas por cobrar USD", moneda: "USD", tipo: "cxc", saldo_inicial: 16285, principal: false },
+  { id: "x2", empresa_id: "adap", nombre: "Facturas por cobrar USD", moneda: "USD", tipo: "cxc", saldo_inicial: 0, principal: false },
+  { id: "x3", empresa_id: "adap", nombre: "Proyectos aprobados CLP", moneda: "CLP", tipo: "cxc", saldo_inicial: 0, principal: false },
+  { id: "x4", empresa_id: "adap", nombre: "Proyectos aprobados USD", moneda: "USD", tipo: "cxc", saldo_inicial: 0, principal: false },
 ];
 
 export const NATURALEZAS: { id: Naturaleza; nombre: string }[] = [
@@ -79,20 +94,24 @@ export const SUBCATEGORIAS: Subcategoria[] = [
   { id: "adapsys-australia", categoria_id: "a-ingresos-clientes", nombre: "ADAPSYS AUSTRALIA", naturaleza: "ingreso", activa: true },
   { id: "adapsys-colombia", categoria_id: "a-ingresos-clientes", nombre: "ADAPSYS COLOMBIA", naturaleza: "ingreso", activa: true },
   { id: "adapsys-peru", categoria_id: "a-ingresos-clientes", nombre: "ADAPSYS PERÚ", naturaleza: "ingreso", activa: true },
+  { id: "adghe", categoria_id: "a-ingresos-clientes", nombre: "ADGHE", naturaleza: "ingreso", activa: true },
   { id: "agrosuper", categoria_id: "a-ingresos-clientes", nombre: "AGROSUPER", naturaleza: "ingreso", activa: true },
   { id: "aislapol", categoria_id: "a-ingresos-clientes", nombre: "AISLAPOL", naturaleza: "ingreso", activa: true },
   { id: "albemarle", categoria_id: "a-ingresos-clientes", nombre: "ALBEMARLE", naturaleza: "ingreso", activa: true },
   { id: "almagro", categoria_id: "a-ingresos-clientes", nombre: "ALMAGRO", naturaleza: "ingreso", activa: true },
   { id: "aln-programa-liderazgo", categoria_id: "a-ingresos-clientes", nombre: "ALN PROGRAMA LIDERAZGO", naturaleza: "ingreso", activa: true },
   { id: "alto-las-condes", categoria_id: "a-ingresos-clientes", nombre: "ALTO LAS CONDES", naturaleza: "ingreso", activa: true },
+  { id: "ama-time", categoria_id: "a-ingresos-clientes", nombre: "AMA TIME", naturaleza: "ingreso", activa: true },
   { id: "amsa", categoria_id: "a-ingresos-clientes", nombre: "AMSA", naturaleza: "ingreso", activa: true },
   { id: "anasac", categoria_id: "a-ingresos-clientes", nombre: "ANASAC", naturaleza: "ingreso", activa: true },
   { id: "andritz", categoria_id: "a-ingresos-clientes", nombre: "ANDRITZ", naturaleza: "ingreso", activa: true },
   { id: "angloamerican", categoria_id: "a-ingresos-clientes", nombre: "ANGLOAMERICAN", naturaleza: "ingreso", activa: true },
   { id: "aon-corporation", categoria_id: "a-ingresos-clientes", nombre: "AON CORPORATION", naturaleza: "ingreso", activa: true },
   { id: "arcoprime", categoria_id: "a-ingresos-clientes", nombre: "ARCOPRIME", naturaleza: "ingreso", activa: true },
+  { id: "asch", categoria_id: "a-ingresos-clientes", nombre: "ASCH", naturaleza: "ingreso", activa: true },
   { id: "asociacion-de-empresas-familiares", categoria_id: "a-ingresos-clientes", nombre: "ASOCIACIÓN DE EMPRESAS FAMILIARES", naturaleza: "ingreso", activa: true },
   { id: "astrazeneca", categoria_id: "a-ingresos-clientes", nombre: "ASTRAZENECA", naturaleza: "ingreso", activa: true },
+  { id: "ausenco", categoria_id: "a-ingresos-clientes", nombre: "AUSENCO", naturaleza: "ingreso", activa: true },
   { id: "banchile", categoria_id: "a-ingresos-clientes", nombre: "BANCHILE", naturaleza: "ingreso", activa: true },
   { id: "banco-bci", categoria_id: "a-ingresos-clientes", nombre: "BANCO BCI", naturaleza: "ingreso", activa: true },
   { id: "banco-central", categoria_id: "a-ingresos-clientes", nombre: "BANCO CENTRAL", naturaleza: "ingreso", activa: true },
@@ -139,7 +158,9 @@ export const SUBCATEGORIAS: Subcategoria[] = [
   { id: "colmena", categoria_id: "a-ingresos-clientes", nombre: "COLMENA", naturaleza: "ingreso", activa: true },
   { id: "compass", categoria_id: "a-ingresos-clientes", nombre: "COMPASS", naturaleza: "ingreso", activa: true },
   { id: "consalud", categoria_id: "a-ingresos-clientes", nombre: "CONSALUD", naturaleza: "ingreso", activa: true },
+  { id: "consorcio", categoria_id: "a-ingresos-clientes", nombre: "CONSORCIO", naturaleza: "ingreso", activa: true },
   { id: "copec", categoria_id: "a-ingresos-clientes", nombre: "COPEC", naturaleza: "ingreso", activa: true },
+  { id: "deloitte", categoria_id: "a-ingresos-clientes", nombre: "DELOITTE", naturaleza: "ingreso", activa: true },
   { id: "dfsi", categoria_id: "a-ingresos-clientes", nombre: "DFSI", naturaleza: "ingreso", activa: true },
   { id: "division-andina", categoria_id: "a-ingresos-clientes", nombre: "DIVISIÓN ANDINA", naturaleza: "ingreso", activa: true },
   { id: "division-salvador", categoria_id: "a-ingresos-clientes", nombre: "DIVISIÓN SALVADOR", naturaleza: "ingreso", activa: true },
@@ -212,6 +233,7 @@ export const SUBCATEGORIAS: Subcategoria[] = [
   { id: "opia-marketing", categoria_id: "a-ingresos-clientes", nombre: "OPIA MARKETING", naturaleza: "ingreso", activa: true },
   { id: "oracle", categoria_id: "a-ingresos-clientes", nombre: "ORACLE", naturaleza: "ingreso", activa: true },
   { id: "oxiquim", categoria_id: "a-ingresos-clientes", nombre: "OXIQUIM", naturaleza: "ingreso", activa: true },
+  { id: "papa-johns", categoria_id: "a-ingresos-clientes", nombre: "PAPA JOHNS", naturaleza: "ingreso", activa: true },
   { id: "papelera-lo-izquierdo", categoria_id: "a-ingresos-clientes", nombre: "PAPELERA LO IZQUIERDO", naturaleza: "ingreso", activa: true },
   { id: "parque-arauco", categoria_id: "a-ingresos-clientes", nombre: "PARQUE ARAUCO", naturaleza: "ingreso", activa: true },
   { id: "pflp", categoria_id: "a-ingresos-clientes", nombre: "PFLP", naturaleza: "ingreso", activa: true },
@@ -325,7 +347,9 @@ export const SUBCATEGORIAS: Subcategoria[] = [
   { id: "legales-y-puesta-en-marcha", categoria_id: "2-2-compra-activos", nombre: "Legales y puesta en marcha", naturaleza: "inversion", activa: true },
   { id: "muebles-y-enseres", categoria_id: "2-2-compra-activos", nombre: "Muebles y enseres", naturaleza: "inversion", activa: true },
   { id: "propiedades-oficina", categoria_id: "2-2-compra-activos", nombre: "Propiedades (Oficina)", naturaleza: "inversion", activa: true },
+  { id: "automatizacion-y-metrics", categoria_id: "2-3-gastos-sistemas-digita", nombre: "Automatización y metrics", naturaleza: "operativo", activa: true },
   { id: "gastos-sistemas-digitales", categoria_id: "2-3-gastos-sistemas-digita", nombre: "Gastos sistemas digitales", naturaleza: "operativo", activa: true },
+  { id: "manejador-base-de-datos", categoria_id: "2-3-gastos-sistemas-digita", nombre: "Manejador base de datos", naturaleza: "operativo", activa: true },
   { id: "sistemas-analitica-avanzada-ia-y-r", categoria_id: "2-3-gastos-sistemas-digita", nombre: "Sistemas Analítica avanzada, IA y Relac.", naturaleza: "operativo", activa: true },
   { id: "sistemas-diseno", categoria_id: "2-3-gastos-sistemas-digita", nombre: "Sistemas Diseño", naturaleza: "inversion", activa: true },
   { id: "sistemas-operaciones", categoria_id: "2-3-gastos-sistemas-digita", nombre: "Sistemas Operaciones", naturaleza: "operativo", activa: true },
