@@ -151,8 +151,14 @@ propia, y `Retención BHE` suele salir en **positivo** porque resta de los egres
 Los movimientos y saldos en dólares **no entran** al flujo. Se muestran aparte, en su moneda,
 sin convertir. Debe existir un modo opcional "CLP + USD" que convierta, pero no es el default.
 
-Nunca convertir destructivamente: guardar siempre `monto` + `moneda` + `tipo_cambio` usado.
-Un movimiento en USD conserva el TC del día en que ocurrió; no se recalcula cuando el dólar cambia.
+**El movimiento no lleva tipo de cambio.** Las cuentas en dólares se llevan en dólares porque
+reflejan la cartola del banco, donde no hay conversión. El TC hace falta en un solo lugar —el
+control presupuestario— y ahí es un parámetro fijo del año (§4.6), aplicado al consultar y no al
+registrar. Se define a mano, año a año o cuando haga falta sacar los datos.
+
+`movimientos.tipo_cambio` existe pero es opcional: se llena solo cuando la operación tuvo un TC
+concreto y conocido. Nunca convertir destructivamente — `monto` y `moneda` siempre se guardan
+como vinieron.
 
 ### 4.6 El presupuesto es anual, consolidado y dividido en inversión / operativo
 
@@ -266,10 +272,10 @@ mínimo. En la app real, tests de render por ruta.
   hasta 17% en 2028. **Verificar la vigente con el SII** — puede haber cambiado. Debe ser un
   parámetro con vigencia por año, no una constante.
 - **IVA 19%** — estable, pero igual parametrizado.
-- **Tipo de cambio.** La fuente correcta es el **dólar observado del Banco Central de Chile**
-  (el que usa el SII). Disponible por la API de su Base de Datos Estadísticos; `mindicador.cl`
-  es un envoltorio gratuito de la misma serie, útil para prototipar pero no oficial.
-  Definir el criterio: TC del día de operación para movimientos, TC fijo para presupuesto.
+- **Tipo de cambio.** Lo define el equipo a mano, año a año o cuando haga falta sacar los datos.
+  No se consulta a ninguna fuente automática y **no se guarda por movimiento** (§4.5): las cuentas
+  en dólares se llevan en dólares. El único uso es el control presupuestario, con TC fijo del año
+  (§4.6), que vive en `parametros.tc_presupuesto` con vigencia.
 
 ---
 

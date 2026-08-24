@@ -54,6 +54,9 @@ beforeAll(async () => {
   // que agregar, lo que de paso verifica que se puede correr dos veces.
   await db.exec(leer("seed.sql"));
   await db.exec(leer("migrations/0003_migracion_quicken.sql"));
+  await db.exec(leer("migrations/0004_tc_no_va_en_el_movimiento.sql"));
+  await db.exec(leer("migrations/0005_proyeccion_sin_cuenta.sql"));
+  await db.exec(leer("migrations/0006_vista_sin_clasificar_con_origen.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -77,9 +80,12 @@ describe("migraciones y seed", () => {
     expect(
       await intentar(
         `insert into movimientos (fecha, cuenta_id, monto, moneda, origen)
-         values ('2026-09-14', 'a1', -365000, 'CLP', 'proy-egresos-clp.csv')`
+         values ('2026-09-14', 'a1', -365000, 'CLP', 'prueba-bolsa')`
       )
     ).toBeNull();
+    // Se limpia: los tests commitean de verdad, y el de la carga cuenta por
+    // `origen is not null`.
+    await db.exec(`delete from movimientos where origen = 'prueba-bolsa'`);
   });
 
   it("deja las tres vistas consultables", async () => {
@@ -113,13 +119,17 @@ describe("la moneda es la de la cuenta (§4.5)", () => {
     ).toMatch(/movimientos_cuenta_moneda_fk/);
   });
 
-  it("rechaza un movimiento en dólares sin tipo de cambio", async () => {
+  it("acepta un movimiento en dólares sin tipo de cambio", async () => {
+    // Las cuentas en dólares se llevan en dólares: reflejan la cartola, donde no
+    // hay conversión. El TC es un parámetro del presupuesto (§4.6), no un dato
+    // del movimiento — exigirlo obligaba a inventarlo para 390 movimientos
+    // históricos que nunca lo tuvieron.
     expect(
       await intentar(
         `insert into movimientos (fecha, empresa_id, cuenta_id, monto, moneda)
          values ('2026-08-20', 'adap', 'a2', -100, 'USD')`
       )
-    ).toMatch(/moneda_usd_requiere_tc/);
+    ).toBeNull();
   });
 
   it("rechaza una cuenta que no existe", async () => {
@@ -188,6 +198,69 @@ describe("las líneas del split tienen que cuadrar (§3)", () => {
         conLineas(9006, `(9006, 'telefonia-e-internet', -306745), (9006, 'iva-compras', -58282)`)
       )
     ).toBeNull();
+  });
+});
+
+describe("la carga del histórico de Quicken", () => {
+  // Prueba el camino completo de carga/1_crear_staging.sql + carga/2_promover.sql
+  // con los tres casos que tiene el archivo real: un split que cuadra, un
+  // movimiento sin clasificar y la provisión sin empresa ni cuenta.
+  it("promueve staging a movimientos y líneas en una sola transacción", async () => {
+    await db.exec(leer("carga/1_crear_staging.sql"));
+    await db.exec(`
+      insert into carga_movimientos (ref, fecha, empresa_id, cuenta_id, contraparte, glosa, monto, moneda, estado, origen) values
+        ('q1', '2026-08-14', 'adap', 'a1', 'GTD', 'FA3109609', -365026, 'CLP', 'conciliado', 'a1.csv'),
+        ('q2', '2026-08-13', 'adap', 'a1', 'Sin clasificar', '', -5000, 'CLP', 'conciliado', 'a1.csv'),
+        ('q3', '2026-12-29', '', '', 'GAP IMA 2026', 'GAP IMA 2026', -100000000, 'CLP', 'proyectado', 'proy-egresos-clp.csv');
+      insert into carga_lineas (mov_ref, subcategoria_id, monto, glosa, orden) values
+        ('q1', 'telefonia-e-internet', -306745, 'Internet oficina', 0),
+        ('q1', 'iva-compras', -58281, 'Internet oficina', 1),
+        ('q3', 'ingreso-minimo-asegurado', -100000000, 'GAP IMA 2026', 0);
+    `);
+
+    // El promover corre begin/commit adentro: es donde se evalúa la constraint
+    // diferida que valida el split. Si fallara, la transacción queda abierta y
+    // abortada, y todo lo que venga después falla con un error que no dice nada
+    // ("current transaction is aborted") — por eso el rollback antes de relanzar.
+    try {
+      await db.exec(leer("carga/2_promover.sql"));
+    } catch (e) {
+      await db.exec("rollback").catch(() => {});
+      throw e;
+    }
+
+    const cargados = await db.query<{ n: number }>(
+      `select count(*)::int as n from movimientos where origen is not null`
+    );
+    expect(cargados.rows[0]!.n).toBe(3);
+
+    const gtd = await db.query<{ lineas: number; monto: string }>(
+      `select count(ml.id)::int as lineas, m.monto::text as monto
+       from movimientos m join movimiento_lineas ml on ml.movimiento_id = m.id
+       where m.contraparte = 'GTD' group by m.monto`
+    );
+    expect(gtd.rows[0]).toEqual({ lineas: 2, monto: "-365026" });
+
+    // El sin clasificar entra sin líneas y queda visible para reasignarlo (§11).
+    const pendientes = await db.query<{ contraparte: string }>(
+      `select contraparte from v_movimientos_sin_clasificar where origen = 'a1.csv'`
+    );
+    expect(pendientes.rows).toEqual([{ contraparte: "Sin clasificar" }]);
+
+    // La provisión entra con empresa y cuenta en null, sin inventarle ninguna.
+    const bolsa = await db.query<{ empresa_id: null; cuenta_id: null }>(
+      `select empresa_id, cuenta_id from movimientos where contraparte = 'GAP IMA 2026'`
+    );
+    expect(bolsa.rows[0]).toEqual({ empresa_id: null, cuenta_id: null });
+
+    // Las tablas de paso se borran solas.
+    const quedan = await db.query<{ n: number }>(
+      `select count(*)::int as n from information_schema.tables
+       where table_name in ('carga_movimientos', 'carga_lineas')`
+    );
+    expect(quedan.rows[0]!.n).toBe(0);
+
+    await db.exec(`delete from movimientos where origen is not null`);
   });
 });
 
