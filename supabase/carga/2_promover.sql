@@ -37,25 +37,31 @@ end $$;
 -- CSV: hay que insertar primero y recuperar el id que asignó la base.
 alter table movimientos add column carga_ref text;
 
+-- Los ::tipo son a propósito. El importador de CSV del Table Editor, cuando crea
+-- la tabla él mismo, deja todas las columnas como text — y ahí un
+-- `insert into ... select` falla con "column monto is of type numeric but
+-- expression is of type text", porque Postgres no convierte text a numeric solo.
+-- Con los casts explícitos esto anda igual con las tablas del paso 1 y con las
+-- que arma el importador.
 insert into movimientos
   (fecha, empresa_id, cuenta_id, contraparte, glosa, monto, moneda, estado, origen, carga_ref)
 select
-  fecha,
-  nullif(empresa_id, ''),   -- la provisión GAP IMA no tiene empresa ni cuenta
-  nullif(cuenta_id, ''),
-  nullif(contraparte, ''),
-  nullif(glosa, ''),
-  monto,
-  moneda,
-  estado,
-  origen,
-  ref
+  fecha::date,
+  nullif(empresa_id::text, ''),   -- la provisión GAP IMA no tiene empresa ni cuenta
+  nullif(cuenta_id::text, ''),
+  nullif(contraparte::text, ''),
+  nullif(glosa::text, ''),
+  monto::numeric,
+  moneda::text,
+  estado::text,
+  origen::text,
+  ref::text
 from carga_movimientos;
 
 insert into movimiento_lineas (movimiento_id, subcategoria_id, monto, glosa, orden)
-select m.id, l.subcategoria_id, l.monto, nullif(l.glosa, ''), l.orden
+select m.id, l.subcategoria_id::text, l.monto::numeric, nullif(l.glosa::text, ''), l.orden::integer
 from carga_lineas l
-join movimientos m on m.carga_ref = l.mov_ref;
+join movimientos m on m.carga_ref = l.mov_ref::text;
 
 alter table movimientos drop column carga_ref;
 

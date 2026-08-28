@@ -263,6 +263,37 @@ describe("la carga del histórico de Quicken", () => {
     await db.exec(`delete from movimientos where origen is not null`);
   });
 
+  it("promueve igual si el staging quedó con todas las columnas en text", async () => {
+    // Es lo que arma el importador de CSV del Table Editor cuando crea la tabla
+    // él mismo: todo text. Sin los casts explícitos el insert falla con "column
+    // monto is of type numeric but expression is of type text".
+    await db.exec(`
+      create table carga_movimientos (
+        ref text, fecha text, empresa_id text, cuenta_id text, contraparte text,
+        glosa text, monto text, moneda text, estado text, origen text);
+      create table carga_lineas (
+        mov_ref text, subcategoria_id text, monto text, glosa text, orden text);
+      insert into carga_movimientos values
+        ('t1', '2026-08-14', 'adap', 'a1', 'GTD', 'FA3109609', '-365026', 'CLP', 'conciliado', 'a1.csv');
+      insert into carga_lineas values
+        ('t1', 'telefonia-e-internet', '-306745', 'Internet oficina', '0'),
+        ('t1', 'iva-compras', '-58281', 'Internet oficina', '1');
+    `);
+    try {
+      await db.exec(leer("carga/2_promover.sql"));
+    } catch (e) {
+      await db.exec("rollback").catch(() => {});
+      throw e;
+    }
+    const r = await db.query<{ monto: string; lineas: number }>(
+      `select m.monto::text as monto, count(ml.id)::int as lineas
+       from movimientos m join movimiento_lineas ml on ml.movimiento_id = m.id
+       where m.origen = 'a1.csv' group by m.monto`
+    );
+    expect(r.rows[0]).toEqual({ monto: "-365026", lineas: 2 });
+    await db.exec(`delete from movimientos where origen is not null`);
+  });
+
   it("se puede volver a crear el staging sobre restos de un intento previo", async () => {
     // Un intento fallido puede dejar una de las dos tablas y la otra no; ahí el
     // create fallaba con "ya existe" y había que ir a borrarla a mano.
