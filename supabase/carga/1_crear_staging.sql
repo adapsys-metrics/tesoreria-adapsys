@@ -9,6 +9,16 @@
 -- al importar: si el CSV trae una subcategoría que no existe, conviene que
 -- reviente el paso 3 con un mensaje claro y no el importador del navegador.
 
+-- Se limpia primero para que este archivo se pueda correr las veces que haga
+-- falta. Un intento anterior puede dejar una de las dos tablas creada y la otra
+-- no, y entonces el create falla con "ya existe" y hay que ir a borrarla a mano.
+--
+-- Es seguro: estas dos tablas solo existen durante la carga y el paso 3 las
+-- borra al terminar. Si tienen datos, son de un intento que no llegó a
+-- promoverse — nada que valga la pena conservar.
+drop table if exists carga_lineas;
+drop table if exists carga_movimientos;
+
 create table carga_movimientos (
   ref         text primary key,
   fecha       date not null,

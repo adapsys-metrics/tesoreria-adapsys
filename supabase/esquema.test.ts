@@ -263,6 +263,15 @@ describe("la carga del histórico de Quicken", () => {
     await db.exec(`delete from movimientos where origen is not null`);
   });
 
+  it("se puede volver a crear el staging sobre restos de un intento previo", async () => {
+    // Un intento fallido puede dejar una de las dos tablas y la otra no; ahí el
+    // create fallaba con "ya existe" y había que ir a borrarla a mano.
+    await db.exec(leer("carga/1_crear_staging.sql"));
+    await db.exec(`drop table carga_movimientos`); // deja solo carga_lineas
+    await expect(db.exec(leer("carga/1_crear_staging.sql"))).resolves.toBeDefined();
+    await db.exec(`drop table carga_lineas; drop table carga_movimientos;`);
+  });
+
   it("se niega a promover tablas de paso vacías", async () => {
     // Sin la guarda esto "funcionaba": cero filas insertadas, tablas de paso
     // borradas y ningún aviso. El siguiente intento fallaba con "la relación
