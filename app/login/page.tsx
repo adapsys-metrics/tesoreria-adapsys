@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 
 const CONFIGURADO = Boolean(
@@ -7,6 +8,16 @@ const CONFIGURADO = Boolean(
 );
 
 export default function Login() {
+  // El callback manda acá con ?error=... cuando el canje falla. Sin mostrarlo,
+  // un login fallido se ve idéntico a no haber apretado el botón.
+  // Se lee de window y no con useSearchParams para no obligar a envolver la
+  // página en un Suspense solo por esto.
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const motivo = new URLSearchParams(window.location.search).get("error");
+    if (motivo) setError(motivo);
+  }, []);
+
   const iniciarSesion = async () => {
     if (!CONFIGURADO) return;
     const supabase = crearClienteNavegador();
@@ -57,6 +68,20 @@ export default function Login() {
           ? `Solo cuentas @${process.env.NEXT_PUBLIC_DOMINIO_CORPORATIVO ?? "adapsysgroup.com"}`
           : "Preview sin Supabase conectado — el login todavía no funciona."}
       </p>
+      {error && (
+        <p
+          role="alert"
+          style={{
+            color: "var(--brick)",
+            fontSize: 12,
+            maxWidth: 380,
+            textAlign: "center",
+            lineHeight: 1.5,
+          }}
+        >
+          No se pudo iniciar sesión: {error}
+        </p>
+      )}
     </main>
   );
 }
