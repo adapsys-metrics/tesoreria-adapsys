@@ -13,6 +13,25 @@
 
 begin;
 
+-- Sin esto, correr este archivo antes de importar los CSV "funciona": inserta
+-- cero filas, borra las tablas de paso y no dice nada. Quien lo corrió queda
+-- convencido de que cargó, y el siguiente intento falla con "la relación
+-- carga_movimientos no existe" sin ninguna pista de por qué. Pasó de verdad.
+do $$
+declare
+  n_movimientos bigint;
+  n_lineas bigint;
+begin
+  select count(*) into n_movimientos from carga_movimientos;
+  select count(*) into n_lineas from carga_lineas;
+  if n_movimientos = 0 or n_lineas = 0 then
+    raise exception
+      'Las tablas de paso están vacías (% movimientos, % líneas). Falta el paso 3: importar los dos CSV desde el Table Editor.',
+      n_movimientos, n_lineas;
+  end if;
+  raise notice 'Promoviendo % movimientos y % líneas.', n_movimientos, n_lineas;
+end $$;
+
 -- Columna puente para saber qué línea va con qué movimiento. El id de
 -- movimientos es `generated always as identity`, así que no se puede traer del
 -- CSV: hay que insertar primero y recuperar el id que asignó la base.

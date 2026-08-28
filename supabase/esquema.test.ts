@@ -262,6 +262,29 @@ describe("la carga del histórico de Quicken", () => {
 
     await db.exec(`delete from movimientos where origen is not null`);
   });
+
+  it("se niega a promover tablas de paso vacías", async () => {
+    // Sin la guarda esto "funcionaba": cero filas insertadas, tablas de paso
+    // borradas y ningún aviso. El siguiente intento fallaba con "la relación
+    // carga_movimientos no existe", que no dice nada sobre la causa real.
+    await db.exec(leer("carga/1_crear_staging.sql"));
+    let error: string | null = null;
+    try {
+      await db.exec(leer("carga/2_promover.sql"));
+    } catch (e) {
+      await db.exec("rollback").catch(() => {});
+      error = (e as Error).message;
+    }
+    expect(error).toMatch(/tablas de paso están vacías/);
+
+    // Y no se llevó por delante las tablas de paso: siguen ahí para importar.
+    const quedan = await db.query<{ n: number }>(
+      `select count(*)::int as n from information_schema.tables
+       where table_name in ('carga_movimientos', 'carga_lineas')`
+    );
+    expect(quedan.rows[0]!.n).toBe(2);
+    await db.exec(`drop table carga_lineas; drop table carga_movimientos;`);
+  });
 });
 
 describe("dominios cerrados", () => {
