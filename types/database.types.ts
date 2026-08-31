@@ -95,17 +95,22 @@ export type Database = {
         Row: {
           id: number;
           fecha: string;
-          empresa_id: string;
-          /** Obligatoria desde que se crea: la moneda se deriva de la cuenta. */
-          cuenta_id: string;
+          /** Nullable desde 0003: las proyecciones que vienen del presupuesto
+           *  consolidado no tienen sociedad (§4.6). */
+          empresa_id: string | null;
+          /** Nullable desde 0005: una proyección puede no saber todavía de qué
+           *  cuenta va a salir. La moneda igual se guarda en el movimiento. */
+          cuenta_id: string | null;
           contraparte: string | null;
           glosa: string | null;
           monto: number;
-          /** Siempre igual a la moneda de la cuenta (foreign key compuesta). */
+          /** Igual a la moneda de la cuenta cuando hay cuenta (foreign key compuesta). */
           moneda: Moneda;
           tipo_cambio: number | null;
           estado: EstadoMovimiento;
           doc_tipo: DocTipo | null;
+          /** Archivo del export de Quicken del que se importó (0003). */
+          origen: string | null;
           creado_por: string | null;
           creado_en: string;
           actualizado_en: string;
@@ -113,8 +118,8 @@ export type Database = {
         Insert: {
           id?: number;
           fecha: string;
-          empresa_id: string;
-          cuenta_id: string;
+          empresa_id?: string | null;
+          cuenta_id?: string | null;
           contraparte?: string | null;
           glosa?: string | null;
           monto: number;
@@ -122,6 +127,7 @@ export type Database = {
           tipo_cambio?: number | null;
           estado?: EstadoMovimiento;
           doc_tipo?: DocTipo | null;
+          origen?: string | null;
           creado_por?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["movimientos"]["Insert"]>;
@@ -279,7 +285,13 @@ export type Database = {
         Relationships: [];
       };
     };
-    Functions: Record<string, never>;
+    Functions: {
+      /** Guarda un movimiento y reemplaza sus líneas en una transacción (0007). */
+      fn_guardar_movimiento: {
+        Args: { p: Json };
+        Returns: number;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

@@ -57,6 +57,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0004_tc_no_va_en_el_movimiento.sql"));
   await db.exec(leer("migrations/0005_proyeccion_sin_cuenta.sql"));
   await db.exec(leer("migrations/0006_vista_sin_clasificar_con_origen.sql"));
+  await db.exec(leer("migrations/0007_guardar_movimiento.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -324,6 +325,122 @@ describe("la carga del histórico de Quicken", () => {
     );
     expect(quedan.rows[0]!.n).toBe(2);
     await db.exec(`drop table carga_lineas; drop table carga_movimientos;`);
+  });
+});
+
+describe("fn_guardar_movimiento", () => {
+  const guardar = (p: object) =>
+    intentar(`select fn_guardar_movimiento('${JSON.stringify(p).replace(/'/g, "''")}'::jsonb)`);
+
+  const gtd = {
+    fecha: "2026-08-14",
+    empresa_id: "adap",
+    cuenta_id: "a1",
+    contraparte: "GTD",
+    monto: -365026,
+    moneda: "CLP",
+    estado: "conciliado",
+    lineas: [
+      { subcategoria_id: "telefonia-e-internet", monto: -306745, glosa: "Internet oficina" },
+      { subcategoria_id: "iva-compras", monto: -58281, glosa: "Internet oficina" },
+    ],
+  };
+
+  it("crea el movimiento con sus líneas en una transacción", async () => {
+    expect(await guardar(gtd)).toBeNull();
+    const r = await db.query<{ n: number; monto: string }>(
+      `select count(ml.id)::int as n, m.monto::text as monto
+       from movimientos m join movimiento_lineas ml on ml.movimiento_id = m.id
+       where m.contraparte = 'GTD' group by m.monto`
+    );
+    expect(r.rows[0]).toEqual({ n: 2, monto: "-365026" });
+  });
+
+  it("reemplaza las líneas al reclasificar, sin pasar por un estado descuadrado", async () => {
+    // Es la razón de existir de la función: con delete e insert por separado, la
+    // primera llamada dejaría el movimiento con una sola línea y la constraint
+    // lo rechazaría antes de que llegara la segunda.
+    const id = (
+      await db.query<{ id: string }>(
+        `select id::text as id from movimientos where contraparte = 'GTD'`
+      )
+    ).rows[0]!.id;
+
+    expect(
+      await guardar({
+        ...gtd,
+        id,
+        lineas: [
+          { subcategoria_id: "gastos-sistemas-digitales", monto: -306745, glosa: "reclasificado" },
+          { subcategoria_id: "iva-compras", monto: -58281, glosa: "reclasificado" },
+        ],
+      })
+    ).toBeNull();
+
+    const subs = await db.query<{ subcategoria_id: string }>(
+      `select subcategoria_id from movimiento_lineas
+       where movimiento_id = ${id} order by orden`
+    );
+    expect(subs.rows.map((s) => s.subcategoria_id)).toEqual([
+      "gastos-sistemas-digitales",
+      "iva-compras",
+    ]);
+  });
+
+  it("respeta el orden de las líneas que llega en el jsonb", async () => {
+    // El orden es dato: el IVA va después del neto, la retención después del bruto.
+    const id = (
+      await db.query<{ id: string }>(
+        `select id::text as id from movimientos where contraparte = 'GTD'`
+      )
+    ).rows[0]!.id;
+    const r = await db.query<{ orden: number }>(
+      `select orden from movimiento_lineas where movimiento_id = ${id} order by orden`
+    );
+    expect(r.rows.map((x) => x.orden)).toEqual([0, 1]);
+  });
+
+  it("sigue rechazando un split que no cuadra", async () => {
+    expect(
+      await guardar({
+        ...gtd,
+        contraparte: "GTD descuadrado",
+        lineas: [{ subcategoria_id: "telefonia-e-internet", monto: -1, glosa: null }],
+      })
+    ).toMatch(/suman .* pero el movimiento es/);
+  });
+
+  it("deja el movimiento sin líneas cuando no se le pasa ninguna", async () => {
+    // Así se representa "sin clasificar" (§3): no hay línea sin subcategoría.
+    expect(
+      await guardar({ ...gtd, contraparte: "Sin clasificar", lineas: [] })
+    ).toBeNull();
+    const r = await db.query<{ n: number }>(
+      `select count(*)::int as n from v_movimientos_sin_clasificar
+       where contraparte = 'Sin clasificar'`
+    );
+    expect(r.rows[0]!.n).toBe(1);
+  });
+
+  it("falla si el movimiento a actualizar no existe", async () => {
+    expect(await guardar({ ...gtd, id: 999999 })).toMatch(/No existe el movimiento/);
+  });
+
+  it("acepta una proyección sin empresa ni cuenta", async () => {
+    expect(
+      await guardar({
+        fecha: "2026-12-29",
+        empresa_id: null,
+        cuenta_id: null,
+        contraparte: "GAP IMA 2026",
+        monto: -100000000,
+        moneda: "CLP",
+        estado: "proyectado",
+        lineas: [{ subcategoria_id: "ingreso-minimo-asegurado", monto: -100000000, glosa: null }],
+      })
+    ).toBeNull();
+    await db.exec(`delete from movimientos where contraparte in
+      ('GTD', 'Sin clasificar', 'GAP IMA 2026', 'GTD descuadrado')`);
   });
 });
 

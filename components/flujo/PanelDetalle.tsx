@@ -83,7 +83,12 @@ export function PanelDetalle({
                     <td className={css.celdaCuerpo}>
                       <div className={css.lineaTitulo}>
                         <span className={css.contraparte}>{m.contraparte}</span>
-                        <span className={css.empresa}>{empresaDe(m.empresa_id).corto}</span>
+                        {/* Sin empresa: una proyección que todavía no sabe por qué
+                            sociedad se gestiona. Se marca en vez de dejarlo en blanco,
+                            para que se note que falta asignarla. */}
+                        <span className={css.empresa}>
+                          {m.empresa_id ? empresaDe(m.empresa_id).corto : "SIN EMPRESA"}
+                        </span>
                         <Pill estado={m.estado} />
                       </div>
                       <div className={css.glosa}>{m.glosa}</div>

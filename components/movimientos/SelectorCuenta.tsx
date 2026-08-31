@@ -17,7 +17,8 @@ export function SelectorCuenta({
   onChange,
   etiqueta = "Cuenta",
 }: {
-  valor: string;
+  /** null cuando la proyección todavía no sabe de qué cuenta va a salir. */
+  valor: string | null;
   onChange: (cuenta_id: string) => void;
   etiqueta?: string;
 }) {
@@ -30,11 +31,14 @@ export function SelectorCuenta({
 
   return (
     <select
-      value={valor}
+      value={valor ?? ""}
       aria-label={etiqueta}
       onChange={(e) => onChange(e.target.value)}
       className={css.entrada}
     >
+      {/* Solo aparece mientras no hay cuenta: una vez elegida no se puede volver
+          a "sin cuenta", porque el movimiento ya nombró de dónde sale la plata. */}
+      {valor === null && <option value="">— sin cuenta asignada —</option>}
       {porEmpresa.map(({ empresa, cuentas: cs }) => (
         <optgroup key={empresa.id} label={empresa.nombre}>
           {cs.map((c) => (

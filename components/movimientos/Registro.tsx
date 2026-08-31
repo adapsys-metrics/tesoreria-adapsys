@@ -180,11 +180,12 @@ export function Registro() {
                           empresa más la moneda, que es lo que distingue las cuentas. */}
                       <td className={tabla.td}>
                         <select
-                          value={m.cuenta_id}
+                          value={m.cuenta_id ?? ""}
                           aria-label="Cuenta"
                           onChange={(e) => cambiarCuenta(m.id, e.target.value)}
                           className={css.selectEmpresa}
                         >
+                          {m.cuenta_id === null && <option value="">— sin cuenta —</option>}
                           {cuentasBanco.map((c) => (
                             <option key={c.id} value={c.id}>
                               {empresaDe(c.empresa_id).corto} {c.moneda}

@@ -55,10 +55,14 @@ export type Linea = {
 export type Movimiento = {
   id: string;
   fecha: string; // YYYY-MM-DD
-  empresa_id: string;
-  /** Obligatoria desde que se crea, incluso proyectado: la moneda sale de acá.
-   *  En Quicken eso lo resolvían las dos cuentas espejo PROY. EGRESOS CLP/USD. */
-  cuenta_id: string;
+  /** null mientras no se sepa. Pasa en proyecciones: la provisión "GAP IMA" no
+   *  tiene sociedad asignada, y lo que se genere desde el presupuesto tampoco va
+   *  a tenerla, porque el presupuesto es consolidado (§4.6). */
+  empresa_id: string | null;
+  /** Normalmente la cuenta determina la moneda. null solo en proyecciones que
+   *  todavía no saben de dónde va a salir la plata; un movimiento pagado siempre
+   *  salió de alguna cuenta. */
+  cuenta_id: string | null;
   contraparte: string | null;
   glosa: string | null;
   /** Líquido que entra o sale del banco. Puede diferir de la suma de líneas:
@@ -80,8 +84,8 @@ export type Movimiento = {
 export type LineaExpandida = {
   movimiento_id: string;
   fecha: string;
-  empresa_id: string;
-  cuenta_id: string;
+  empresa_id: string | null;
+  cuenta_id: string | null;
   estado: EstadoMovimiento;
   moneda: Moneda;
   tipo_cambio: number | null;

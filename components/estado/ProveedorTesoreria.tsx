@@ -3,9 +3,12 @@
 // Estado compartido de la app. Es el equivalente del componente raíz del prototipo,
 // pero como context, para que sobreviva a la navegación entre rutas.
 //
-// TEMPORAL: hoy el estado arranca de los datos de ejemplo y persiste en
-// localStorage. Cuando entre Supabase, este archivo es el punto donde los datos
-// pasan a venir del servidor y los mutadores a escribir en la base.
+// Con Supabase conectado los movimientos vienen de la base y cada cambio se guarda
+// ahí. Sin conectar —tests, o un preview sin variables de entorno— cae a los datos
+// de ejemplo y a localStorage, para que la app se pueda mirar igual.
+//
+// Las preferencias de vista (empresas elegidas, cuenta abierta, TC) son locales en
+// los dos casos: son de cada persona, no del negocio.
 
 import {
   createContext,
@@ -13,11 +16,15 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { CUENTAS, IDS_ADAPSYS } from "@/lib/catalogo";
 import { MOVIMIENTOS_EJEMPLO, TC_USD } from "@/lib/datos-ejemplo";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { cargarMovimientos, guardarMovimiento } from "@/lib/supabase/datos";
+import { supabaseConfigurado } from "@/lib/supabase/estado";
 import {
   SUB_IVA_COMPRAS,
   SUB_RETENCION_BHE,
@@ -48,6 +55,12 @@ type Estado = {
 
 type Contexto = Estado & {
   cargando: boolean;
+  /** Mensaje si la carga desde Supabase falló. Una app vacía por un error de red
+   *  se ve igual que una app sin movimientos: hay que decir cuál de las dos es. */
+  errorCarga: string | null;
+  /** Mensaje si un cambio no se pudo guardar. Sin esto, la edición se ve aplicada
+   *  en pantalla y desaparece al recargar. */
+  errorGuardado: string | null;
   /** Movimientos y cuentas ya filtrados por el selector global de empresas.
    *  El presupuesto NO usa estos: es consolidado y se salta el filtro (§4.6). */
   movimientosFiltrados: Movimiento[];
@@ -88,7 +101,10 @@ export const useTesoreria = (): Contexto => {
 };
 
 const estadoInicial = (): Estado => ({
-  movimientos: MOVIMIENTOS_EJEMPLO,
+  // Con Supabase conectado arranca vacío y espera a la base. Mostrar los datos de
+  // ejemplo mientras carga sería peor que mostrar nada: son cifras plausibles y
+  // reales de otra época, imposibles de distinguir de las de verdad a simple vista.
+  movimientos: supabaseConfigurado ? [] : MOVIMIENTOS_EJEMPLO,
   cuentas: CUENTAS.map((c) => ({ ...c, saldo: c.saldo_inicial })),
   empresasSeleccionadas: IDS_ADAPSYS,
   cuentaSeleccionada: null,
@@ -102,24 +118,90 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
   // de leerlo. Además el primer render del cliente coincide con el del servidor.
   const [cargando, setCargando] = useState(true);
 
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+
   useEffect(() => {
-    try {
-      const crudo = window.localStorage.getItem(CLAVE_STORAGE);
-      if (crudo) setEstado((prev) => ({ ...prev, ...JSON.parse(crudo) }));
-    } catch {
-      // Primera carga, storage deshabilitado o JSON corrupto: se sigue con los seeds.
+    // Con Supabase conectado los movimientos vienen de la base y localStorage no
+    // participa: dos fuentes para el mismo dato terminan divergiendo, y la que
+    // gana sería la copia vieja del navegador. Las preferencias de vista (empresas
+    // elegidas, cuenta abierta) sí siguen siendo locales — son de cada persona.
+    if (!supabaseConfigurado) {
+      try {
+        const crudo = window.localStorage.getItem(CLAVE_STORAGE);
+        if (crudo) setEstado((prev) => ({ ...prev, ...JSON.parse(crudo) }));
+      } catch {
+        // Primera carga, storage deshabilitado o JSON corrupto: se sigue con los seeds.
+      }
+      setCargando(false);
+      return;
     }
-    setCargando(false);
+
+    let vigente = true;
+    cargarMovimientos(crearClienteNavegador())
+      .then((movimientos) => {
+        if (!vigente) return;
+        setEstado((prev) => ({ ...prev, movimientos }));
+      })
+      .catch((e: Error) => {
+        if (!vigente) return;
+        // Sin datos es mejor decirlo que mostrar una app vacía que parece correcta.
+        setErrorCarga(e.message);
+      })
+      .finally(() => {
+        if (vigente) setCargando(false);
+      });
+    return () => {
+      vigente = false;
+    };
   }, []);
 
   useEffect(() => {
-    if (cargando) return;
+    if (cargando || supabaseConfigurado) return;
     try {
       window.localStorage.setItem(CLAVE_STORAGE, JSON.stringify(estado));
     } catch {
       // Sin storage disponible la app sigue funcionando, solo no recuerda.
     }
   }, [estado, cargando]);
+
+  // ── Persistencia hacia Supabase ──────────────────────────────────────────
+  //
+  // En vez de que cada mutador guarde lo suyo, se detecta qué cambió comparando
+  // contra la última versión guardada. Los mutadores actualizan de forma inmutable,
+  // así que un movimiento modificado es un objeto nuevo y basta comparar
+  // referencias — exacto y sin listas de "acordarse de guardar acá también", que
+  // es donde se cuelan los mutadores que se olvidan de persistir.
+  const guardados = useRef<Map<string, Movimiento> | null>(null);
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabaseConfigurado || cargando) return;
+
+    const previos = guardados.current;
+    guardados.current = new Map(estado.movimientos.map((m) => [m.id, m]));
+
+    // Primera pasada después de cargar: es la línea base, no hay nada que guardar.
+    if (previos === null) return;
+
+    const cambiados = estado.movimientos.filter((m) => previos.get(m.id) !== m);
+    if (!cambiados.length) return;
+
+    const supabase = crearClienteNavegador();
+    for (const m of cambiados) {
+      guardarMovimiento(supabase, m)
+        .then((idReal) => {
+          // Un movimiento recién creado nace con id provisorio; la base le asigna
+          // el suyo y hay que adoptarlo, o el próximo cambio intentaría insertarlo
+          // de nuevo en vez de actualizarlo.
+          if (idReal === m.id) return;
+          setEstado((p) => ({
+            ...p,
+            movimientos: p.movimientos.map((x) => (x.id === m.id ? { ...x, id: idReal } : x)),
+          }));
+        })
+        .catch((e: Error) => setErrorGuardado(e.message));
+    }
+  }, [estado.movimientos, cargando]);
 
   const mapMov = useCallback(
     (id: string, fn: (m: Movimiento) => Movimiento) =>
@@ -340,6 +422,21 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
   }, []);
 
   const reiniciar = useCallback(() => {
+    // Con Supabase conectado "reiniciar" no puede significar volver a los datos de
+    // ejemplo: los datos son de la base y no hay nada local que descartar. Recarga,
+    // que es lo que la gente espera del botón cuando algo se ve raro.
+    if (supabaseConfigurado) {
+      setCargando(true);
+      setErrorCarga(null);
+      cargarMovimientos(crearClienteNavegador())
+        .then((movimientos) => {
+          guardados.current = null;
+          setEstado((p) => ({ ...p, movimientos }));
+        })
+        .catch((e: Error) => setErrorCarga(e.message))
+        .finally(() => setCargando(false));
+      return;
+    }
     try {
       window.localStorage.removeItem(CLAVE_STORAGE);
     } catch {
@@ -349,8 +446,12 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
   }, []);
 
   const derivados = useMemo(() => {
-    const enSeleccion = <T extends { empresa_id: string }>(xs: T[]) =>
-      xs.filter((x) => empresasSeleccionadas.includes(x.empresa_id));
+    // Lo que no tiene empresa pasa siempre el filtro: no pertenece a una sociedad,
+    // pertenece al consolidado. Son las proyecciones que todavía no saben por dónde
+    // se van a gestionar — filtrarlas por empresa las haría desaparecer de todas
+    // las vistas, y una de ellas es un compromiso de 100 millones.
+    const enSeleccion = <T extends { empresa_id: string | null }>(xs: T[]) =>
+      xs.filter((x) => x.empresa_id === null || empresasSeleccionadas.includes(x.empresa_id));
     // El filtro de cuenta se aplica sobre los movimientos, no sobre las cuentas: el
     // sidebar tiene que seguir mostrando todas para poder cambiarse a otra.
     const movimientosFiltrados = enSeleccion(movimientos).filter(
@@ -379,6 +480,8 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
     ...estado,
     ...derivados,
     cargando,
+    errorCarga,
+    errorGuardado,
     setEmpresasSeleccionadas: (ids) =>
       // Se limpia la cuenta: si su empresa deja de estar seleccionada, quedaría un
       // filtro invisible mostrando cero movimientos sin explicar por qué.
