@@ -15,7 +15,11 @@
 -- aplicando. Una función SECURITY DEFINER se las saltaría y convertiría este
 -- endpoint en una puerta trasera a toda la tabla.
 
-create function fn_guardar_movimiento(p jsonb) returns bigint
+-- `or replace` para que se pueda volver a correr: una función es una definición,
+-- no un cambio de estructura, así que reemplazarla no puede perder datos. Correrla
+-- dos veces sin esto falla con "already exists" y deja a quien la aplica sin saber
+-- si quedó bien.
+create or replace function fn_guardar_movimiento(p jsonb) returns bigint
 language plpgsql
 security invoker
 as $$
