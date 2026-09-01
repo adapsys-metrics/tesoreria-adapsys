@@ -274,9 +274,21 @@ describe("Chrome", () => {
 
   it("el sidebar muestra los saldos y separa las cuentas en dólares", () => {
     montar(<Cuentas />);
-    expect(screen.getByText("Saldos por empresa")).toBeDefined();
+    expect(screen.getByText("Cuentas del banco")).toBeDefined();
     expect(screen.getByText("Por conciliar")).toBeDefined();
     expect(screen.getAllByText(/fuera del flujo/).length).toBeGreaterThan(0);
+  });
+
+  it("las proyecciones van en su propio bloque, no mezcladas con el banco", () => {
+    // Es la separación que pidió el equipo: en Quicken son registros distintos y
+    // así se trabajan. Que en la base sean el mismo movimiento con otro estado es
+    // del modelo, no de la pantalla.
+    montar(<Cuentas />);
+    expect(screen.getByText("Proyecciones")).toBeDefined();
+    expect(screen.getByText("Egresos proyectados · CLP")).toBeDefined();
+    expect(screen.getByText("Egresos proyectados · USD")).toBeDefined();
+    expect(screen.getByText("Facturas por cobrar · CLP")).toBeDefined();
+    expect(screen.getByText("Proyectos aprobados · CLP")).toBeDefined();
   });
 });
 
@@ -293,7 +305,7 @@ describe("Entrar a una cuenta desde el sidebar", () => {
     conSidebar();
     const antes = document.querySelectorAll("tbody tr").length;
 
-    fireEvent.click(screen.getByTitle("Ver los movimientos de CLA CONSULTORES PESOS"));
+    fireEvent.click(screen.getByTitle(/Ver los movimientos de CLA CONSULTORES PESOS/));
 
     expect(screen.getByText(/Viendo solo/)).toBeDefined();
     const despues = document.querySelectorAll("tbody tr").length;
@@ -301,21 +313,42 @@ describe("Entrar a una cuenta desde el sidebar", () => {
     expect(despues).toBeLessThan(antes);
   });
 
-  it("se vuelve a todas con «Ver todas»", () => {
+  it("se vuelve a todo con «Ver todo»", () => {
     conSidebar();
     const antes = document.querySelectorAll("tbody tr").length;
-    fireEvent.click(screen.getByTitle("Ver los movimientos de CLA CONSULTORES PESOS"));
-    fireEvent.click(screen.getByText("Ver todas"));
+    fireEvent.click(screen.getByTitle(/Ver los movimientos de CLA CONSULTORES PESOS/));
+    fireEvent.click(screen.getByText("Ver todo"));
     expect(screen.queryByText(/Viendo solo/)).toBeNull();
     expect(document.querySelectorAll("tbody tr").length).toBe(antes);
   });
 
   it("volver a hacer click en la misma cuenta la deselecciona", () => {
     conSidebar();
-    const boton = screen.getByTitle("Ver los movimientos de CLA CONSULTORES PESOS");
+    const boton = screen.getByTitle(/Ver los movimientos de CLA CONSULTORES PESOS/);
     fireEvent.click(boton);
     fireEvent.click(screen.getByTitle("Salir de CLA CONSULTORES PESOS"));
     expect(screen.queryByText(/Viendo solo/)).toBeNull();
+  });
+
+  it("la cuenta del banco muestra solo lo que pasó por el banco", () => {
+    // Es lo que permite cuadrar contra la cartola: un compromiso futuro colado acá
+    // haría que el saldo de la pantalla nunca coincidiera con el del banco.
+    conSidebar();
+    fireEvent.click(screen.getByTitle(/Ver los movimientos de CLA CONSULTORES PESOS/));
+    expect(document.querySelectorAll("tbody tr").length).toBeGreaterThan(0);
+    // Se mira dentro de la tabla: fuera de ella la palabra aparece en leyendas.
+    const cuerpo = within(document.querySelector("tbody")!);
+    expect(cuerpo.queryAllByText("proyectado")).toHaveLength(0);
+  });
+
+  it("abrir egresos proyectados muestra solo compromisos futuros", () => {
+    conSidebar();
+    fireEvent.click(screen.getByText("Egresos proyectados · CLP"));
+    expect(screen.getByText(/Viendo solo/)).toBeDefined();
+    const filas = document.querySelectorAll("tbody tr").length;
+    expect(filas).toBeGreaterThan(0);
+    const cuerpo = within(document.querySelector("tbody")!);
+    expect(cuerpo.queryAllByText("conciliado")).toHaveLength(0);
   });
 
   it("hacer click en la empresa filtra a esa empresa", () => {

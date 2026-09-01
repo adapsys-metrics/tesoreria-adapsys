@@ -32,23 +32,25 @@ import {
   cuentaPrincipalDe,
   enCLP,
 } from "@/lib/dominio";
+import { perteneceAlRegistro, saldoDeCuenta } from "@/lib/registros";
 import { pct } from "@/lib/formato";
 import type { Cuenta, Linea, Movimiento, Tasas } from "@/lib/tipos";
 
 const CLAVE_STORAGE = "tesoreria:v5";
 
-/** El saldo corriente se lleva aparte del saldo inicial. En el sistema real el saldo
- *  se deriva de los movimientos; acá se mantiene en memoria para que los datos de
- *  ejemplo cuadren con los saldos reales de las cuentas. */
+/** El saldo NO se guarda: se calcula como saldo inicial más los movimientos que ya
+ *  ocurrieron. Antes vivía en el estado y lo actualizaba el mutador `pagar`, y eso
+ *  se rompió en cuanto los movimientos llegaron de la base: el saldo quedaba en el
+ *  de apertura de 2020 porque nadie lo recalculaba. Derivarlo hace imposible esa
+ *  clase de desfase. */
 export type CuentaConSaldo = Cuenta & { saldo: number };
 
 type Estado = {
   movimientos: Movimiento[];
-  cuentas: CuentaConSaldo[];
   empresasSeleccionadas: string[];
-  /** Cuenta concreta a la que se está mirando, o null para todas las de las
-   *  empresas seleccionadas. Es el "entrar a la cuenta" del sidebar. */
-  cuentaSeleccionada: string | null;
+  /** Registro abierto en la barra lateral, o null para ver todo. Puede ser una
+   *  cuenta ("cuenta:a1") o un registro de proyección ("proy:egresos-clp"). */
+  registroSeleccionado: string | null;
   tc: number;
   tasas: Tasas;
 };
@@ -72,8 +74,10 @@ type Contexto = Estado & {
   comprometido: number;
   porConciliar: number;
   setEmpresasSeleccionadas: (ids: string[]) => void;
-  /** Entra a una cuenta concreta, o vuelve a todas con null. */
-  seleccionarCuenta: (cuenta_id: string | null) => void;
+  /** Todas las cuentas con su saldo calculado. */
+  cuentas: CuentaConSaldo[];
+  /** Abre un registro de la barra lateral, o vuelve a todo con null. */
+  seleccionarRegistro: (clave: string | null) => void;
   setTc: (v: number) => void;
   setTasas: (t: Tasas) => void;
   pagar: (id: string) => void;
@@ -105,9 +109,8 @@ const estadoInicial = (): Estado => ({
   // ejemplo mientras carga sería peor que mostrar nada: son cifras plausibles y
   // reales de otra época, imposibles de distinguir de las de verdad a simple vista.
   movimientos: supabaseConfigurado ? [] : MOVIMIENTOS_EJEMPLO,
-  cuentas: CUENTAS.map((c) => ({ ...c, saldo: c.saldo_inicial })),
   empresasSeleccionadas: IDS_ADAPSYS,
-  cuentaSeleccionada: null,
+  registroSeleccionado: null,
   tc: TC_USD,
   tasas: TASAS,
 });
@@ -212,29 +215,18 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
     []
   );
 
-  const { movimientos, cuentas, empresasSeleccionadas, cuentaSeleccionada, tc, tasas } =
-    estado;
+  const { movimientos, empresasSeleccionadas, registroSeleccionado, tc, tasas } = estado;
 
   const pagar = useCallback((id: string) => {
-    setEstado((p) => {
-      const m = p.movimientos.find((x) => x.id === id);
-      if (!m || m.estado !== "proyectado") return p;
-      const cuenta = p.cuentas.find((c) => c.id === m.cuenta_id);
-      if (!cuenta) return p;
-      // El monto ya está en la moneda de la cuenta — la base lo garantiza con la
-      // foreign key compuesta (cuenta_id, moneda). Antes acá había una conversión
-      // según si las monedas coincidían: existía solo porque el modelo permitía que
-      // no coincidieran, que es un estado que no ocurre en la realidad.
-      return {
-        ...p,
-        cuentas: p.cuentas.map((c) =>
-          c.id === cuenta.id ? { ...c, saldo: c.saldo + m.monto } : c
-        ),
-        movimientos: p.movimientos.map((x) =>
-          x.id === id ? { ...x, estado: "pagado" } : x
-        ),
-      };
-    });
+    // Solo cambia el estado. El saldo de la cuenta se recalcula solo, porque se
+    // deriva de los movimientos: antes acá se sumaba a mano y era la única forma
+    // de que el saldo mostrado y los movimientos dijeran cosas distintas.
+    setEstado((p) => ({
+      ...p,
+      movimientos: p.movimientos.map((x) =>
+        x.id === id && x.estado === "proyectado" ? { ...x, estado: "pagado" } : x
+      ),
+    }));
   }, []);
 
   /**
@@ -245,7 +237,7 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
    */
   const cambiarCuenta = useCallback((id: string, cuenta_id: string) => {
     setEstado((p) => {
-      const cuenta = p.cuentas.find((c) => c.id === cuenta_id);
+      const cuenta = CUENTAS.find((c) => c.id === cuenta_id);
       if (!cuenta) return p;
       return {
         ...p,
@@ -446,22 +438,31 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
   }, []);
 
   const derivados = useMemo(() => {
+    // El saldo de cada cuenta sale de los movimientos, no de un contador que
+    // alguien tiene que acordarse de actualizar.
+    const cuentas: CuentaConSaldo[] = CUENTAS.map((c) => ({
+      ...c,
+      saldo: saldoDeCuenta(c, movimientos),
+    }));
+
     // Lo que no tiene empresa pasa siempre el filtro: no pertenece a una sociedad,
     // pertenece al consolidado. Son las proyecciones que todavía no saben por dónde
     // se van a gestionar — filtrarlas por empresa las haría desaparecer de todas
     // las vistas, y una de ellas es un compromiso de 100 millones.
     const enSeleccion = <T extends { empresa_id: string | null }>(xs: T[]) =>
       xs.filter((x) => x.empresa_id === null || empresasSeleccionadas.includes(x.empresa_id));
-    // El filtro de cuenta se aplica sobre los movimientos, no sobre las cuentas: el
-    // sidebar tiene que seguir mostrando todas para poder cambiarse a otra.
+
+    // El registro abierto se aplica sobre los movimientos, no sobre las cuentas: la
+    // barra lateral tiene que seguir mostrándolas todas para poder cambiarse.
     const movimientosFiltrados = enSeleccion(movimientos).filter(
-      (m) => !cuentaSeleccionada || m.cuenta_id === cuentaSeleccionada
+      (m) => !registroSeleccionado || perteneceAlRegistro(m, registroSeleccionado, cuentas)
     );
     const cuentasFiltradas = enSeleccion(cuentas);
     const bancos = cuentasFiltradas.filter((c) => c.tipo === "banco");
     const cxc = cuentasFiltradas.filter((c) => c.tipo === "cxc");
     const suma = (xs: CuentaConSaldo[]) => xs.reduce((s, c) => s + c.saldo, 0);
     return {
+      cuentas,
       movimientosFiltrados,
       cuentasFiltradas,
       efectivo: suma(bancos.filter((c) => c.moneda === "CLP")),
@@ -471,10 +472,10 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
       porCobrarUsd: suma(cxc.filter((c) => c.moneda === "USD")),
       comprometido: movimientosFiltrados
         .filter((m) => m.estado === "proyectado" && m.moneda === "CLP")
-        .reduce((s, m) => s + m.monto, 0),
+        .reduce((t, m) => t + m.monto, 0),
       porConciliar: movimientosFiltrados.filter((m) => m.estado === "pagado").length,
     };
-  }, [movimientos, cuentas, empresasSeleccionadas, cuentaSeleccionada]);
+  }, [movimientos, empresasSeleccionadas, registroSeleccionado]);
 
   const valor: Contexto = {
     ...estado,
@@ -485,9 +486,9 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
     setEmpresasSeleccionadas: (ids) =>
       // Se limpia la cuenta: si su empresa deja de estar seleccionada, quedaría un
       // filtro invisible mostrando cero movimientos sin explicar por qué.
-      setEstado((p) => ({ ...p, empresasSeleccionadas: ids, cuentaSeleccionada: null })),
-    seleccionarCuenta: (cuenta_id) =>
-      setEstado((p) => ({ ...p, cuentaSeleccionada: cuenta_id })),
+      setEstado((p) => ({ ...p, empresasSeleccionadas: ids, registroSeleccionado: null })),
+    seleccionarRegistro: (clave) =>
+      setEstado((p) => ({ ...p, registroSeleccionado: clave })),
     setTc: (v) => setEstado((p) => ({ ...p, tc: v })),
     setTasas: (t) => setEstado((p) => ({ ...p, tasas: t })),
     pagar,

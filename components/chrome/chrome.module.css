@@ -245,6 +245,28 @@
   font-weight: 600;
 }
 
+/* Bloque de proyecciones: separado de las cuentas del banco con una línea llena,
+   más marcada que la que divide empresas, porque es otra clase de cosa. */
+.bloqueProyecciones {
+  margin-top: 10px;
+  padding: 12px 0 10px;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.bloqueProyecciones .cuentaFila {
+  margin-left: 16px;
+  margin-right: 16px;
+  width: auto;
+}
+
+.glosaProyecciones {
+  padding: 0 16px 6px;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 .bloqueConciliar {
   padding: 14px 16px;
   margin-top: 6px;

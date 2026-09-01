@@ -4,10 +4,11 @@
 // editables inline, editor de splits desplegable, y separador visual donde la lista
 // pasa del pasado al futuro.
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { empresaDe } from "@/lib/catalogo-indices";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { descuadre, enCLP } from "@/lib/dominio";
+import { esRegistroDeBanco } from "@/lib/registros";
 import { clp } from "@/lib/formato";
 import { HOY, fechaCorta } from "@/lib/fechas";
 import { Cabecera, Nota, Pill, Vacio, clases } from "@/components/ui/primitivas";
@@ -40,11 +41,22 @@ export function Registro() {
     agregarLinea,
     cambiarCuenta,
     pagar,
+    registroSeleccionado,
   } = useTesoreria();
 
   const cuentasBanco = useMemo(() => cuentas.filter((c) => c.tipo === "banco"), [cuentas]);
   const [busqueda, setBusqueda] = useState("");
   const [soloPendiente, setSoloPendiente] = useState(true);
+
+  // Abrir una cuenta del banco apaga "solo pendiente". Esa vista es la cartola —
+  // exactamente lo ya conciliado— así que los dos filtros juntos se anulan y la
+  // tabla queda vacía, que es lo peor que puede hacer: parece que la cuenta no
+  // tiene movimientos.
+  const enBanco = esRegistroDeBanco(registroSeleccionado, cuentas);
+  useEffect(() => {
+    setSoloPendiente(!enBanco);
+  }, [enBanco, registroSeleccionado]);
+
   const [nuevo, setNuevo] = useState(false);
   const [abiertos, setAbiertos] = useState<string[]>([]);
 
