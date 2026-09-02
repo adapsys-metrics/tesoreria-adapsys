@@ -8,7 +8,8 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { empresaDe, subcategoriaDe } from "@/lib/catalogo-indices";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { descuadre, enCLP } from "@/lib/dominio";
-import { esRegistroDeBanco } from "@/lib/registros";
+import { claveDeCuenta, esRegistroDeBanco } from "@/lib/registros";
+import { saldosCorrientes } from "@/lib/saldos";
 import {
   ORDEN_INICIAL,
   alternarOrden,
@@ -26,14 +27,19 @@ import tabla from "@/components/ui/tabla.module.css";
 
 // `orden: null` = columna no ordenable. La última columna son los botones de
 // acción y no tiene encabezado.
-const COLUMNAS: { titulo: string; orden: ColumnaOrden | null }[] = [
+type Columna = { titulo: string; orden: ColumnaOrden | null; num?: boolean };
+
+const columnas = (conSaldo: boolean): Columna[] => [
   { titulo: "Fecha", orden: "fecha" },
   { titulo: "Empresa", orden: "cuenta" },
   { titulo: "Proveedor / Cliente", orden: "contraparte" },
   { titulo: "Glosa", orden: "glosa" },
   { titulo: "Subcategoría", orden: "subcategoria" },
-  { titulo: "Monto", orden: "monto" },
-  { titulo: "Estado", orden: "estado" },
+  { titulo: "Monto", orden: "monto", num: true },
+  // El saldo no se ordena: es el saldo DESPUÉS de ese movimiento, un dato del
+  // punto en el tiempo. Ordenarlo por su valor no significaría nada.
+  ...(conSaldo ? [{ titulo: "Saldo", orden: null, num: true } as Columna] : []),
+  { titulo: "Estado", orden: null },
   { titulo: "", orden: null },
 ];
 
@@ -50,6 +56,7 @@ export function Registro() {
     cambiarCuenta,
     pagar,
     registroSeleccionado,
+    movimientos,
   } = useTesoreria();
 
   const cuentasBanco = useMemo(() => cuentas.filter((c) => c.tipo === "banco"), [cuentas]);
@@ -61,6 +68,22 @@ export function Registro() {
   // tabla queda vacía, que es lo peor que puede hacer: parece que la cuenta no
   // tiene movimientos.
   const enBanco = esRegistroDeBanco(registroSeleccionado, cuentas);
+
+  // El saldo corriente solo aparece con una cuenta bancaria abierta: es el saldo
+  // DE esa cuenta. Sobre movimientos de varias cuentas no sería el saldo de nada.
+  const cuentaAbierta = enBanco
+    ? cuentas.find((c) => claveDeCuenta(c.id) === registroSeleccionado)
+    : undefined;
+
+  // Se calcula sobre TODOS los movimientos, no sobre los que se ven: hacerlo con
+  // la lista filtrada daría un saldo que cambia según lo escrito en el buscador,
+  // y se vería igual de correcto.
+  const saldos = useMemo(
+    () => (cuentaAbierta ? saldosCorrientes(cuentaAbierta, movimientos) : null),
+    [cuentaAbierta, movimientos]
+  );
+
+  const COLUMNAS = useMemo(() => columnas(saldos !== null), [saldos]);
   useEffect(() => {
     setSoloPendiente(!enBanco);
   }, [enBanco, registroSeleccionado]);
@@ -182,10 +205,10 @@ export function Registro() {
           <table className={tabla.tabla} style={{ minWidth: 940 }}>
             <thead>
               <tr>
-                {COLUMNAS.map((col, i) => (
+                {COLUMNAS.map((col) => (
                   <th
                     key={col.titulo || "acciones"}
-                    className={clases(tabla.th, i === 5 && tabla.thNum)}
+                    className={clases(tabla.th, col.num && tabla.thNum)}
                     aria-sort={
                       col.orden && orden.columna === col.orden
                         ? orden.sentido === "asc"
@@ -325,6 +348,17 @@ export function Registro() {
                         )}
                         {clp(valor)}
                       </td>
+
+                      {saldos && (
+                        <td className={clases(tabla.td, css.monto, css.saldo)}>
+                          {/* Un proyectado no mueve el saldo: se muestra el vigente
+                              hasta ese punto, atenuado, para que se lea como "acá
+                              todavía no pasa nada" y no como un saldo nuevo. */}
+                          <span className={m.estado === "proyectado" ? css.saldoQuieto : undefined}>
+                            {clp(saldos.get(m.id) ?? 0)}
+                          </span>
+                        </td>
+                      )}
 
                       <td className={tabla.td}>
                         {m.estado === "proyectado" ? (

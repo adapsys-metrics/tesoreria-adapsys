@@ -104,19 +104,33 @@ export const useTesoreria = (): Contexto => {
   return ctx;
 };
 
-const estadoInicial = (): Estado => ({
+/** Registro con el que abre la app. Los egresos proyectados: lo primero que se
+ *  mira cada día es lo que viene, ordenado de lo más próximo a lo más lejano.
+ *  El histórico ya conciliado está a un clic, en la cuenta del banco que toque. */
+export const REGISTRO_DE_ENTRADA = "proy:egresos-clp";
+
+const estadoInicial = (registro: string | null): Estado => ({
   // Con Supabase conectado arranca vacío y espera a la base. Mostrar los datos de
   // ejemplo mientras carga sería peor que mostrar nada: son cifras plausibles y
   // reales de otra época, imposibles de distinguir de las de verdad a simple vista.
   movimientos: supabaseConfigurado ? [] : MOVIMIENTOS_EJEMPLO,
   empresasSeleccionadas: IDS_ADAPSYS,
-  registroSeleccionado: null,
+  registroSeleccionado: registro,
   tc: TC_USD,
   tasas: TASAS,
 });
 
-export function ProveedorTesoreria({ children }: { children: ReactNode }) {
-  const [estado, setEstado] = useState<Estado>(estadoInicial);
+export function ProveedorTesoreria({
+  children,
+  registroInicial = REGISTRO_DE_ENTRADA,
+}: {
+  children: ReactNode;
+  /** Con qué registro abre. Existe para que los tests no dependan de cuál sea la
+   *  vista de entrada del producto: un test que comprueba que la tabla lista
+   *  movimientos no debería romperse porque cambiamos por dónde se entra. */
+  registroInicial?: string | null;
+}) {
+  const [estado, setEstado] = useState<Estado>(() => estadoInicial(registroInicial));
   // Arranca en true para no escribir los seeds encima de lo que haya guardado antes
   // de leerlo. Además el primer render del cliente coincide con el del servidor.
   const [cargando, setCargando] = useState(true);
@@ -434,7 +448,7 @@ export function ProveedorTesoreria({ children }: { children: ReactNode }) {
     } catch {
       // Sin storage no hay nada que borrar.
     }
-    setEstado(estadoInicial());
+    setEstado(estadoInicial(registroInicial));
   }, []);
 
   const derivados = useMemo(() => {

@@ -24,8 +24,10 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
+// Sin registro abierto: los tests comprueban comportamiento, no la vista de
+// entrada. Los que sí miran la entrada la piden explícitamente.
 const montar = (ui: React.ReactNode) =>
-  render(<ProveedorTesoreria>{ui}</ProveedorTesoreria>);
+  render(<ProveedorTesoreria registroInicial={null}>{ui}</ProveedorTesoreria>);
 
 describe("Flujo de caja", () => {
   it("monta y muestra la tabla con sus secciones", () => {
@@ -303,6 +305,62 @@ describe("Chrome", () => {
     expect(screen.getByText("Egresos proyectados · USD")).toBeDefined();
     expect(screen.getByText("Facturas por cobrar · CLP")).toBeDefined();
     expect(screen.getByText("Proyectos aprobados · CLP")).toBeDefined();
+  });
+});
+
+describe("Columna de saldo (el «Balance» de Quicken)", () => {
+  const conSidebar = (registro: string | null = null) =>
+    render(
+      <ProveedorTesoreria registroInicial={registro}>
+        <Cuentas />
+        <Registro />
+      </ProveedorTesoreria>
+    );
+
+  it("no aparece sin una cuenta abierta: sería el saldo de nada", () => {
+    conSidebar();
+    expect(screen.queryByText("Saldo")).toBeNull();
+  });
+
+  it("aparece al entrar a una cuenta del banco", () => {
+    conSidebar("cuenta:b1");
+    expect(screen.getByText("Saldo")).toBeDefined();
+  });
+
+  it("no aparece en un registro de proyección", () => {
+    // Ahí no hay un saldo que acumular: nada de eso pasó por el banco.
+    conSidebar("proy:egresos-clp");
+    expect(screen.queryByText("Saldo")).toBeNull();
+  });
+
+  it("el último saldo de la columna es el que muestra la barra lateral", () => {
+    // La comprobación que importa: recorrer el registro tiene que terminar en el
+    // mismo número que dice el saldo de la cuenta.
+    conSidebar("cuenta:b1");
+    const filas = Array.from(document.querySelectorAll("tbody tr"));
+    const saldos = filas
+      .map((tr) => tr.querySelectorAll("td")[6]?.textContent ?? "")
+      .filter(Boolean);
+    expect(saldos.length).toBeGreaterThan(0);
+    const ultimo = saldos[saldos.length - 1]!;
+    // El mismo texto aparece en la fila de la cuenta en la barra lateral.
+    expect(screen.getAllByText(new RegExp(ultimo.replace(/[.−]/g, "\\$&"))).length)
+      .toBeGreaterThan(1);
+  });
+});
+
+describe("Vista de entrada", () => {
+  it("abre en los egresos proyectados", () => {
+    // Lo primero que se mira cada día es lo que viene, no el histórico.
+    render(
+      <ProveedorTesoreria>
+        <Cuentas />
+        <Registro />
+      </ProveedorTesoreria>
+    );
+    expect(screen.getByText(/Viendo solo/)).toBeDefined();
+    const cuerpo = within(document.querySelector("tbody")!);
+    expect(cuerpo.queryAllByText("conciliado")).toHaveLength(0);
   });
 });
 

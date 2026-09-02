@@ -472,3 +472,15 @@
 .encabezadoOrdenActivo .flechaOrden {
   color: var(--teal);
 }
+
+/* Saldo corriente — el "Balance" de Quicken. Se lee recorriendo la columna hacia
+   abajo contra la cartola, así que va en cifras y alineado a la derecha como el
+   monto, pero en gris: es contexto, no el dato de la fila. */
+.saldo {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.saldoQuieto {
+  color: var(--tenue);
+}
