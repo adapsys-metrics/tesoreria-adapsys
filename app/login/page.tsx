@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 
@@ -44,8 +45,30 @@ export default function Login() {
         fontFamily: "var(--font-sans)",
       }}
     >
-      <h1 style={{ fontFamily: "var(--font-sans)", fontSize: 14, letterSpacing: ".04em", textTransform: "uppercase" }}>
-        Tesorería Adapsys
+      {/* Se muestra a su tamaño real (174×120) y no ampliado: el GIF trae 8 colores
+          y transparencia de 1 bit, así que al agrandarlo los bordes se ven dentados.
+          `unoptimized` es obligatorio — sin eso Next lo recomprime y se queda en el
+          primer cuadro, que en este archivo viene casi en blanco. */}
+      <Image
+        src="/logo-adapsys.gif"
+        alt="Adapsys"
+        width={174}
+        height={120}
+        unoptimized
+        priority
+      />
+      <h1
+        style={{
+          fontFamily: "var(--font-sans)",
+          fontSize: 13,
+          fontWeight: 500,
+          letterSpacing: ".08em",
+          textTransform: "uppercase",
+          color: "var(--teal)",
+          margin: 0,
+        }}
+      >
+        Tesorería
       </h1>
       <button
         onClick={iniciarSesion}
