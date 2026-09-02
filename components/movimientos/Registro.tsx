@@ -5,10 +5,16 @@
 // pasa del pasado al futuro.
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { empresaDe } from "@/lib/catalogo-indices";
+import { empresaDe, subcategoriaDe } from "@/lib/catalogo-indices";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { descuadre, enCLP } from "@/lib/dominio";
 import { esRegistroDeBanco } from "@/lib/registros";
+import {
+  ORDEN_INICIAL,
+  alternarOrden,
+  ordenarMovimientos,
+  type ColumnaOrden,
+} from "@/lib/orden";
 import { clp } from "@/lib/formato";
 import { HOY, fechaCorta } from "@/lib/fechas";
 import { Cabecera, Nota, Pill, Vacio, clases } from "@/components/ui/primitivas";
@@ -18,15 +24,17 @@ import { FormaNuevo } from "./FormaNuevo";
 import css from "./movimientos.module.css";
 import tabla from "@/components/ui/tabla.module.css";
 
-const COLUMNAS = [
-  "Fecha",
-  "Empresa",
-  "Proveedor / Cliente",
-  "Glosa",
-  "Subcategoría",
-  "Monto",
-  "Estado",
-  "",
+// `orden: null` = columna no ordenable. La última columna son los botones de
+// acción y no tiene encabezado.
+const COLUMNAS: { titulo: string; orden: ColumnaOrden | null }[] = [
+  { titulo: "Fecha", orden: "fecha" },
+  { titulo: "Empresa", orden: "cuenta" },
+  { titulo: "Proveedor / Cliente", orden: "contraparte" },
+  { titulo: "Glosa", orden: "glosa" },
+  { titulo: "Subcategoría", orden: "subcategoria" },
+  { titulo: "Monto", orden: "monto" },
+  { titulo: "Estado", orden: "estado" },
+  { titulo: "", orden: null },
 ];
 
 export function Registro() {
@@ -59,10 +67,11 @@ export function Registro() {
 
   const [nuevo, setNuevo] = useState(false);
   const [abiertos, setAbiertos] = useState<string[]>([]);
+  const [orden, setOrden] = useState(ORDEN_INICIAL);
 
   const lista = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    return movimientosFiltrados
+    const filtrados = movimientosFiltrados
       .filter((m) => {
         // El prototipo filtraba solo por fecha ("desde hoy"), y eso escondía las
         // facturas con fecha pasada que siguen impagas — justo las que hay que
@@ -74,8 +83,25 @@ export function Registro() {
           (m.glosa ?? "").toLowerCase().includes(q)
         );
       })
-      .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.id.localeCompare(b.id));
-  }, [movimientosFiltrados, busqueda, soloPendiente]);
+      .slice();
+    return ordenarMovimientos(filtrados, orden, tc, {
+      // Las etiquetas son las mismas que se muestran en la fila: ordenar por algo
+      // distinto de lo que se ve es la forma más rápida de que nadie confíe en el
+      // orden.
+      cuenta: (m) => {
+        const c = cuentasBanco.find((x) => x.id === m.cuenta_id);
+        return c ? `${empresaDe(c.empresa_id).corto} ${c.moneda}` : "";
+      },
+      // Vacío para los sin clasificar, no "Sin clasificar": así caen al final de
+      // la columna en los dos sentidos, agrupados y fáciles de encontrar, en vez
+      // de quedar sueltos entre la S y la T del catálogo.
+      subcategoria: (m) => {
+        if (m.lineas.length > 1) return `Split · ${m.lineas.length} líneas`;
+        const linea = m.lineas[0];
+        return linea ? subcategoriaDe(linea.subcategoria_id).nombre : "";
+      },
+    });
+  }, [movimientosFiltrados, busqueda, soloPendiente, orden, tc, cuentasBanco]);
 
   const alternar = (id: string) =>
     setAbiertos(abiertos.includes(id) ? abiertos.filter((x) => x !== id) : [...abiertos, id]);
@@ -156,9 +182,40 @@ export function Registro() {
           <table className={tabla.tabla} style={{ minWidth: 940 }}>
             <thead>
               <tr>
-                {COLUMNAS.map((h, i) => (
-                  <th key={h} className={clases(tabla.th, i === 5 && tabla.thNum)}>
-                    {h}
+                {COLUMNAS.map((col, i) => (
+                  <th
+                    key={col.titulo || "acciones"}
+                    className={clases(tabla.th, i === 5 && tabla.thNum)}
+                    aria-sort={
+                      col.orden && orden.columna === col.orden
+                        ? orden.sentido === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : undefined
+                    }
+                  >
+                    {col.orden ? (
+                      <button
+                        type="button"
+                        onClick={() => setOrden(alternarOrden(orden, col.orden!))}
+                        title={`Ordenar por ${col.titulo.toLowerCase()}`}
+                        className={clases(
+                          css.encabezadoOrden,
+                          orden.columna === col.orden && css.encabezadoOrdenActivo
+                        )}
+                      >
+                        {col.titulo}
+                        <span className={css.flechaOrden}>
+                          {orden.columna === col.orden
+                            ? orden.sentido === "asc"
+                              ? "▲"
+                              : "▼"
+                            : "↕"}
+                        </span>
+                      </button>
+                    ) : (
+                      col.titulo
+                    )}
                   </th>
                 ))}
               </tr>
@@ -166,7 +223,15 @@ export function Registro() {
             <tbody>
               {lista.map((m, i) => {
                 const anterior = lista[i - 1];
-                const cruzaHoy = anterior !== undefined && anterior.fecha < HOY && m.fecha >= HOY;
+                // La marca de FUTURO solo dice algo si la lista va por fecha hacia
+                // adelante. Ordenada por monto o por proveedor caería en un lugar
+                // arbitrario y afirmaría algo falso sobre lo que viene después.
+                const cruzaHoy =
+                  orden.columna === "fecha" &&
+                  orden.sentido === "asc" &&
+                  anterior !== undefined &&
+                  anterior.fecha < HOY &&
+                  m.fecha >= HOY;
                 const abierto = abiertos.includes(m.id);
                 const dif = descuadre(m);
                 const esSplit = m.lineas.length > 1;

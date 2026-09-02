@@ -411,3 +411,39 @@
   background: var(--teal);
   color: #fff;
 }
+
+/* ── Encabezados ordenables ── */
+
+.encabezadoOrden {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.encabezadoOrden:hover {
+  color: var(--teal);
+}
+
+.encabezadoOrdenActivo {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* La flecha de la columna inactiva se insinúa apenas: dice "esto se puede
+   ordenar" sin competir con la que marca el orden vigente. */
+.flechaOrden {
+  font-size: 8px;
+  color: var(--tenue);
+}
+
+.encabezadoOrdenActivo .flechaOrden {
+  color: var(--teal);
+}

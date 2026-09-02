@@ -292,6 +292,65 @@ describe("Chrome", () => {
   });
 });
 
+describe("Ordenar la tabla de movimientos", () => {
+  const fechas = () =>
+    Array.from(document.querySelectorAll("tbody tr td:first-child")).map(
+      (td) => td.textContent ?? ""
+    );
+
+  it("arranca por fecha ascendente y dos clicks vuelven al inicio", () => {
+    montar(<Registro />);
+    const inicial = fechas();
+    expect(inicial.length).toBeGreaterThan(1);
+    expect(
+      screen.getByTitle("Ordenar por fecha").closest("th")?.getAttribute("aria-sort")
+    ).toBe("ascending");
+
+    fireEvent.click(screen.getByTitle("Ordenar por fecha"));
+    expect(fechas()).not.toEqual(inicial);
+    fireEvent.click(screen.getByTitle("Ordenar por fecha"));
+    expect(fechas()).toEqual(inicial);
+  });
+
+  it("hacer click en la misma columna invierte el sentido", () => {
+    montar(<Registro />);
+    const antes = fechas();
+    fireEvent.click(screen.getByTitle("Ordenar por fecha"));
+    const despues = fechas();
+    expect(despues[0]).toBe(antes[antes.length - 1]);
+    expect(
+      screen.getByTitle("Ordenar por fecha").closest("th")?.getAttribute("aria-sort")
+    ).toBe("descending");
+  });
+
+  it("ordenar por otra columna la deja ascendente y suelta la anterior", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getByTitle("Ordenar por monto"));
+    const th = (t: string) => screen.getByTitle(t).closest("th");
+    expect(th("Ordenar por monto")?.getAttribute("aria-sort")).toBe("ascending");
+    expect(th("Ordenar por fecha")?.getAttribute("aria-sort")).toBeNull();
+  });
+
+  it("ordena por monto de mayor egreso a mayor ingreso", () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getByTitle("Ordenar por monto"));
+    const montos = Array.from(
+      document.querySelectorAll("tbody tr td:nth-child(6)")
+    ).map((td) => Number((td.textContent ?? "").replace(/[^\d-]/g, "")));
+    const soloNumeros = montos.filter((n) => !Number.isNaN(n));
+    expect(soloNumeros[0]!).toBeLessThanOrEqual(soloNumeros[soloNumeros.length - 1]!);
+  });
+
+  it("la marca de FUTURO desaparece al ordenar por otra cosa", () => {
+    // Ordenada por monto, esa marca caería en un lugar arbitrario y afirmaría algo
+    // falso sobre lo que viene después.
+    montar(<Registro />);
+    expect(screen.queryByText("FUTURO")).not.toBeNull();
+    fireEvent.click(screen.getByTitle("Ordenar por monto"));
+    expect(screen.queryByText("FUTURO")).toBeNull();
+  });
+});
+
 describe("Entrar a una cuenta desde el sidebar", () => {
   const conSidebar = () =>
     montar(
