@@ -122,11 +122,15 @@
 
 .selectEmpresa {
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: 10.5px;
   border: 1px solid var(--rule);
   border-radius: 2px;
   padding: 2px 4px;
   background: var(--paper);
+  /* Nombre completo de la empresa. Las abreviaturas CONS y CLTG obligaban a
+     recordar cuál era CLA CONSULTORES y cuál CLA CONSULTING, que es justo el par
+     que más se parece. El ancho fijo evita que la columna baile entre filas. */
+  max-width: 150px;
 }
 
 .botonSplit {
@@ -154,6 +158,27 @@
   border-radius: 3px;
   background: var(--paper);
   color: var(--muted);
+}
+
+/* "Marcar pagado" es la acción más repetida de la vista y estaba engordando todas
+   las filas: con 11px el texto no cabía en la columna y partía en dos líneas, así
+   que cada fila con un proyectado medía el doble. El nowrap es lo que arregla la
+   altura; el tamaño menor es para que quepa sin ensanchar la columna. */
+.botonPagar {
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+  padding: 3px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.botonPagar:hover {
+  border-color: var(--teal);
+  color: var(--teal);
 }
 
 .monto {

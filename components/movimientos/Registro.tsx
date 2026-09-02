@@ -90,7 +90,7 @@ export function Registro() {
       // orden.
       cuenta: (m) => {
         const c = cuentasBanco.find((x) => x.id === m.cuenta_id);
-        return c ? `${empresaDe(c.empresa_id).corto} ${c.moneda}` : "";
+        return c ? `${empresaDe(c.empresa_id).nombre} ${c.moneda}` : "";
       },
       // Vacío para los sin clasificar, no "Sin clasificar": así caen al final de
       // la columna en los dos sentidos, agrupados y fáciles de encontrar, en vez
@@ -265,7 +265,7 @@ export function Registro() {
                           {m.cuenta_id === null && <option value="">— sin cuenta —</option>}
                           {cuentasBanco.map((c) => (
                             <option key={c.id} value={c.id}>
-                              {empresaDe(c.empresa_id).corto} {c.moneda}
+                              {empresaDe(c.empresa_id).nombre} · {c.moneda}
                             </option>
                           ))}
                         </select>
@@ -332,7 +332,7 @@ export function Registro() {
                             type="button"
                             onClick={() => pagar(m.id)}
                             title="Sacarlo de proyectado: pasa a afectar el saldo de la cuenta"
-                            className={css.botonAmpliar}
+                            className={css.botonPagar}
                           >
                             Marcar pagado
                           </button>

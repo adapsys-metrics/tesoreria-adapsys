@@ -83,11 +83,14 @@ export function PanelDetalle({
                     <td className={css.celdaCuerpo}>
                       <div className={css.lineaTitulo}>
                         <span className={css.contraparte}>{m.contraparte}</span>
-                        {/* Sin empresa: una proyección que todavía no sabe por qué
+                        {/* Nombre completo y no la abreviatura: CONS y CLTG obligan a
+                            recordar cuál es CLA CONSULTORES y cuál CLA CONSULTING, que
+                            es justo el par que más se parece.
+                            Sin empresa: una proyección que todavía no sabe por qué
                             sociedad se gestiona. Se marca en vez de dejarlo en blanco,
                             para que se note que falta asignarla. */}
                         <span className={css.empresa}>
-                          {m.empresa_id ? empresaDe(m.empresa_id).corto : "SIN EMPRESA"}
+                          {m.empresa_id ? empresaDe(m.empresa_id).nombre : "SIN EMPRESA"}
                         </span>
                         <Pill estado={m.estado} />
                       </div>
