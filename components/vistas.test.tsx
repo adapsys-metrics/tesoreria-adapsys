@@ -92,6 +92,20 @@ describe("Flujo de caja", () => {
     }
   });
 
+  it("muestra los montos completos, no abreviados", () => {
+    // El equipo los necesita legibles de una: "435M" obliga a traducir de cabeza
+    // y a confiar en un redondeo que esconde hasta medio millón.
+    montar(<Flujo />);
+    const celdas = Array.from(document.querySelectorAll("tbody td"))
+      .map((td) => td.textContent ?? "")
+      .filter((t) => t !== "" && t !== "$0");
+    expect(celdas.length).toBeGreaterThan(0);
+    // Ninguna abreviatura: ni 1,2M ni 340k.
+    expect(celdas.filter((t) => /^−?[\d,]+[Mk]$/.test(t))).toEqual([]);
+    // Y al menos uno con separador de miles, que es lo que se pidió ver.
+    expect(celdas.some((t) => /\d\.\d{3}/.test(t))).toBe(true);
+  });
+
   it("avisa que los movimientos en dólares quedan fuera del flujo (§4.5)", () => {
     montar(<Flujo />);
     fireEvent.click(screen.getByText("Año completo"));

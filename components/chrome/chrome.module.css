@@ -136,8 +136,18 @@
   flex-shrink: 0;
   border-right: 1px solid var(--rule);
   background: var(--surface);
-  min-height: calc(100vh - var(--alto-header));
   padding: 16px 0;
+  /* Queda fija al bajar: revisando un movimiento de hace tres años había que
+     volver al tope de la página solo para cambiar de empresa o de cuenta.
+     `top` se ancla a la altura del encabezado, que también es sticky, para que
+     no se monten uno sobre otro. */
+  position: sticky;
+  top: var(--alto-header);
+  align-self: flex-start;
+  /* Si la barra no cabe, se desplaza ella sola en vez de estirar la página. */
+  max-height: calc(100vh - var(--alto-header));
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .encabezadoSidebar {

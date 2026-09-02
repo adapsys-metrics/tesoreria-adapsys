@@ -9,7 +9,7 @@ import { CATEGORIAS, NATURALEZAS, SUBCATEGORIAS } from "@/lib/catalogo";
 import { subcategoriasDe } from "@/lib/catalogo-indices";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { enCLP, expandir } from "@/lib/dominio";
-import { clp, clpK } from "@/lib/formato";
+import { clp } from "@/lib/formato";
 import {
   ANIO,
   HOY,
@@ -205,14 +205,16 @@ export function Flujo() {
     <td
       key={clave}
       className={clases(css.celda, o.borde && css.celdaBorde)}
-      style={{ minWidth: granularidad === "mes" ? 88 : 112 }}
+      // Más ancho que antes porque el monto va completo: "−269.000.000" no cabe
+      // en el ancho que alcanzaba para "−269M".
+      style={{ minWidth: granularidad === "mes" ? 124 : 132 }}
     >
       {valor === 0 || !o.abrir ? (
         <span
           className={clases(css.valor, valor === 0 && tabla.cero, o.fuerte && css.fuerte)}
           style={o.color ? { color: o.color } : valor < 0 ? { color: "var(--brick)" } : undefined}
         >
-          {valor === 0 ? "$0" : clpK(valor)}
+          {valor === 0 ? "$0" : clp(valor)}
         </span>
       ) : (
         <button
@@ -222,7 +224,7 @@ export function Flujo() {
           className={clases(css.valor, css.botonValor, o.fuerte && css.fuerte)}
           style={o.color ? { color: o.color } : valor < 0 ? { color: "var(--brick)" } : undefined}
         >
-          {clpK(valor)}
+          {clp(valor)}
         </button>
       )}
     </td>
@@ -340,7 +342,7 @@ export function Flujo() {
 
       {esProyeccion && acumulado.length > 0 && efectivo + minimoAcumulado < 0 && (
         <Aviso tono="brick">
-          Con este flujo el saldo estimado cae a {clpK(efectivo + minimoAcumulado)} dentro del
+          Con este flujo el saldo estimado cae a {clp(efectivo + minimoAcumulado)} dentro del
           período.
         </Aviso>
       )}
@@ -354,7 +356,9 @@ export function Flujo() {
                 <th
                   key={i}
                   className={clases(tabla.th, tabla.thNum)}
-                  style={{ minWidth: granularidad === "mes" ? 88 : 112 }}
+                  // Más ancho que antes porque el monto va completo: "−269.000.000" no cabe
+      // en el ancho que alcanzaba para "−269M".
+      style={{ minWidth: granularidad === "mes" ? 124 : 132 }}
                 >
                   <div className={css.anio}>{p.anio}</div>
                   {p.etiqueta}
