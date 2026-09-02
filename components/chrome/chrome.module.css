@@ -15,11 +15,14 @@
 }
 
 .marca {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  /* Poppins SemiBold, como pide el kit para el logotipo. El tracking negativo que
+     tenía era para la monoespaciada; en Poppins junta demasiado las letras. */
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.01em;
   font-size: 14px;
   white-space: nowrap;
+  color: var(--teal);
 }
 
 .marca span {
@@ -34,7 +37,7 @@
 }
 
 .reset {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10px;
   color: var(--muted);
   background: none;
@@ -51,7 +54,7 @@
 }
 
 .tab {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -91,7 +94,7 @@
 }
 
 .selectorBoton {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 11px;
   padding: 5px 10px;
   border: 1px solid var(--rule);
@@ -121,7 +124,7 @@
 }
 
 .selectorGrupo {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -159,7 +162,7 @@
 }
 
 .verTodo {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -213,7 +216,7 @@
 }
 
 .empresaTotal {
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -232,7 +235,7 @@
   text-align: left;
   font-size: 10.5px;
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-variant-numeric: tabular-nums;
 }
 
@@ -283,7 +286,7 @@
 }
 
 .conteoConciliar {
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 22px;
   font-weight: 600;
   margin-top: 4px;
@@ -321,7 +324,7 @@
 .bandaCarga {
   background: var(--surface);
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 
 .bandaError {

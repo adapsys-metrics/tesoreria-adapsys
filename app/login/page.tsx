@@ -44,7 +44,7 @@ export default function Login() {
         fontFamily: "var(--font-sans)",
       }}
     >
-      <h1 style={{ fontFamily: "var(--font-mono)", fontSize: 14, letterSpacing: ".04em", textTransform: "uppercase" }}>
+      <h1 style={{ fontFamily: "var(--font-sans)", fontSize: 14, letterSpacing: ".04em", textTransform: "uppercase" }}>
         Tesorería Adapsys
       </h1>
       <button

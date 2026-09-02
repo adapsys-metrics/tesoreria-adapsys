@@ -36,7 +36,7 @@
 }
 
 .rotuloAviso {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -53,7 +53,7 @@
 /* Celdas de monto. El padding va en el hijo para que el botón ocupe toda la celda
    y el área clicable sea la celda entera, no solo el texto. */
 .celda {
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 11px;
   text-align: right;
   padding: 0;

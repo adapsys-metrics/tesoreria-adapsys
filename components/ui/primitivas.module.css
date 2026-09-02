@@ -3,7 +3,7 @@
    esto se sienta un instrumento financiero y no una landing (CLAUDE.md §8). */
 
 .chip {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -27,7 +27,7 @@
 }
 
 .pill {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9.5px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -113,7 +113,7 @@
 }
 
 .rotulo {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9.5px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -125,7 +125,7 @@
 }
 
 .cifraRotulo {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -133,7 +133,7 @@
 }
 
 .cifraValor {
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 15px;
   font-weight: 500;
   letter-spacing: -0.02em;
@@ -171,7 +171,7 @@
 }
 
 .botonFantasma {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9.5px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -188,7 +188,7 @@
 }
 
 .insignia {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 8.5px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
@@ -211,7 +211,7 @@
 }
 
 .botonMini {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9px;
   letter-spacing: 0.04em;
   text-transform: uppercase;

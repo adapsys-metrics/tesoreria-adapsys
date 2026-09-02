@@ -11,7 +11,7 @@ export default function NoAutorizado() {
         fontFamily: "var(--font-sans)",
       }}
     >
-      <h1 style={{ fontFamily: "var(--font-mono)", fontSize: 14 }}>Cuenta no autorizada</h1>
+      <h1 style={{ fontFamily: "var(--font-sans)", fontSize: 14 }}>Cuenta no autorizada</h1>
       <p style={{ color: "var(--muted)", fontSize: 13 }}>
         Este sistema es solo para cuentas corporativas de Adapsys.
       </p>

@@ -1,35 +1,67 @@
-/* Tokens portados de tesoreria.jsx — ver §8 de CLAUDE.md ("la densidad sí es sagrada").
-   Las fuentes --fuente-sans / --fuente-mono las inyecta next/font desde app/layout.tsx. */
+/* Paleta institucional de Adapsys — docs/Adapsys_Kit_Proyecto_Claude.md.
+   Las fuentes --fuente-sans / --fuente-mono las inyecta next/font desde app/layout.tsx.
+
+   El kit está escrito para presentaciones, así que dos cosas suyas no se aplican
+   acá y es a propósito:
+
+   - Los círculos, grids de puntos y gradientes son para portadas de slides. En una
+     tabla de 10.530 movimientos serían ruido sobre el dato.
+   - El mínimo de 24px es para leer proyectado a distancia. Acá vaciaría la
+     pantalla: CLAUDE.md §8 dice que la densidad no se negocia, porque esto es una
+     herramienta de trabajo diario.
+
+   Los nombres de los tokens se mantienen (--brick, --teal…) porque describen su
+   FUNCIÓN y están usados en toda la app; lo que cambia es el color detrás. */
 :root {
-  /* Paleta base (el objeto `C` del prototipo) */
-  --ink: #15181c;
-  --paper: #f7f7f4;
+  /* ── Colores de marca, tal cual el kit ── */
+  --teal: #006379; /* Teal Oscuro — acentos, estado activo, montos positivos */
+  --teal-medio: #0097a7;
+  --teal-claro: #00b8b8; /* Acentos y contornos */
+  --teal-menta: #0bcdcd; /* Highlights */
+  --teal-soft: #b6e6e6; /* Teal Pastel — fondos suaves */
+
+  /* Magenta de marca en el rol de "negativo". El kit lo reserva para énfasis, y en
+     una tesorería el énfasis natural es la plata que sale. Reemplaza al ladrillo
+     del prototipo, que no era un color de Adapsys. */
+  --brick: #c20c5b;
+  --brick-soft: #fdeaf1;
+
+  --ink: #595959; /* Gris oscuro — cuerpo de texto */
+  /* Entre los dos grises del kit. El #9E9E9E de marca sobre el fondo claro da
+     2,9:1 de contraste y a 10px no se lee; este llega a 4,9:1. */
+  --muted: #6e6e6e;
+  --paper: #f3f3f3; /* Fondo claro */
   --surface: #ffffff;
-  --rule: #e3e4df;
-  --rule-soft: #efefeb;
-  --muted: #767c74;
-  --teal: #0f6e5c;
-  --teal-soft: #e4f0ec;
-  --brick: #b0432c;
-  --brick-soft: #f7e9e5;
+
+  /* ── Tintes estructurales ──
+     Bordes, filas alternadas y estados deshabilitados no están en el kit, que no
+     tiene que resolverlos: un slide no lleva tablas de 40 columnas. Se derivan de
+     los grises y del teal de marca, no son colores nuevos. */
+  --rule: #dcdcdc;
+  --rule-soft: #ebebeb;
+  --rule-medio: #d0d0d0;
+  --subrayado: #d8d8d8;
+  --seccion: #e4f2f2; /* Tinte claro del teal pastel, para las bandas de sección */
+  --fila-anidada: #fafafa;
+  --fila-split: #f8fbfb;
+  --fila-categoria: #ebebeb;
+  --tenue: #b5b5b5;
+  --borde-control: #c4c4c4;
+  --cero: #c4c4c4;
+  --muted-claro: #9e9e9e; /* Gris medio del kit, para texto de apoyo */
+  --scrollbar: #cfcfcf;
+
+  /* Ámbar: no está en la paleta de marca y se queda igual a propósito. Marca "esto
+     necesita atención" y no es decoración — en magenta se confundiría con un error
+     y en teal, con un dato normal. */
   --amber: #8a6a18;
   --amber-soft: #f6efdc;
-  --seccion: #dde6e3;
-
-  /* Grises que en el prototipo estaban hardcodeados fuera de `C` */
-  --fila-anidada: #fcfcfa;
-  --fila-split: #fbfcfa;
-  --fila-categoria: #edeeea;
-  --tenue: #b8bdb6;
-  --borde-control: #c3c7c0;
-  --cero: #c9cdc6;
-  --rule-medio: #d2d6cf;
-  --subrayado: #d8dcd6;
-  --muted-claro: #a9aea7;
-  --scrollbar: #cfd2cb;
 
   --font-sans: var(--fuente-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--fuente-mono), ui-monospace, monospace;
+  /* Solo para números: montos, fechas y totales. La interfaz va en Poppins.
+     Nombrado por su función y no por su forma, para que no se cuele en una
+     etiqueta por costumbre. */
+  --font-cifras: var(--fuente-mono), ui-monospace, monospace;
 
   /* Alto del header sticky. El sidebar de cuentas lo resta para su minHeight;
      en el prototipo estaba hardcodeado como calc(100vh - 92px). */

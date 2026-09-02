@@ -30,7 +30,7 @@
 }
 
 .periodo {
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 9px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -48,7 +48,7 @@
 }
 
 .total {
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 16px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -79,7 +79,7 @@
 
 .celdaFecha {
   width: 62px;
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 10.5px;
   color: var(--muted);
   vertical-align: top;
@@ -104,7 +104,7 @@
 }
 
 .empresa {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9px;
   color: var(--muted);
 }
@@ -124,7 +124,7 @@
 
 .celdaMonto {
   text-align: right;
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

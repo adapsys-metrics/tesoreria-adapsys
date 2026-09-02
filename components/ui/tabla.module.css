@@ -21,7 +21,7 @@
 }
 
 .th {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9.5px;
   font-weight: 500;
   letter-spacing: 0.09em;
@@ -57,7 +57,7 @@
 .tdNum {
   composes: td;
   text-align: right;
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -87,7 +87,7 @@
 
 .filaSeccion > td {
   background: var(--seccion);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9.5px;
   font-weight: 600;
   letter-spacing: 0.1em;
@@ -123,7 +123,7 @@
 }
 
 .conteo {
-  font-family: var(--font-mono);
+  font-family: var(--font-cifras);
   font-size: 9.5px;
   color: var(--tenue);
   font-weight: 400;

@@ -8,7 +8,7 @@
 }
 
 .compacto {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10px;
   max-width: 200px;
 }

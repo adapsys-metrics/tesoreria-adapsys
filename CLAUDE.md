@@ -251,9 +251,22 @@ Costo esperado: entre USD 0 y ~25/mes con este volumen.
 - Números tabulares en todas las tablas (`font-variant-numeric: tabular-nums`).
 
 ### UI
-El prototipo (`tesoreria.jsx`) define la dirección visual: densa, tipo instrumento financiero,
-tipografía IBM Plex Sans + IBM Plex Mono, paleta ink/paper/teal/brick sobre off-white.
-No es sagrado, pero la densidad sí: es una herramienta de trabajo diario, no una landing.
+Identidad institucional de Adapsys — `docs/Adapsys_Kit_Proyecto_Claude.md`. **Poppins** en toda
+la interfaz y paleta teal (`#006379` · `#00B8B8` · `#B6E6E6`) con magenta `#C20C5B` para los
+montos negativos, sobre fondo `#F3F3F3`.
+
+**Los números van en monoespaciada** (`--font-cifras`), y no es una desviación del kit sino algo
+que el kit no contempla: está escrito para presentaciones. En una tabla de 10.530 movimientos los
+dígitos tienen que caer en columna para poder comparar `−1.253.118` con `−306.745` de un vistazo.
+El token se llama por su función, no por su forma, justamente para que no se cuele en una etiqueta.
+
+Del kit **no se aplican** dos cosas, a propósito:
+- Círculos, grids de puntos y gradientes: son para portadas de slides. Acá serían ruido sobre el dato.
+- El mínimo de 24px: es para leer proyectado a distancia. Acá vaciaría la pantalla.
+
+La densidad no se negocia: esto es una herramienta de trabajo diario, no una landing. Cuando el kit
+y la densidad choquen, gana la densidad — el kit resuelve cómo se ve Adapsys, no cómo se lee una
+tabla de tesorería.
 
 ### Verificación obligatoria
 **Compilar no basta.** El bundler valida sintaxis pero no detecta referencias a variables usadas
