@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
+import css from "./login.module.css";
 
 const CONFIGURADO = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -34,77 +35,55 @@ export default function Login() {
   };
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-        fontFamily: "var(--font-sans)",
-      }}
-    >
-      {/* Se muestra a su tamaño real (174×120) y no ampliado: el GIF trae 8 colores
-          y transparencia de 1 bit, así que al agrandarlo los bordes se ven dentados.
-          `unoptimized` es obligatorio — sin eso Next lo recomprime y se queda en el
-          primer cuadro, que en este archivo viene casi en blanco. */}
-      <Image
-        src="/logo-adapsys.gif"
-        alt="Adapsys"
-        width={174}
-        height={120}
-        unoptimized
-        priority
-      />
-      <h1
-        style={{
-          fontFamily: "var(--font-sans)",
-          fontSize: 13,
-          fontWeight: 500,
-          letterSpacing: ".08em",
-          textTransform: "uppercase",
-          color: "var(--teal)",
-          margin: 0,
-        }}
-      >
-        Tesorería
-      </h1>
-      <button
-        onClick={iniciarSesion}
-        disabled={!CONFIGURADO}
-        style={{
-          padding: "10px 18px",
-          border: "1px solid var(--rule)",
-          borderRadius: 4,
-          background: "var(--surface)",
-          fontFamily: "var(--font-sans)",
-          fontSize: 13,
-          cursor: CONFIGURADO ? "pointer" : "not-allowed",
-          opacity: CONFIGURADO ? 1 : 0.5,
-        }}
-      >
-        Ingresar con Google
-      </button>
-      <p style={{ color: "var(--muted)", fontSize: 12 }}>
-        {CONFIGURADO
-          ? `Solo cuentas @${process.env.NEXT_PUBLIC_DOMINIO_CORPORATIVO ?? "adapsysgroup.com"}`
-          : "Preview sin Supabase conectado — el login todavía no funciona."}
-      </p>
-      {error && (
-        <p
-          role="alert"
-          style={{
-            color: "var(--brick)",
-            fontSize: 12,
-            maxWidth: 380,
-            textAlign: "center",
-            lineHeight: 1.5,
-          }}
-        >
-          No se pudo iniciar sesión: {error}
+    <main className={css.pantalla}>
+      {/* Solo decoración: detrás del contenido y sin captura de puntero, para que
+          nunca se interponga con el botón. */}
+      <div className={css.decoracion} aria-hidden="true">
+        <div className={css.puntos} />
+        <div className={css.circuloRelleno} />
+        <div className={css.circuloContorno} />
+        <div className={css.circuloMagenta} />
+      </div>
+
+      <div className={css.contenido}>
+        {/* `unoptimized` no es opcional: sin eso Next recomprime el GIF y se queda
+            en el primer cuadro, que viene vacío porque el logo se va dibujando. */}
+        <Image
+          className={css.logo}
+          src="/logo-adapsys-blanco.gif"
+          alt="Adapsys"
+          width={476}
+          height={369}
+          unoptimized
+          priority
+        />
+        <Image
+          className={css.logoQuieto}
+          src="/logo-adapsys.png"
+          alt=""
+          width={1500}
+          height={983}
+          priority
+        />
+
+        <h1 className={css.titulo}>Tesorería</h1>
+
+        <button onClick={iniciarSesion} disabled={!CONFIGURADO} className={css.boton}>
+          Ingresar con Google
+        </button>
+
+        <p className={css.nota}>
+          {CONFIGURADO
+            ? `Solo cuentas @${process.env.NEXT_PUBLIC_DOMINIO_CORPORATIVO ?? "adapsysgroup.com"}`
+            : "Preview sin Supabase conectado — el login todavía no funciona."}
         </p>
-      )}
+
+        {error && (
+          <p role="alert" className={css.error}>
+            No se pudo iniciar sesión: {error}
+          </p>
+        )}
+      </div>
     </main>
   );
 }

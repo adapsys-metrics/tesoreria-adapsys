@@ -135,6 +135,19 @@ describe("desempate", () => {
     expect(ordenar([...movs].reverse(), orden)).toEqual(["a", "c", "b"]);
   });
 
+  it("invierte también los empates al ordenar descendente", () => {
+    // Dos movimientos del mismo día: en descendente el último tiene que quedar
+    // arriba. Con un desempate siempre ascendente quedaba abajo, y entonces la
+    // primera fila mostraba un saldo corriente que no era el actual.
+    const movs = [
+      mov({ id: "1", fecha: "2026-08-15", monto: 12810000 }),
+      mov({ id: "2", fecha: "2026-08-15", monto: -5311000 }),
+      mov({ id: "3", fecha: "2026-08-12", monto: -318000 }),
+    ];
+    expect(ordenar(movs, { columna: "fecha", sentido: "desc" })).toEqual(["2", "1", "3"]);
+    expect(ordenar(movs, { columna: "fecha", sentido: "asc" })).toEqual(["3", "1", "2"]);
+  });
+
   it("no muta el arreglo que recibe", () => {
     const movs = [mov({ id: "2", fecha: "2026-09-01" }), mov({ id: "1", fecha: "2026-01-01" })];
     ordenar(movs, ORDEN_INICIAL);

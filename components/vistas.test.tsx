@@ -333,19 +333,34 @@ describe("Columna de saldo (el «Balance» de Quicken)", () => {
     expect(screen.queryByText("Saldo")).toBeNull();
   });
 
-  it("el último saldo de la columna es el que muestra la barra lateral", () => {
-    // La comprobación que importa: recorrer el registro tiene que terminar en el
-    // mismo número que dice el saldo de la cuenta.
+  it("el saldo de la primera fila es el que muestra la barra lateral", () => {
+    // La comprobación que importa: el saldo actual de la cuenta tiene que ser el
+    // mismo de los dos lados. Va en la PRIMERA fila y no en la última porque una
+    // cuenta del banco abre de lo más reciente a lo más antiguo.
     conSidebar("cuenta:b1");
     const filas = Array.from(document.querySelectorAll("tbody tr"));
     const saldos = filas
       .map((tr) => tr.querySelectorAll("td")[6]?.textContent ?? "")
       .filter(Boolean);
     expect(saldos.length).toBeGreaterThan(0);
-    const ultimo = saldos[saldos.length - 1]!;
-    // El mismo texto aparece en la fila de la cuenta en la barra lateral.
-    expect(screen.getAllByText(new RegExp(ultimo.replace(/[.−]/g, "\\$&"))).length)
-      .toBeGreaterThan(1);
+    // La barra lateral antepone el símbolo de moneda, así que se compara por
+    // contenido y no por igualdad de texto.
+    const filaCuenta = screen.getByTitle(/Salir de CLA CONSULTORES PESOS/);
+    expect(filaCuenta.textContent).toContain(saldos[0]!.trim());
+  });
+
+  it("una cuenta del banco abre de lo más reciente a lo más antiguo", () => {
+    conSidebar("cuenta:b1");
+    expect(
+      screen.getByTitle("Ordenar por fecha").closest("th")?.getAttribute("aria-sort")
+    ).toBe("descending");
+  });
+
+  it("un registro de proyección abre de lo más próximo a lo más lejano", () => {
+    conSidebar("proy:egresos-clp");
+    expect(
+      screen.getByTitle("Ordenar por fecha").closest("th")?.getAttribute("aria-sort")
+    ).toBe("ascending");
   });
 });
 

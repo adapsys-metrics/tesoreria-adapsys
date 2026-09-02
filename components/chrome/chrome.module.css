@@ -15,18 +15,30 @@
 }
 
 .marca {
-  font-family: var(--font-sans);
-  /* Poppins SemiBold, como pide el kit para el logotipo. El tracking negativo que
-     tenía era para la monoespaciada; en Poppins junta demasiado las letras. */
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   white-space: nowrap;
-  color: var(--teal);
 }
 
-.marca span {
+/* Alto fijo y ancho automático: el logo son dos líneas apiladas, así que se
+   dimensiona por la altura disponible del encabezado y no por el ancho. */
+.logotipo {
+  height: 30px;
+  width: auto;
+}
+
+/* "Tesorería" al lado del logo: el logo dice de quién es la herramienta, esto dice
+   cuál es. Va en un peso menor para que no compita con la marca. */
+.marcaTexto {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--teal);
+  border-left: 1px solid var(--rule);
+  padding-left: 10px;
 }
 
 .cifras {

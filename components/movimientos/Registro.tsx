@@ -11,8 +11,8 @@ import { descuadre, enCLP } from "@/lib/dominio";
 import { claveDeCuenta, esRegistroDeBanco } from "@/lib/registros";
 import { saldosCorrientes } from "@/lib/saldos";
 import {
-  ORDEN_INICIAL,
   alternarOrden,
+  ordenDeEntrada,
   ordenarMovimientos,
   type ColumnaOrden,
 } from "@/lib/orden";
@@ -86,11 +86,12 @@ export function Registro() {
   const COLUMNAS = useMemo(() => columnas(saldos !== null), [saldos]);
   useEffect(() => {
     setSoloPendiente(!enBanco);
+    setOrden(ordenDeEntrada(enBanco));
   }, [enBanco, registroSeleccionado]);
 
   const [nuevo, setNuevo] = useState(false);
   const [abiertos, setAbiertos] = useState<string[]>([]);
-  const [orden, setOrden] = useState(ORDEN_INICIAL);
+  const [orden, setOrden] = useState(() => ordenDeEntrada(false));
 
   const lista = useMemo(() => {
     const q = busqueda.trim().toLowerCase();

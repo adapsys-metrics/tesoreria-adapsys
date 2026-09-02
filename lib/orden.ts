@@ -22,6 +22,19 @@ export type Orden = { columna: ColumnaOrden; sentido: "asc" | "desc" };
  *  que la marca de "FUTURO" signifique algo. */
 export const ORDEN_INICIAL: Orden = { columna: "fecha", sentido: "asc" };
 
+/**
+ * Con qué orden abre cada registro. La regla es una sola: **lo más cerca de hoy
+ * primero**, que es lo que hay que tener a mano.
+ *
+ * Lo que cambia es hacia dónde queda ese "cerca". Una cuenta del banco solo tiene
+ * pasado, así que lo reciente está al final y hay que ir de atrás hacia adelante.
+ * Un registro de proyección solo tiene futuro, y ahí lo próximo está al principio.
+ */
+export const ordenDeEntrada = (enBanco: boolean): Orden => ({
+  columna: "fecha",
+  sentido: enBanco ? "desc" : "asc",
+});
+
 /** El estado se ordena por el ciclo de vida, no por alfabeto (§4.1). Alfabético
  *  daría conciliado → pagado → proyectado, que es el camino al revés. */
 const PESO_ESTADO: Record<EstadoMovimiento, number> = {
@@ -88,10 +101,15 @@ export function ordenarMovimientos(
     }
   };
 
-  // El desempate no depende del sentido: sin él, dos filas iguales en la columna
-  // elegida quedan en el orden que traía el arreglo y la tabla "salta" entre
-  // renders sin que nadie haya tocado nada.
+  // El desempate sigue el sentido del orden, y esto importa más de lo que parece.
+  // Con dos movimientos del mismo día, un desempate siempre ascendente deja el
+  // último abajo aunque la lista vaya de lo más reciente a lo más antiguo: arriba
+  // se lee un saldo que no es el actual, y la columna de saldo baja y vuelve a
+  // subir sin motivo. Sigue siendo determinista —fecha y después id— así que la
+  // tabla no salta entre renders.
   return [...movimientos].sort(
-    (a, b) => comparar(a, b) || a.fecha.localeCompare(b.fecha) || a.id.localeCompare(b.id)
+    (a, b) =>
+      comparar(a, b) ||
+      (a.fecha.localeCompare(b.fecha) || a.id.localeCompare(b.id)) * factor
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
@@ -36,7 +38,18 @@ export function Encabezado() {
     <header className={css.header}>
       <div className={css.filaSuperior}>
         <div className={css.marca}>
-          TESORERÍA<span>/</span>ADAPSYS
+          {/* El logotipo real reemplaza al texto. Se declara a su tamaño nativo
+              (1500×983) y el CSS lo baja a la altura del encabezado: así el
+              navegador reserva el espacio antes de cargarlo y la fila no salta. */}
+          <Image
+            className={css.logotipo}
+            src="/logo-adapsys.png"
+            alt="Adapsys"
+            width={1500}
+            height={983}
+            priority
+          />
+          <span className={css.marcaTexto}>Tesorería</span>
         </div>
 
         <SelectorEmpresas />
