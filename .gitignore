@@ -23,6 +23,12 @@
 /datos-quicken/*
 !/datos-quicken/LEEME.md
 
+# Capturas de pantalla dejadas para consultar algo puntual. Traen cifras reales
+# —presupuestos, ventas, saldos— y no son activos del proyecto: se miran y se
+# descartan. Los logos y el kit de marca sí se versionan, por eso la regla apunta
+# solo a las capturas.
+/docs/Captura*
+
 # misc
 .DS_Store
 *.pem
