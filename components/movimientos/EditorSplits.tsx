@@ -26,12 +26,22 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
     cuadrar,
     aplicarImpuesto,
     pegarLineas,
+    cuentas,
   } = useTesoreria();
 
   const [pegando, setPegando] = useState(false);
   const texto = useRef("");
 
   const dif = descuadre(m);
+
+  // Los botones de impuesto son para lo que compramos, no para lo que vendemos.
+  // "+ IVA" agrega una línea a IVA compras —el crédito fiscal del que paga— y la
+  // retención de honorarios solo existe cuando el que paga somos nosotros. En una
+  // factura emitida a un cliente ninguno de los dos aplica: mostrarlos ahí no es
+  // solo confuso, es una vía para clasificar un ingreso como IVA compras.
+  //
+  // El IVA de las ventas (débito fiscal) es otro cálculo y todavía no está.
+  const enCartera = cuentas.find((c) => c.id === m.cuenta_id)?.tipo === "cxc";
 
   return (
     <div className={css.bloqueLineas}>
@@ -86,22 +96,26 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
         <button type="button" onClick={() => agregarLinea(m.id)} className={css.botonAmpliar}>
           + línea
         </button>
-        <button
-          type="button"
-          onClick={() => aplicarImpuesto(m.id, "iva")}
-          title="Suma IVA sobre el neto y recalcula el total a pagar"
-          className={clases(css.botonAmpliar, css.botonImpuesto)}
-        >
-          + IVA {pct(tasas.iva)}
-        </button>
-        <button
-          type="button"
-          onClick={() => aplicarImpuesto(m.id, "bhe")}
-          title="Resta la retención del bruto y recalcula el líquido a pagar"
-          className={clases(css.botonAmpliar, css.botonImpuesto)}
-        >
-          − Retención {pct(tasas.bhe)}
-        </button>
+        {!enCartera && (
+          <>
+            <button
+              type="button"
+              onClick={() => aplicarImpuesto(m.id, "iva")}
+              title="Suma IVA sobre el neto y recalcula el total a pagar"
+              className={clases(css.botonAmpliar, css.botonImpuesto)}
+            >
+              + IVA {pct(tasas.iva)}
+            </button>
+            <button
+              type="button"
+              onClick={() => aplicarImpuesto(m.id, "bhe")}
+              title="Resta la retención del bruto y recalcula el líquido a pagar"
+              className={clases(css.botonAmpliar, css.botonImpuesto)}
+            >
+              − Retención {pct(tasas.bhe)}
+            </button>
+          </>
+        )}
         <button type="button" onClick={() => setPegando(!pegando)} className={css.botonAmpliar}>
           Pegar detalle
         </button>

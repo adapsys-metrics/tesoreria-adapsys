@@ -438,6 +438,25 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
     expect(filasDeMovimiento).toHaveLength(1);
   });
 
+  it("la cartera no ofrece los botones de impuesto", () => {
+    // "+ IVA" agrega una línea a IVA compras, que es el crédito fiscal del que
+    // paga; y la retención de honorarios solo existe cuando pagamos nosotros. En
+    // una factura emitida a un cliente ninguno aplica, y tenerlos ahí es una vía
+    // para clasificar un ingreso como IVA compras.
+    conCartera("cuenta:x1");
+    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    expect(screen.getByText("+ línea")).toBeDefined();
+    expect(screen.queryByText(/\+ IVA/)).toBeNull();
+    expect(screen.queryByText(/− Retención/)).toBeNull();
+  });
+
+  it("una cuenta del banco sí los ofrece", () => {
+    conCartera("cuenta:b1");
+    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    expect(screen.getByText(/\+ IVA/)).toBeDefined();
+    expect(screen.getByText(/− Retención/)).toBeDefined();
+  });
+
   it("el saldo de la cartera es lo pendiente, no cero", () => {
     // Antes valía cero: la regla del banco descarta lo proyectado, y en una cuenta
     // de cobranza todo lo pendiente es justamente proyectado.
