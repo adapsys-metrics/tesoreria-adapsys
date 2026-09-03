@@ -15,6 +15,8 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Rotulo, clases } from "@/components/ui/primitivas";
 import { REGISTROS_PROYECCION, claveDeCuenta, totalDeRegistro } from "@/lib/registros";
 import { clp, clpK } from "@/lib/formato";
+import { HOY } from "@/lib/fechas";
+import { contarVencidos, totalVencido } from "@/lib/vencidos";
 import css from "./chrome.module.css";
 
 export function Cuentas() {
@@ -37,6 +39,12 @@ export function Cuentas() {
   // cuatro sociedades aunque el registro cuelgue de una. Filtrarla por el selector
   // de empresas la haría desaparecer cuando alguien mira una sola.
   const cobranzas = cuentas.filter((c) => c.tipo === "cxc");
+
+  // Sobre todos los movimientos, no sobre el registro abierto: el contador de la
+  // barra lateral tiene que decir cuántos hay en total, o entrar a una cuenta lo
+  // haría bajar y parecería que se resolvieron.
+  const vencidos = contarVencidos(movimientos, HOY);
+  const montoVencido = totalVencido(movimientos, HOY);
 
   const registros = [
     ...REGISTROS_PROYECCION.map((r) => ({
@@ -183,20 +191,36 @@ export function Cuentas() {
         ))}
       </div>
 
+      {/* Vencidos primero: es la lista que se mira todos los días. "Por conciliar"
+          cuenta otra cosa —lo que pasó por el banco y nadie cuadró contra la
+          cartola— y hoy está en cero porque el histórico importado entró
+          directamente como conciliado. */}
       <div className={css.bloqueConciliar}>
-        <Rotulo texto="Por conciliar" />
+        <Rotulo texto="Vencidos" />
         <div
           className={css.conteoConciliar}
-          style={{ color: porConciliar ? "var(--amber)" : "var(--muted)" }}
+          style={{ color: vencidos ? "var(--brick)" : "var(--muted)" }}
         >
-          {porConciliar}
+          {vencidos}
         </div>
         <div className={css.glosaConciliar}>
-          {porConciliar
-            ? "movimientos pagados sin cuadrar contra cartola"
-            : "todo cuadrado contra cartola"}
+          {vencidos
+            ? `con fecha pasada y sin ocurrir · ${clp(montoVencido)}`
+            : "nada con fecha pasada pendiente"}
         </div>
       </div>
+
+      {porConciliar > 0 && (
+        <div className={css.bloqueConciliar}>
+          <Rotulo texto="Por conciliar" />
+          <div className={css.conteoConciliar} style={{ color: "var(--amber)" }}>
+            {porConciliar}
+          </div>
+          <div className={css.glosaConciliar}>
+            pagados sin cuadrar contra la cartola
+          </div>
+        </div>
+      )}
 
       <div className={css.pieSidebar}>
         <div>

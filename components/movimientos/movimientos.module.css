@@ -544,3 +544,37 @@
   background: var(--tenue);
   cursor: not-allowed;
 }
+
+/* ── Vencidos ──
+   Fecha pasada y todavía proyectado: o ya ocurrió y falta registrarlo, o hay que
+   mover la fecha. Es la lista que se recorre todos los días, y en Quicken se ve
+   como un cambio de tono en la fila. */
+.filaVencida {
+  background: var(--brick-soft);
+}
+
+.filaVencida:hover {
+  background: var(--brick-soft);
+}
+
+.atraso {
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--brick);
+  white-space: nowrap;
+}
+
+.filtroVencidos {
+  color: var(--brick);
+}
+
+.conteoVencidos {
+  margin-left: 5px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: var(--brick);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 600;
+}

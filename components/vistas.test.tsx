@@ -292,7 +292,9 @@ describe("Chrome", () => {
   it("el sidebar muestra los saldos y separa las cuentas en dólares", () => {
     montar(<Cuentas />);
     expect(screen.getByText("Cuentas del banco")).toBeDefined();
-    expect(screen.getByText("Por conciliar")).toBeDefined();
+    // "Vencidos" reemplazó a "Por conciliar" como el contador principal: es la
+    // lista que se mira todos los días. El de conciliar solo aparece si hay algo.
+    expect(screen.getByText("Vencidos")).toBeDefined();
     expect(screen.getAllByText(/fuera del flujo/).length).toBeGreaterThan(0);
   });
 
@@ -478,6 +480,28 @@ describe("Vista de entrada", () => {
     expect(screen.getByText(/Viendo solo/)).toBeDefined();
     const cuerpo = within(document.querySelector("tbody")!);
     expect(cuerpo.queryAllByText("conciliado")).toHaveLength(0);
+  });
+});
+
+describe("Vencidos", () => {
+  it("marca las filas con fecha pasada que siguen proyectadas", () => {
+    // Es lo que en Quicken se ve como un cambio de tono. No es lo mismo que "por
+    // conciliar": eso cuenta lo que pasó por el banco sin cuadrar contra cartola.
+    montar(<Registro />);
+    fireEvent.click(screen.getByLabelText(/Solo vencidos/));
+    const filas = document.querySelectorAll("tbody tr");
+    expect(filas.length).toBeGreaterThan(0);
+    // Todas las visibles tienen fecha pasada y estado proyectado.
+    for (const tr of Array.from(filas)) {
+      expect(tr.textContent).toContain("d");
+    }
+  });
+
+  it("un movimiento futuro no cuenta como vencido", () => {
+    montar(<Registro />);
+    const antes = document.querySelectorAll("tbody tr").length;
+    fireEvent.click(screen.getByLabelText(/Solo vencidos/));
+    expect(document.querySelectorAll("tbody tr").length).toBeLessThan(antes);
   });
 });
 

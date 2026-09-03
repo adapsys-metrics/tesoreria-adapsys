@@ -10,6 +10,7 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { descuadre, enCLP } from "@/lib/dominio";
 import { claveDeCuenta, esRegistroDeBanco } from "@/lib/registros";
 import { saldosCorrientes } from "@/lib/saldos";
+import { diasDeAtraso, estaVencido } from "@/lib/vencidos";
 import { pasoDe } from "@/lib/cobranza";
 import {
   alternarOrden,
@@ -86,11 +87,19 @@ export function Registro() {
   );
 
   const COLUMNAS = useMemo(() => columnas(saldos !== null), [saldos]);
+
+  // Sobre los movimientos del registro abierto, no sobre los que se ven: el
+  // contador tiene que decir cuántos hay, no cuántos quedaron tras el buscador.
+  const vencidos = useMemo(
+    () => movimientosFiltrados.filter((m) => estaVencido(m, HOY)).length,
+    [movimientosFiltrados]
+  );
   useEffect(() => {
     setSoloPendiente(!enBanco);
     setOrden(ordenDeEntrada(enBanco));
   }, [enBanco, registroSeleccionado]);
 
+  const [soloVencidos, setSoloVencidos] = useState(false);
   const [nuevo, setNuevo] = useState(false);
   const [abiertos, setAbiertos] = useState<string[]>([]);
   const [orden, setOrden] = useState(() => ordenDeEntrada(false));
@@ -103,6 +112,7 @@ export function Registro() {
         // El prototipo filtraba solo por fecha ("desde hoy"), y eso escondía las
         // facturas con fecha pasada que siguen impagas — justo las que hay que
         // accionar. Acá el filtro oculta el histórico ya cerrado, no lo pendiente.
+        if (soloVencidos && !estaVencido(m, HOY)) return false;
         if (soloPendiente && m.fecha < HOY && m.estado === "conciliado") return false;
         if (!q) return true;
         // También por número de documento: "¿la 273 ya la pagaron?" es la
@@ -131,7 +141,7 @@ export function Registro() {
         return linea ? subcategoriaDe(linea.subcategoria_id).nombre : "";
       },
     });
-  }, [movimientosFiltrados, busqueda, soloPendiente, orden, tc, cuentasBanco]);
+  }, [movimientosFiltrados, busqueda, soloPendiente, soloVencidos, orden, tc, cuentasBanco]);
 
   const alternar = (id: string) =>
     setAbiertos(abiertos.includes(id) ? abiertos.filter((x) => x !== id) : [...abiertos, id]);
@@ -151,6 +161,19 @@ export function Registro() {
           aria-label="Buscar"
           className={css.busqueda}
         />
+
+        <label
+          className={clases(css.filtroFuturo, vencidos > 0 && css.filtroVencidos)}
+          title="Compromisos y cobranzas con fecha pasada que todavía no ocurren"
+        >
+          <input
+            type="checkbox"
+            checked={soloVencidos}
+            onChange={(e) => setSoloVencidos(e.target.checked)}
+          />
+          Solo vencidos
+          {vencidos > 0 && <span className={css.conteoVencidos}>{vencidos}</span>}
+        </label>
 
         <label className={css.filtroFuturo} title="Oculta el histórico ya conciliado, pero deja lo que sigue pendiente aunque tenga fecha pasada">
           <input
@@ -265,6 +288,7 @@ export function Registro() {
                 const abierto = abiertos.includes(m.id);
                 const dif = descuadre(m);
                 const paso = pasoDe(m, cuentas);
+                const vencido = estaVencido(m, HOY);
                 const esSplit = m.lineas.length > 1;
                 const valor = enCLP(m, tc);
 
@@ -280,8 +304,21 @@ export function Registro() {
                       </tr>
                     )}
 
-                    <tr className="fila">
-                      <td className={clases(tabla.td, css.fecha)}>{fechaCorta(m.fecha)}</td>
+                    <tr className={clases("fila", vencido && css.filaVencida)}>
+                      <td className={clases(tabla.td, css.fecha)}>
+                        {fechaCorta(m.fecha)}
+                        {/* Los días de atraso van al lado de la fecha y no en una
+                            columna aparte: lo que importa no es el dato sino que
+                            la fila entera se lea distinta al recorrerla. */}
+                        {vencido && (
+                          <span
+                            className={css.atraso}
+                            title={`Comprometido hace ${diasDeAtraso(m.fecha, HOY)} días y todavía sin ocurrir`}
+                          >
+                            +{diasDeAtraso(m.fecha, HOY)}d
+                          </span>
+                        )}
+                      </td>
 
                       {/* Se elige la cuenta, no la empresa: la cuenta determina
                           empresa y moneda a la vez. Se muestra el nombre corto de la
