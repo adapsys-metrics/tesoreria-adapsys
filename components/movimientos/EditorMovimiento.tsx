@@ -90,7 +90,18 @@ export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) 
         )}
 
         <label className={css.campo}>
-          <span className={css.etiquetaCampo}>Documento</span>
+          <span className={css.etiquetaCampo}>N° documento</span>
+          <input
+            value={m.documento ?? ""}
+            onChange={(e) => editarMovimiento(m.id, "documento", e.target.value || null)}
+            placeholder="FA3109609"
+            aria-label="Número de documento"
+            className={css.entrada}
+          />
+        </label>
+
+        <label className={css.campo}>
+          <span className={css.etiquetaCampo}>Tipo de documento</span>
           <select
             value={m.doc_tipo ?? ""}
             onChange={(e) =>

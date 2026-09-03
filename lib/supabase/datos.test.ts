@@ -140,6 +140,7 @@ describe("guardarMovimiento", () => {
     cuenta_id: "a1",
     contraparte: "GTD",
     glosa: null,
+    documento: "FA3109609",
     monto: -365026,
     moneda: "CLP",
     tipo_cambio: null,

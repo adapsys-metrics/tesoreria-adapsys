@@ -103,6 +103,8 @@ export type Database = {
           cuenta_id: string | null;
           contraparte: string | null;
           glosa: string | null;
+          /** Número del documento: FA273, B405 (0008). */
+          documento: string | null;
           monto: number;
           /** Igual a la moneda de la cuenta cuando hay cuenta (foreign key compuesta). */
           moneda: Moneda;
@@ -122,6 +124,7 @@ export type Database = {
           cuenta_id?: string | null;
           contraparte?: string | null;
           glosa?: string | null;
+          documento?: string | null;
           monto: number;
           moneda: Moneda;
           tipo_cambio?: number | null;

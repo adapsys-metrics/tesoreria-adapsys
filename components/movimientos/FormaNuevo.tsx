@@ -30,6 +30,7 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
   const [fecha, setFecha] = useState(HOY);
   const [contraparte, setContraparte] = useState("");
   const [glosa, setGlosa] = useState("");
+  const [numeroDoc, setNumeroDoc] = useState("");
   const [subcategoria, setSubcategoria] = useState("sueldos");
   const [base, setBase] = useState("");
   const [doc, setDoc] = useState<DocTipo>("exento");
@@ -59,6 +60,7 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
       cuenta_id: cuenta.id,
       contraparte: contraparte.trim(),
       glosa: glosa.trim() || null,
+      documento: numeroDoc.trim() || null,
       monto: resultado.monto,
       moneda: cuenta.moneda,
       tipo_cambio: cuenta.moneda === "USD" ? tc : null,
@@ -104,7 +106,18 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
         <input
           value={glosa}
           onChange={(e) => setGlosa(e.target.value)}
-          placeholder="FA3109609 Internet oficina"
+          placeholder="Internet oficina"
+          className={css.entrada}
+        />
+      </label>
+
+      <label className={css.campo}>
+        <span className={css.etiquetaCampo}>N° documento</span>
+        <input
+          value={numeroDoc}
+          onChange={(e) => setNumeroDoc(e.target.value)}
+          placeholder="FA3109609"
+          aria-label="Número de documento"
           className={css.entrada}
         />
       </label>

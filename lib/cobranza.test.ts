@@ -10,6 +10,7 @@ const mov = (p: Partial<Movimiento>): Movimiento => ({
   cuenta_id: "x3",
   contraparte: "BANCO ITAÚ",
   glosa: null,
+  documento: null,
   monto: 4568898,
   moneda: "CLP",
   tipo_cambio: null,

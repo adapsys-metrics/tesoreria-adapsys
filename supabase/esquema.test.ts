@@ -58,6 +58,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0005_proyeccion_sin_cuenta.sql"));
   await db.exec(leer("migrations/0006_vista_sin_clasificar_con_origen.sql"));
   await db.exec(leer("migrations/0007_guardar_movimiento.sql"));
+  await db.exec(leer("migrations/0008_numero_de_documento.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -209,10 +210,10 @@ describe("la carga del histórico de Quicken", () => {
   it("promueve staging a movimientos y líneas en una sola transacción", async () => {
     await db.exec(leer("carga/1_crear_staging.sql"));
     await db.exec(`
-      insert into carga_movimientos (ref, fecha, empresa_id, cuenta_id, contraparte, glosa, monto, moneda, estado, origen) values
-        ('q1', '2026-08-14', 'adap', 'a1', 'GTD', 'FA3109609', -365026, 'CLP', 'conciliado', 'a1.csv'),
-        ('q2', '2026-08-13', 'adap', 'a1', 'Sin clasificar', '', -5000, 'CLP', 'conciliado', 'a1.csv'),
-        ('q3', '2026-12-29', '', '', 'GAP IMA 2026', 'GAP IMA 2026', -100000000, 'CLP', 'proyectado', 'proy-egresos-clp.csv');
+      insert into carga_movimientos (ref, fecha, empresa_id, cuenta_id, contraparte, glosa, documento, monto, moneda, estado, origen) values
+        ('q1', '2026-08-14', 'adap', 'a1', 'GTD', 'Internet oficina', 'FA3109609', -365026, 'CLP', 'conciliado', 'a1.csv'),
+        ('q2', '2026-08-13', 'adap', 'a1', 'Sin clasificar', '', '', -5000, 'CLP', 'conciliado', 'a1.csv'),
+        ('q3', '2026-12-29', '', '', 'GAP IMA 2026', 'GAP IMA 2026', '', -100000000, 'CLP', 'proyectado', 'proy-egresos-clp.csv');
       insert into carga_lineas (mov_ref, subcategoria_id, monto, glosa, orden) values
         ('q1', 'telefonia-e-internet', -306745, 'Internet oficina', 0),
         ('q1', 'iva-compras', -58281, 'Internet oficina', 1),
@@ -271,11 +272,11 @@ describe("la carga del histórico de Quicken", () => {
     await db.exec(`
       create table carga_movimientos (
         ref text, fecha text, empresa_id text, cuenta_id text, contraparte text,
-        glosa text, monto text, moneda text, estado text, origen text);
+        glosa text, documento text, monto text, moneda text, estado text, origen text);
       create table carga_lineas (
         mov_ref text, subcategoria_id text, monto text, glosa text, orden text);
       insert into carga_movimientos values
-        ('t1', '2026-08-14', 'adap', 'a1', 'GTD', 'FA3109609', '-365026', 'CLP', 'conciliado', 'a1.csv');
+        ('t1', '2026-08-14', 'adap', 'a1', 'GTD', 'Internet oficina', 'FA3109609', '-365026', 'CLP', 'conciliado', 'a1.csv');
       insert into carga_lineas values
         ('t1', 'telefonia-e-internet', '-306745', 'Internet oficina', '0'),
         ('t1', 'iva-compras', '-58281', 'Internet oficina', '1');
@@ -424,6 +425,16 @@ describe("fn_guardar_movimiento", () => {
 
   it("falla si el movimiento a actualizar no existe", async () => {
     expect(await guardar({ ...gtd, id: 999999 })).toMatch(/No existe el movimiento/);
+  });
+
+  it("guarda el número del documento y deja buscar por él", async () => {
+    expect(await guardar({ ...gtd, contraparte: "GTD con documento", documento: "FA3109609" }))
+      .toBeNull();
+    const r = await db.query<{ documento: string }>(
+      `select documento from movimientos where contraparte = 'GTD con documento'`
+    );
+    expect(r.rows[0]).toEqual({ documento: "FA3109609" });
+    await db.exec(`delete from movimientos where contraparte = 'GTD con documento'`);
   });
 
   it("acepta una proyección sin empresa ni cuenta", async () => {

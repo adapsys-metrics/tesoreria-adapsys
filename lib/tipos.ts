@@ -65,6 +65,10 @@ export type Movimiento = {
   cuenta_id: string | null;
   contraparte: string | null;
   glosa: string | null;
+  /** Número del documento que respalda el movimiento: FA273, B405. Distinto de
+   *  `doc_tipo`, que es si es exento, afecta u honorario. En ventas el número es
+   *  la identidad de la factura, así que va aparte y no dentro de la glosa. */
+  documento: string | null;
   /** Líquido que entra o sale del banco. Puede diferir de la suma de líneas:
    *  el descuadre se avisa en la UI, no se corrige en silencio. */
   monto: number;

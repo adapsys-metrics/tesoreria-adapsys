@@ -26,6 +26,7 @@ create table carga_movimientos (
   cuenta_id   text,
   contraparte text,
   glosa       text,
+  documento   text,
   monto       numeric not null,
   moneda      text not null,
   estado      text not null,

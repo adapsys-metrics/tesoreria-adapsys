@@ -119,7 +119,10 @@ for (const [archivo, reg] of Object.entries(REGISTROS)) {
       empresa,
       cuenta,
       limpiar(m.contraparte),
-      limpiar(m.lineas.length === 1 ? m.lineas[0].glosa : m.documento || m.lineas[0]?.glosa),
+      // La glosa es el memo; el número va en su propia columna desde la
+      // migración 0008. Antes se mezclaban y no se podía buscar por número.
+      limpiar(m.lineas[0]?.glosa ?? ""),
+      limpiar(m.documento),
       m.monto,
       moneda,
       reg.estado,
@@ -154,7 +157,7 @@ for (const [archivo, reg] of Object.entries(REGISTROS)) {
 mkdirSync(SALIDA, { recursive: true });
 writeFileSync(
   join(SALIDA, "carga_movimientos.csv"),
-  csv([["ref", "fecha", "empresa_id", "cuenta_id", "contraparte", "glosa", "monto", "moneda", "estado", "origen"], ...movimientos])
+  csv([["ref", "fecha", "empresa_id", "cuenta_id", "contraparte", "glosa", "documento", "monto", "moneda", "estado", "origen"], ...movimientos])
 );
 writeFileSync(
   join(SALIDA, "carga_lineas.csv"),

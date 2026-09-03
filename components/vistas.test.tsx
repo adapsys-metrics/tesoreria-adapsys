@@ -141,7 +141,8 @@ describe("Movimientos", () => {
 
     // Los campos de cabecera del movimiento, no solo sus líneas.
     expect(screen.getByLabelText("Monto del movimiento")).toBeDefined();
-    expect(screen.getByText("Documento")).toBeDefined();
+    expect(screen.getByText("N° documento")).toBeDefined();
+    expect(screen.getByText("Tipo de documento")).toBeDefined();
     // "Proveedor / Cliente" aparece dos veces: como columna y como campo del editor.
     expect(screen.getAllByText("Proveedor / Cliente")).toHaveLength(2);
     // Y las líneas siguen estando dentro del mismo editor.
@@ -385,14 +386,43 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
     expect(screen.queryByText("Facturar")).toBeNull();
   });
 
-  it("facturar lo saca de proyectos aprobados y lo deja en la cartera", () => {
+  it("facturar pide el número antes de mover nada", () => {
+    // El número existe justo en ese momento; dejarlo para después significa que
+    // nunca se escribe.
     conCartera("cuenta:x3");
     const antes = document.querySelectorAll("tbody tr").length;
     fireEvent.click(screen.getAllByText("Facturar")[0]!);
+    expect(screen.getByLabelText("Número de factura")).toBeDefined();
+    // Todavía no se movió: primero el número.
+    expect(document.querySelectorAll("tbody tr").length).toBe(antes);
+  });
+
+  it("con el número, sale de proyectos aprobados y queda en la cartera", () => {
+    conCartera("cuenta:x3");
+    const antes = document.querySelectorAll("tbody tr").length;
+    fireEvent.click(screen.getAllByText("Facturar")[0]!);
+    fireEvent.change(screen.getByLabelText("Número de factura"), {
+      target: { value: "FA9001" },
+    });
+    fireEvent.click(screen.getByText("OK"));
     // Sale de este registro…
     expect(document.querySelectorAll("tbody tr").length).toBe(antes - 1);
     // …y sigue siendo plata por entrar, no un movimiento del banco.
     expect(screen.getByTitle(/Ver facturas por cobrar en CLP/)).toBeDefined();
+  });
+
+  it("el número queda guardado y se puede buscar por él", () => {
+    conCartera("cuenta:x3");
+    fireEvent.click(screen.getAllByText("Facturar")[0]!);
+    fireEvent.change(screen.getByLabelText("Número de factura"), {
+      target: { value: "FA9001" },
+    });
+    fireEvent.click(screen.getByText("OK"));
+
+    fireEvent.click(screen.getByTitle(/Ver facturas por cobrar en CLP/));
+    expect(screen.getByText("FA9001")).toBeDefined();
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "FA9001" } });
+    expect(document.querySelectorAll("tbody tr").length).toBe(1);
   });
 
   it("el saldo de la cartera es lo pendiente, no cero", () => {

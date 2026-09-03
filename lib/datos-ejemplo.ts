@@ -127,6 +127,7 @@ const crear = (
     cuenta_id: cuenta.id,
     contraparte,
     glosa,
+    documento: null,
     monto,
     moneda,
     tipo_cambio: null,

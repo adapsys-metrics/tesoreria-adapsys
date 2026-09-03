@@ -20,6 +20,7 @@ const mov = (parcial: Partial<Movimiento> = {}): Movimiento => ({
   cuenta_id: "a1",
   contraparte: null,
   glosa: null,
+  documento: null,
   monto: 0,
   moneda: "CLP",
   tipo_cambio: null,

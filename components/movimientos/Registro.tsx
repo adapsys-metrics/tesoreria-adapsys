@@ -95,6 +95,11 @@ export function Registro() {
   const [abiertos, setAbiertos] = useState<string[]>([]);
   const [orden, setOrden] = useState(() => ordenDeEntrada(false));
 
+  // Facturar pide el número: es el momento en que el documento pasa a existir, y
+  // dejarlo para después significa que nunca se escribe.
+  const [facturando, setFacturando] = useState<string | null>(null);
+  const [numeroFactura, setNumeroFactura] = useState("");
+
   const lista = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     const filtrados = movimientosFiltrados
@@ -104,9 +109,12 @@ export function Registro() {
         // accionar. Acá el filtro oculta el histórico ya cerrado, no lo pendiente.
         if (soloPendiente && m.fecha < HOY && m.estado === "conciliado") return false;
         if (!q) return true;
+        // También por número de documento: "¿la 273 ya la pagaron?" es la
+        // pregunta más frecuente de cobranza.
         return (
           (m.contraparte ?? "").toLowerCase().includes(q) ||
-          (m.glosa ?? "").toLowerCase().includes(q)
+          (m.glosa ?? "").toLowerCase().includes(q) ||
+          (m.documento ?? "").toLowerCase().includes(q)
         );
       })
       .slice();
@@ -129,6 +137,12 @@ export function Registro() {
     });
   }, [movimientosFiltrados, busqueda, soloPendiente, orden, tc, cuentasBanco]);
 
+  const confirmarFactura = (id: string) => {
+    avanzarCobranza(id, numeroFactura);
+    setFacturando(null);
+    setNumeroFactura("");
+  };
+
   const alternar = (id: string) =>
     setAbiertos(abiertos.includes(id) ? abiertos.filter((x) => x !== id) : [...abiertos, id]);
 
@@ -143,7 +157,7 @@ export function Registro() {
         <input
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          placeholder="Buscar por proveedor o glosa…"
+          placeholder="Buscar por proveedor, glosa o N° de documento…"
           aria-label="Buscar"
           className={css.busqueda}
         />
@@ -300,6 +314,7 @@ export function Registro() {
 
                       <td className={clases(tabla.td, css.contraparte)}>{m.contraparte}</td>
                       <td className={clases(tabla.td, css.glosa)} title={m.glosa ?? ""}>
+                        {m.documento && <span className={css.documento}>{m.documento}</span>}
                         {m.glosa}
                       </td>
 
@@ -376,12 +391,40 @@ export function Registro() {
                           ) : (
                             <Pill estado={m.estado} />
                           )
+                        ) : facturando === m.id ? (
+                          <span className={css.facturar}>
+                            <input
+                              autoFocus
+                              value={numeroFactura}
+                              onChange={(e) => setNumeroFactura(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") confirmarFactura(m.id);
+                                if (e.key === "Escape") setFacturando(null);
+                              }}
+                              placeholder="N° factura"
+                              aria-label="Número de factura"
+                              className={css.inputFactura}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => confirmarFactura(m.id)}
+                              title="Emitir con este número"
+                              className={css.botonPagar}
+                            >
+                              OK
+                            </button>
+                          </span>
                         ) : (
                           <button
                             type="button"
-                            onClick={() =>
-                              paso.accion === "pagar" ? pagar(m.id) : avanzarCobranza(m.id)
-                            }
+                            onClick={() => {
+                              if (paso.accion === "pagar") return pagar(m.id);
+                              if (paso.accion === "facturar") {
+                                setNumeroFactura(m.documento ?? "");
+                                return setFacturando(m.id);
+                              }
+                              avanzarCobranza(m.id);
+                            }}
                             title={paso.titulo}
                             className={css.botonPagar}
                           >

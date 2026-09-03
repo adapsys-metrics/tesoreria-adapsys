@@ -82,8 +82,9 @@ type Contexto = Estado & {
   setTc: (v: number) => void;
   setTasas: (t: Tasas) => void;
   pagar: (id: string) => void;
-  /** Facturar un proyecto aprobado, o cobrar una factura. Ver lib/cobranza.ts. */
-  avanzarCobranza: (id: string) => void;
+  /** Facturar un proyecto aprobado, o cobrar una factura. Ver lib/cobranza.ts.
+   *  Al facturar se pasa el número del documento, que es cuando existe. */
+  avanzarCobranza: (id: string, documento?: string) => void;
   conciliar: (id: string) => void;
   /** Cambia cuenta, empresa y moneda juntas: la cuenta determina las otras dos. */
   cambiarCuenta: (id: string, cuenta_id: string) => void;
@@ -257,7 +258,7 @@ export function ProveedorTesoreria({
    * pasos existiría un instante en que la factura ya está en el banco pero sigue
    * marcada como proyección, y el saldo diría algo falso.
    */
-  const avanzarCobranza = useCallback((id: string) => {
+  const avanzarCobranza = useCallback((id: string, documento?: string) => {
     setEstado((p) => {
       const m = p.movimientos.find((x) => x.id === id);
       if (!m) return p;
@@ -273,6 +274,9 @@ export function ProveedorTesoreria({
             ? {
                 ...x,
                 cuenta_id: paso.destino.id,
+                // El número llega al facturar: es el momento en que el documento
+                // existe. Si no se escribió, se conserva el que hubiera.
+                documento: documento?.trim() ? documento.trim() : x.documento,
                 // Al entrar al banco el movimiento adopta la empresa de la cuenta:
                 // la cuenta manda sobre la empresa, no al revés.
                 empresa_id: cobrado ? paso.destino.empresa_id : x.empresa_id,

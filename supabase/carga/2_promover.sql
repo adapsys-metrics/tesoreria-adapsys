@@ -44,13 +44,14 @@ alter table movimientos add column carga_ref text;
 -- Con los casts explícitos esto anda igual con las tablas del paso 1 y con las
 -- que arma el importador.
 insert into movimientos
-  (fecha, empresa_id, cuenta_id, contraparte, glosa, monto, moneda, estado, origen, carga_ref)
+  (fecha, empresa_id, cuenta_id, contraparte, glosa, documento, monto, moneda, estado, origen, carga_ref)
 select
   fecha::date,
   nullif(empresa_id::text, ''),   -- la provisión GAP IMA no tiene empresa ni cuenta
   nullif(cuenta_id::text, ''),
   nullif(contraparte::text, ''),
   nullif(glosa::text, ''),
+  nullif(documento::text, ''),
   monto::numeric,
   moneda::text,
   estado::text,
