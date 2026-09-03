@@ -6,6 +6,8 @@
 // que acá toda la aritmética es sobre strings, con Date solo en UTC internamente.
 // Resultado: mismo output en servidor y cliente, en cualquier zona.
 
+import { supabaseConfigurado } from "@/lib/supabase/estado";
+
 export const ANIO = 2026;
 
 export const MESES_CORTOS = [
@@ -13,9 +15,31 @@ export const MESES_CORTOS = [
   "jul", "ago", "sep", "oct", "nov", "dic",
 ];
 
-/** "Hoy" es fijo: los datos de ejemplo se construyen alrededor de esta fecha y así
- *  los tests son deterministas. Al cablear Supabase pasa a ser la fecha real. */
-export const HOY = "2026-08-20";
+/**
+ * Hoy, en la zona horaria de Chile.
+ *
+ * La zona se fija a propósito en vez de usar la del sistema. Vercel corre en UTC y
+ * el navegador en la zona de quien mire: entre las 21:00 y la medianoche en Chile
+ * ya es el día siguiente en UTC, así que servidor y cliente responderían distinto
+ * y React marcaría el desajuste al hidratar. Además el negocio es chileno: el día
+ * que importa es el de acá.
+ *
+ * Sin Supabase configurado —los tests, o un preview sin variables— queda fija en
+ * la fecha alrededor de la cual se construyeron los datos de ejemplo, para que los
+ * tests sean deterministas.
+ */
+const HOY_DE_EJEMPLO = "2026-08-20";
+
+const hoyEnChile = (): string =>
+  // "en-CA" da YYYY-MM-DD, que es el formato con el que se compara en toda la app.
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+
+export const HOY = supabaseConfigurado ? hoyEnChile() : HOY_DE_EJEMPLO;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 

@@ -14,7 +14,7 @@ import { Registro } from "@/components/movimientos/Registro";
 import { Encabezado } from "@/components/chrome/Encabezado";
 import { Cuentas } from "@/components/chrome/Cuentas";
 import { Presupuesto } from "@/components/presupuesto/Presupuesto";
-import { SUBCATEGORIAS } from "@/lib/catalogo";
+import { CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/flujo",
@@ -539,6 +539,30 @@ describe("Presupuesto anual", () => {
     })();
     fireEvent.change(screen.getByLabelText("Cierre a"), { target: { value: "12" } });
     expect(totalDe()).not.toBe(enero);
+  });
+
+  it("no controla impuestos, bancos, inversiones ni socios, pero los muestra", () => {
+    // §4.6: se excluyen del control —no son gasto que se decida presupuestar— pero
+    // igual salen de la caja, así que van en una banda aparte.
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+
+    expect(screen.getByText("Fuera del control presupuestario")).toBeDefined();
+
+    const sinControl = new Set(
+      CATEGORIAS.filter((c) => !c.controlado).map((c) => c.nombre)
+    );
+    const nombreDe = new Map(SUBCATEGORIAS.map((s) => [s.nombre, s.categoria_id]));
+    const categoriaDe = new Map(CATEGORIAS.map((c) => [c.id, c.nombre]));
+
+    // Ninguna línea presupuestada pertenece a una categoría fuera de control.
+    const presupuestadas = screen
+      .getAllByLabelText(/^Presupuesto de /)
+      .map((i) => (i.getAttribute("aria-label") ?? "").replace("Presupuesto de ", ""));
+    const infiltradas = presupuestadas.filter((n) =>
+      sinControl.has(categoriaDe.get(nombreDe.get(n) ?? "") ?? "")
+    );
+    expect(infiltradas).toEqual([]);
   });
 
   it("una línea que gastó todo su presupuesto sigue a la vista y se marca", () => {

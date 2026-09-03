@@ -86,6 +86,12 @@ export const RESPONSABLES = [
   "", "I+D", "Analítica avanzada", "Finanzas", "Personas", "Comercial", "Gerencia",
 ];
 
+// `controlado` decide qué entra al control presupuestario (§4.6). Quedan fuera las
+// que no son gasto que se decida presupuestar: impuestos y comisiones bancarias
+// salen de lo que se factura y de lo que se mueve, las inversiones y los préstamos
+// son movimientos de tesorería, y los retiros de socios son una decisión de los
+// dueños. Se excluyen del control pero se siguen mostrando aparte, para que nadie
+// olvide que existen.
 export const CATEGORIAS: Categoria[] = [
   { id: "a-ingresos-clientes", nombre: "A INGRESOS CLIENTES", orden: 0, controlado: true },
   { id: "b-otros-ingresos", nombre: "B OTROS INGRESOS", orden: 1, controlado: true },
@@ -98,8 +104,8 @@ export const CATEGORIAS: Categoria[] = [
   { id: "2-3-gastos-sistemas-digita", nombre: "2.3 GASTOS SISTEMAS DIGITALES", orden: 8, controlado: true },
   { id: "2-4-equipos-computacionale", nombre: "2.4 EQUIPOS COMPUTACIONALES", orden: 9, controlado: true },
   { id: "3-recursos-humanos", nombre: "3 RECURSOS HUMANOS", orden: 10, controlado: true },
-  { id: "4-impuestos", nombre: "4 IMPUESTOS", orden: 11, controlado: true },
-  { id: "5-bancos", nombre: "5 BANCOS", orden: 12, controlado: true },
+  { id: "4-impuestos", nombre: "4 IMPUESTOS", orden: 11, controlado: false },
+  { id: "5-bancos", nombre: "5 BANCOS", orden: 12, controlado: false },
   { id: "6-prestamos-bancarios", nombre: "6 PRESTAMOS BANCARIOS", orden: 13, controlado: false },
   { id: "7-inversiones", nombre: "7 INVERSIONES", orden: 14, controlado: false },
   { id: "8-relacionados-y-socios", nombre: "8 RELACIONADOS Y SOCIOS", orden: 15, controlado: false },

@@ -35,8 +35,8 @@ insert into categorias (id, nombre, orden, controlado) values
   ('2-3-gastos-sistemas-digita', '2.3 GASTOS SISTEMAS DIGITALES', 8, true),
   ('2-4-equipos-computacionale', '2.4 EQUIPOS COMPUTACIONALES', 9, true),
   ('3-recursos-humanos', '3 RECURSOS HUMANOS', 10, true),
-  ('4-impuestos', '4 IMPUESTOS', 11, true),
-  ('5-bancos', '5 BANCOS', 12, true),
+  ('4-impuestos', '4 IMPUESTOS', 11, false),
+  ('5-bancos', '5 BANCOS', 12, false),
   ('6-prestamos-bancarios', '6 PRESTAMOS BANCARIOS', 13, false),
   ('7-inversiones', '7 INVERSIONES', 14, false),
   ('8-relacionados-y-socios', '8 RELACIONADOS Y SOCIOS', 15, false);

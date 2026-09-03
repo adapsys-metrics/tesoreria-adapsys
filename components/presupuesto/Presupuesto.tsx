@@ -97,7 +97,10 @@ export function Presupuesto() {
   const secciones = useMemo(
     () =>
       SECCIONES.map(({ naturaleza, titulo }) => {
-        const categorias = CATEGORIAS.map((categoria) => {
+        // Solo las categorías controladas (§4.6). Impuestos, bancos, inversiones,
+        // préstamos y socios no son gasto que se decida presupuestar: salen de lo
+        // que se factura, de lo que se mueve o de una decisión de los dueños.
+        const categorias = CATEGORIAS.filter((c) => c.controlado).map((categoria) => {
           const filas = SUBCATEGORIAS.filter(
             (s) => s.categoria_id === categoria.id && s.naturaleza === naturaleza
           )
@@ -130,6 +133,21 @@ export function Presupuesto() {
   };
 
   const totalGeneral = totalizar(secciones.flatMap((s) => s.categorias.flatMap((c) => c.filas)));
+
+  /** Lo que queda fuera del control, con su gasto. Se muestra igual para que nadie
+   *  olvide que existe: son millones que salen de la caja aunque no se presupuesten. */
+  const fueraDeControl = useMemo(() => {
+    const categorias = CATEGORIAS.filter((c) => !c.controlado)
+      .map((categoria) => ({
+        categoria,
+        real: SUBCATEGORIAS.filter((s) => s.categoria_id === categoria.id).reduce(
+          (t, s) => t + (ejecutado.get(s.id) ?? 0),
+          0
+        ),
+      }))
+      .filter((c) => c.real > 0);
+    return { categorias, total: categorias.reduce((t, c) => t + c.real, 0) };
+  }, [ejecutado]);
 
   return (
     <div>
@@ -215,6 +233,31 @@ export function Presupuesto() {
           </tbody>
         </table>
       </div>
+
+      {fueraDeControl.categorias.length > 0 && (
+        <div className={css.fuera}>
+          <Rotulo texto="Fuera del control presupuestario" />
+          <p className={css.glosaFuera}>
+            Impuestos, comisiones bancarias, inversiones, préstamos y movimientos con socios. No se
+            presupuestan —salen de lo que se factura, de lo que se mueve o de una decisión de los
+            dueños— pero igual salen de la caja.
+          </p>
+          <table className={css.tablaFuera}>
+            <tbody>
+              {fueraDeControl.categorias.map(({ categoria, real }) => (
+                <tr key={categoria.id}>
+                  <td className={tabla.td}>{categoria.nombre}</td>
+                  <td className={clases(tabla.td, tabla.tdNum)}>{mag(real)}</td>
+                </tr>
+              ))}
+              <tr className={css.filaTotalSeccion}>
+                <td className={tabla.td}>Total fuera del control</td>
+                <td className={clases(tabla.td, tabla.tdNum)}>{mag(fueraDeControl.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {!cargando && totalGeneral.anual === 0 && (
         <div className={css.vacio}>

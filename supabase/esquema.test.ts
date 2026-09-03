@@ -61,6 +61,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0008_numero_de_documento.sql"));
   await db.exec(leer("migrations/0009_usuarios_autorizados.sql"));
   await db.exec(leer("migrations/0010_presupuesto_mensual.sql"));
+  await db.exec(leer("migrations/0011_categorias_fuera_del_control.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -508,6 +509,28 @@ describe("quién puede entrar", () => {
 
   it("sin sesión no entra nadie", async () => {
     expect(await como(null)).toBe(false);
+  });
+});
+
+describe("qué entra al control presupuestario (§4.6)", () => {
+  it("deja fuera lo que no es gasto que se decida presupuestar", async () => {
+    const r = await db.query<{ id: string }>(
+      `select id from categorias where not controlado order by id`
+    );
+    expect(r.rows.map((c) => c.id)).toEqual([
+      "4-impuestos",
+      "5-bancos",
+      "6-prestamos-bancarios",
+      "7-inversiones",
+      "8-relacionados-y-socios",
+    ]);
+  });
+
+  it("el resto sí se controla", async () => {
+    const r = await db.query<{ n: number }>(
+      `select count(*)::int as n from categorias where controlado`
+    );
+    expect(r.rows[0]!.n).toBe(11);
   });
 });
 

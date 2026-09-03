@@ -176,3 +176,29 @@
   background: var(--brick);
   color: #ffffff;
 }
+
+/* ── Fuera del control presupuestario ──
+   §4.6 pide que se excluyan del control pero se muestren igual. Van abajo y en
+   una tabla propia: mezclarlas con las controladas invitaría a sumarlas, y el
+   total del presupuesto dejaría de ser comparable contra la planilla. */
+.fuera {
+  margin-top: 24px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.glosaFuera {
+  margin: 6px 0 12px;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 620px;
+}
+
+.tablaFuera {
+  width: 100%;
+  max-width: 620px;
+  border-collapse: collapse;
+}
