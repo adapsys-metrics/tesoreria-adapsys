@@ -227,13 +227,22 @@ describe("Movimientos", () => {
     expect(screen.getAllByLabelText("Monto de la línea").length).toBe(antes + 2);
   });
 
-  it("marcar pagado saca el movimiento de proyectado (§4.1)", () => {
+  it("marcar pagado deja el movimiento conciliado, no en un estado intermedio", () => {
+    // El banco se revisa todos los días: se marca pagado justamente porque el
+    // movimiento ya está en la cartola con esa fecha. Pasar por `pagado` dejaría
+    // un contador de pendientes que crece y que nadie baja nunca.
     montar(<Registro />);
     const botones = screen.getAllByText("Marcar pagado");
     const antes = botones.length;
     fireEvent.click(botones[0]!);
+    // Sale de lo pendiente, que es lo que se quiere: la lista de vencidos encoge
+    // a medida que se procesan.
     expect(screen.getAllByText("Marcar pagado").length).toBe(antes - 1);
-    expect(screen.getAllByText("Pagado").length).toBeGreaterThan(0);
+
+    // Y con el filtro apagado se ve dónde quedó: conciliado, sin paso intermedio.
+    fireEvent.click(screen.getByLabelText(/Solo pendiente y futuro/));
+    expect(screen.getAllByText("Conciliado").length).toBeGreaterThan(0);
+    expect(screen.queryAllByText("Pagado")).toHaveLength(0);
   });
 
   it("la búsqueda filtra y el vacío se explica", () => {

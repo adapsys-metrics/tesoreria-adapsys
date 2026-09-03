@@ -113,7 +113,19 @@ proyectado  →  pagado  →  conciliado
 - `pagado`: salió del banco. Afecta el saldo. Aún no cuadrado contra cartola.
 - `conciliado`: cuadrado contra cartola.
 
-La diferencia entre el saldo del sistema y el de la cartola es exactamente la lista de `pagado`.
+**En la práctica el equipo no usa `pagado`.** El banco se revisa todos los días y un movimiento
+se marca pagado justamente porque ya está en la cartola con esa fecha: la verificación ocurre al
+registrar. Así que la app pasa de `proyectado` a `conciliado` directamente, y no hay conciliación
+mensual ni semanal. Un estado intermedio solo dejaría un contador de pendientes que crece y que
+nadie baja nunca.
+
+El estado sigue existiendo en la base y en el modelo: si algún día se cuadra contra un extracto
+en vez de al día, vuelve a tener sentido sin necesidad de migrar nada.
+
+**Lo que sí se mira todos los días son los vencidos:** fecha pasada y todavía `proyectado`. O ya
+ocurrió y falta registrarlo, o hay que mover la fecha — una factura que el cliente no pagó se
+reprograma al futuro. En Quicken eso se ve como un cambio de tono en el registro de proyecciones,
+y es el equivalente de lo que en otros sistemas sería la conciliación.
 
 ### 4.2 La naturaleza vive en la subcategoría, no en la categoría
 

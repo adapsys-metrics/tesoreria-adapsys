@@ -235,6 +235,18 @@ export function ProveedorTesoreria({
 
   const { movimientos, empresasSeleccionadas, registroSeleccionado, tc, tasas } = estado;
 
+  /**
+   * Marcar pagado deja el movimiento en `conciliado`, no en `pagado`.
+   *
+   * El estado intermedio existe para cuadrar contra la cartola una vez al mes,
+   * y acá el banco se revisa todos los días: se marca pagado justamente porque el
+   * movimiento ya está en la cartola con esa fecha. La verificación ya ocurrió al
+   * registrar, así que pasar por `pagado` solo dejaría un contador de pendientes
+   * que crece y que nadie va a bajar nunca.
+   *
+   * El estado sigue existiendo en la base y en el modelo. Si algún día se cuadra
+   * contra un extracto en vez de al día, vuelve a tener sentido sin migración.
+   */
   const pagar = useCallback((id: string) => {
     // Solo cambia el estado. El saldo de la cuenta se recalcula solo, porque se
     // deriva de los movimientos: antes acá se sumaba a mano y era la única forma
@@ -242,7 +254,7 @@ export function ProveedorTesoreria({
     setEstado((p) => ({
       ...p,
       movimientos: p.movimientos.map((x) =>
-        x.id === id && x.estado === "proyectado" ? { ...x, estado: "pagado" } : x
+        x.id === id && x.estado === "proyectado" ? { ...x, estado: "conciliado" } : x
       ),
     }));
   }, []);
@@ -280,7 +292,9 @@ export function ProveedorTesoreria({
                 // Al entrar al banco el movimiento adopta la empresa de la cuenta:
                 // la cuenta manda sobre la empresa, no al revés.
                 empresa_id: cobrado ? paso.destino.empresa_id : x.empresa_id,
-                estado: cobrado ? ("pagado" as const) : x.estado,
+                // Directo a conciliado por lo mismo que `pagar`: se marca cobrado
+                // cuando el abono ya está en la cartola.
+                estado: cobrado ? ("conciliado" as const) : x.estado,
               }
             : x
         ),

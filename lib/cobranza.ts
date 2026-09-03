@@ -65,13 +65,13 @@ export function pasoDe(m: Movimiento, cuentas: Cuenta[]): Paso {
       accion: "cobrar",
       destino,
       etiqueta: "Cobrar",
-      titulo: `Entró la plata: pasa a ${destino.nombre} y suma al saldo.`,
+      titulo: `Entró la plata: pasa a ${destino.nombre} y suma al saldo. Queda conciliado — se marca cuando ya está en la cartola.`,
     };
   }
 
   return {
     accion: "pagar",
     etiqueta: "Marcar pagado",
-    titulo: "Salió del banco: pasa a afectar el saldo de la cuenta.",
+    titulo: "Ya está en la cartola con esta fecha: pasa a afectar el saldo de la cuenta.",
   };
 }
