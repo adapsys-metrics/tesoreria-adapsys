@@ -1,0 +1,416 @@
+"use client";
+
+// Control presupuestario anual (§4.6). Réplica de la planilla que hoy se arma a
+// mano, con la diferencia de que el "real" no se copia de un export: se calcula
+// de los movimientos.
+//
+// Es consolidado para las cuatro empresas Adapsys y NO usa el filtro global de
+// empresas — por eso lee `movimientos` y no `movimientosFiltrados`.
+
+import { useEffect, useMemo, useState } from "react";
+import { CATEGORIAS, RESPONSABLES, SUBCATEGORIAS } from "@/lib/catalogo";
+import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
+import { crearClienteNavegador } from "@/lib/supabase/client";
+import { supabaseConfigurado } from "@/lib/supabase/estado";
+import {
+  cargarPresupuesto,
+  guardarLineaPresupuesto,
+  type PresupuestoDelAnio,
+} from "@/lib/supabase/presupuesto";
+import {
+  MESES_DEL_ANIO,
+  SECCIONES,
+  distribucionOperativa,
+  distribuirLineal,
+  ejecutadoPorSubcategoria,
+  filaDe,
+  reescalar,
+  sobreRitmo,
+  totalizar,
+  type FilaPresupuesto,
+  type Meses,
+} from "@/lib/presupuesto";
+import { HOY } from "@/lib/fechas";
+import { clp, mag, pct } from "@/lib/formato";
+import { Cabecera, Rotulo, clases } from "@/components/ui/primitivas";
+import tabla from "@/components/ui/tabla.module.css";
+import css from "./presupuesto.module.css";
+
+const NOMBRES_MES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+const LINEA_VACIA = { monto: 0, monto_anterior: 0, responsable: "", nota: "" };
+const sinMeses = (): Meses => Array<number>(MESES_DEL_ANIO).fill(0);
+
+const NATURALEZA_DE = new Map(SUBCATEGORIAS.map((s) => [s.id, s.naturaleza]));
+const esOperativa = (id: string) => NATURALEZA_DE.get(id) === "operativo";
+
+export function Presupuesto() {
+  const { movimientos } = useTesoreria();
+
+  const [anio, setAnio] = useState(() => Number(HOY.slice(0, 4)));
+  const [mes, setMes] = useState(() => Number(HOY.slice(5, 7)));
+  const [datos, setDatos] = useState<PresupuestoDelAnio>({
+    meses: new Map(),
+    metadata: new Map(),
+  });
+  const [cargando, setCargando] = useState(supabaseConfigurado);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!supabaseConfigurado) return;
+    let vigente = true;
+    setCargando(true);
+    cargarPresupuesto(crearClienteNavegador(), anio)
+      .then((d) => vigente && setDatos(d))
+      .catch((e: Error) => vigente && setError(e.message))
+      .finally(() => vigente && setCargando(false));
+    return () => {
+      vigente = false;
+    };
+  }, [anio]);
+
+  /** Guarda una línea y la refleja en pantalla. El estado se actualiza primero:
+   *  si falla, la banda de error avisa que lo que se ve no es lo que hay. */
+  const guardar = (sub: string, meses: Meses, linea = datos.metadata.get(sub) ?? LINEA_VACIA) => {
+    setDatos((p) => ({
+      meses: new Map(p.meses).set(sub, meses),
+      metadata: new Map(p.metadata).set(sub, linea),
+    }));
+    if (!supabaseConfigurado) return;
+    guardarLineaPresupuesto(crearClienteNavegador(), anio, sub, linea, meses).catch(
+      (e: Error) => setError(e.message)
+    );
+  };
+
+  const ejecutado = useMemo(
+    () => ejecutadoPorSubcategoria(movimientos, anio, mes),
+    [movimientos, anio, mes]
+  );
+
+  /** Una sección con sus categorías y el total. Solo aparecen las líneas con
+   *  presupuesto o con gasto: el catálogo tiene 293 subcategorías y mostrarlas
+   *  todas dejaría el control enterrado entre ceros. */
+  const secciones = useMemo(
+    () =>
+      SECCIONES.map(({ naturaleza, titulo }) => {
+        const categorias = CATEGORIAS.map((categoria) => {
+          const filas = SUBCATEGORIAS.filter(
+            (s) => s.categoria_id === categoria.id && s.naturaleza === naturaleza
+          )
+            .map((s) =>
+              filaDe(
+                s.id,
+                datos.metadata.get(s.id) ?? LINEA_VACIA,
+                datos.meses.get(s.id) ?? sinMeses(),
+                ejecutado.get(s.id) ?? 0,
+                mes
+              )
+            )
+            .filter((f) => f.anual > 0 || f.real > 0);
+          return { categoria, filas, total: totalizar(filas) };
+        }).filter((c) => c.filas.length > 0);
+
+        return {
+          naturaleza,
+          titulo,
+          categorias,
+          total: totalizar(categorias.flatMap((c) => c.filas)),
+        };
+      }),
+    [datos, ejecutado, mes]
+  );
+
+  const generarOperativo = () => {
+    const distribucion = distribucionOperativa(movimientos, anio, esOperativa);
+    for (const [sub, meses] of distribucion) guardar(sub, meses);
+  };
+
+  const totalGeneral = totalizar(secciones.flatMap((s) => s.categorias.flatMap((c) => c.filas)));
+
+  return (
+    <div>
+      <Cabecera
+        titulo="Presupuesto anual"
+        bajada="Consolidado de las cuatro empresas Adapsys: no usa el filtro de empresas (§4.6). El gasto a la fecha se calcula de los movimientos; el presupuesto se escribe acá."
+      />
+
+      <div className={css.barra}>
+        <label className={css.control}>
+          <span className={css.etiqueta}>Año</span>
+          <input
+            type="number"
+            value={anio}
+            onChange={(e) => setAnio(Number(e.target.value))}
+            className={css.entradaAnio}
+          />
+        </label>
+
+        <label className={css.control}>
+          <span className={css.etiqueta}>Cierre a</span>
+          <select
+            value={mes}
+            onChange={(e) => setMes(Number(e.target.value))}
+            className={css.selectMes}
+          >
+            {NOMBRES_MES.map((nombre, i) => (
+              <option key={nombre} value={i + 1}>
+                {nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <button
+          type="button"
+          onClick={generarOperativo}
+          title="Suma los movimientos operativos del año por subcategoría y los deja como presupuesto, repartidos por el mes de cada uno"
+          className={css.botonGenerar}
+        >
+          Generar operativo desde los movimientos
+        </button>
+      </div>
+
+      {error && (
+        <div className={css.bandaError} role="alert">
+          <strong>Algo falló con el presupuesto.</strong> {error}
+        </div>
+      )}
+      {cargando && <div className={css.bandaCarga}>Cargando presupuesto…</div>}
+
+      <div className={tabla.envoltorio}>
+        <table className={tabla.tabla}>
+          <thead>
+            <tr>
+              <th className={tabla.th}>Categoría</th>
+              <th className={tabla.th}>Responsable</th>
+              <th className={clases(tabla.th, tabla.thNum)}>Presupuesto {anio}</th>
+              <th className={clases(tabla.th, tabla.thNum)}>Presupuesto a la fecha</th>
+              <th className={clases(tabla.th, tabla.thNum)}>Gasto a la fecha</th>
+              <th className={clases(tabla.th, tabla.thNum)}>Variación nominal</th>
+              <th className={clases(tabla.th, tabla.thNum)}>% del año</th>
+            </tr>
+          </thead>
+          <tbody>
+            {secciones.map((seccion) => (
+              <SeccionFilas
+                key={seccion.naturaleza}
+                seccion={seccion}
+                mes={mes}
+                meses={datos.meses}
+                metadata={datos.metadata}
+                guardar={guardar}
+              />
+            ))}
+
+            <tr className={css.filaTotalGeneral}>
+              <td className={tabla.td} colSpan={2}>
+                Total gastos
+              </td>
+              <Numeros total={totalGeneral} />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {!cargando && totalGeneral.anual === 0 && (
+        <div className={css.vacio}>
+          Todavía no hay presupuesto para {anio}. Con <strong>Generar operativo</strong> se arma la
+          parte operativa desde los movimientos que ya cargaste; las líneas de inversión se
+          escriben a mano en la columna de presupuesto.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Las cuatro columnas de números de un total. */
+function Numeros({ total }: { total: ReturnType<typeof totalizar> }) {
+  return (
+    <>
+      <td className={clases(tabla.td, tabla.tdNum)}>{mag(total.anual)}</td>
+      <td className={clases(tabla.td, tabla.tdNum)}>{mag(total.ytd)}</td>
+      <td className={clases(tabla.td, tabla.tdNum)}>{mag(total.real)}</td>
+      <td
+        className={clases(tabla.td, tabla.tdNum)}
+        style={{ color: total.variacion > 0 ? "var(--brick)" : undefined }}
+      >
+        {clp(total.variacion)}
+      </td>
+      <td className={clases(tabla.td, tabla.tdNum)}>
+        {total.avance === null ? "—" : pct(total.avance)}
+      </td>
+    </>
+  );
+}
+
+function SeccionFilas({
+  seccion,
+  mes,
+  meses,
+  metadata,
+  guardar,
+}: {
+  seccion: {
+    titulo: string;
+    categorias: { categoria: { id: string; nombre: string }; filas: FilaPresupuesto[]; total: ReturnType<typeof totalizar> }[];
+    total: ReturnType<typeof totalizar>;
+  };
+  mes: number;
+  meses: Map<string, Meses>;
+  metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
+  guardar: (sub: string, meses: Meses, linea?: FilaPresupuesto | typeof LINEA_VACIA) => void;
+}) {
+  return (
+    <>
+      <tr className={tabla.filaSeccion}>
+        <td className={tabla.td} colSpan={7}>
+          <Rotulo texto={seccion.titulo} />
+        </td>
+      </tr>
+
+      {seccion.categorias.map(({ categoria, filas, total }) => (
+        <FilasDeCategoria
+          key={categoria.id}
+          categoria={categoria}
+          filas={filas}
+          total={total}
+          mes={mes}
+          meses={meses}
+          metadata={metadata}
+          guardar={guardar}
+        />
+      ))}
+
+      <tr className={css.filaTotalSeccion}>
+        <td className={tabla.td} colSpan={2}>
+          Total {seccion.titulo.toLowerCase()}
+        </td>
+        <Numeros total={seccion.total} />
+      </tr>
+    </>
+  );
+}
+
+function FilasDeCategoria({
+  categoria,
+  filas,
+  total,
+  mes,
+  meses,
+  metadata,
+  guardar,
+}: {
+  categoria: { id: string; nombre: string };
+  filas: FilaPresupuesto[];
+  total: ReturnType<typeof totalizar>;
+  mes: number;
+  meses: Map<string, Meses>;
+  metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
+  guardar: (sub: string, meses: Meses, linea?: never) => void;
+}) {
+  return (
+    <>
+      <tr className={css.filaCategoria}>
+        <td className={clases(tabla.td, css.nombreCategoria)} colSpan={2}>
+          {categoria.nombre}
+        </td>
+        <Numeros total={total} />
+      </tr>
+
+      {filas.map((f) => (
+        <Fila
+          key={f.subcategoria_id}
+          fila={f}
+          mes={mes}
+          mesesActuales={meses.get(f.subcategoria_id) ?? sinMeses()}
+          guardar={guardar}
+          metadata={metadata}
+        />
+      ))}
+    </>
+  );
+}
+
+function Fila({
+  fila,
+  mesesActuales,
+  guardar,
+  metadata,
+}: {
+  fila: FilaPresupuesto;
+  mes: number;
+  mesesActuales: Meses;
+  guardar: (sub: string, meses: Meses, linea?: never) => void;
+  metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
+}) {
+  const nombre = SUBCATEGORIAS.find((s) => s.id === fila.subcategoria_id)?.nombre ?? fila.subcategoria_id;
+  const alerta = sobreRitmo(fila);
+
+  const cambiarAnual = (texto: string) => {
+    const nuevo = Number(texto.replace(/\D/g, ""));
+    if (Number.isNaN(nuevo) || nuevo === fila.anual) return;
+    // Reescalar y no repartir parejo: si la línea tiene forma —un aguinaldo en
+    // diciembre— subirle el total no debe aplanarla.
+    guardar(fila.subcategoria_id, nuevo === 0 ? sinMeses() : reescalar(mesesActuales, nuevo));
+  };
+
+  const cambiarMeta = (campo: "responsable" | "nota", valor: string) => {
+    const actual = metadata.get(fila.subcategoria_id) ?? LINEA_VACIA;
+    guardar(fila.subcategoria_id, mesesActuales, { ...actual, [campo]: valor } as never);
+  };
+
+  return (
+    <tr className="fila">
+      <td className={clases(tabla.td, css.nombreSub)}>
+        {nombre}
+        {alerta && (
+          <span className={css.alerta} title="Gastado más de lo presupuestado a esta fecha">
+            sobre presupuesto
+          </span>
+        )}
+      </td>
+
+      <td className={tabla.td}>
+        <select
+          value={fila.responsable ?? ""}
+          aria-label={`Responsable de ${nombre}`}
+          onChange={(e) => cambiarMeta("responsable", e.target.value)}
+          className={css.selectResponsable}
+        >
+          {RESPONSABLES.map((r) => (
+            <option key={r || "sin"} value={r}>
+              {r || "—"}
+            </option>
+          ))}
+        </select>
+      </td>
+
+      <td className={clases(tabla.td, tabla.tdNum)}>
+        <input
+          key={fila.anual}
+          defaultValue={fila.anual ? mag(fila.anual) : ""}
+          aria-label={`Presupuesto de ${nombre}`}
+          onBlur={(e) => cambiarAnual(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+          placeholder="0"
+          className={css.entradaMonto}
+        />
+      </td>
+
+      <td className={clases(tabla.td, tabla.tdNum)}>{mag(fila.ytd)}</td>
+      <td className={clases(tabla.td, tabla.tdNum)}>{mag(fila.real)}</td>
+      <td
+        className={clases(tabla.td, tabla.tdNum)}
+        style={{ color: fila.variacion > 0 ? "var(--brick)" : undefined }}
+      >
+        {clp(fila.variacion)}
+      </td>
+      <td className={clases(tabla.td, tabla.tdNum, alerta && css.avanceAlerta)}>
+        {fila.avance === null ? "—" : pct(fila.avance)}
+      </td>
+    </tr>
+  );
+}

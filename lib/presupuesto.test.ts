@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   anualDe,
+  reescalar,
   distribucionOperativa,
   distribuirLineal,
   ejecutadoPorSubcategoria,
@@ -143,6 +144,33 @@ describe("distribucionOperativa", () => {
       esOperativa
     );
     expect(anualDe(d.get("sueldos")!)).toBe(100);
+  });
+});
+
+describe("reescalar", () => {
+  it("conserva la forma mensual al cambiar el anual", () => {
+    // Sueldos con aguinaldo en diciembre: subir el presupuesto no debe aplanar
+    // diciembre contra el resto.
+    const meses = [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 200];
+    const nuevo = reescalar(meses, 2600); // el doble
+    expect(anualDe(nuevo)).toBe(2600);
+    expect(nuevo[11]).toBe(400);
+    expect(nuevo[0]).toBe(200);
+  });
+
+  it("el total queda exacto aunque el redondeo de cada mes desvíe", () => {
+    const meses = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+    expect(anualDe(reescalar(meses, 1000))).toBe(1000);
+  });
+
+  it("una línea sin forma se reparte pareja", () => {
+    const nuevo = reescalar(Array(12).fill(0), 1_200_000);
+    expect(anualDe(nuevo)).toBe(1_200_000);
+    expect(Math.max(...nuevo) - Math.min(...nuevo)).toBe(0);
+  });
+
+  it("bajar a cero deja los doce meses en cero", () => {
+    expect(anualDe(reescalar([10, 20, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0], 0))).toBe(0);
   });
 });
 

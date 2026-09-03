@@ -192,12 +192,25 @@ export type Database = {
           },
         ];
       };
+      presupuesto_meses: {
+        Row: { anio: number; subcategoria_id: string; mes: number; monto: number };
+        Insert: { anio: number; subcategoria_id: string; mes: number; monto?: number };
+        Update: Partial<Database["public"]["Tables"]["presupuesto_meses"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "presupuesto_meses_subcategoria_id_fkey";
+            columns: ["subcategoria_id"];
+            isOneToOne: false;
+            referencedRelation: "subcategorias";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       presupuesto: {
         Row: {
           id: number;
           anio: number;
           subcategoria_id: string;
-          monto: number;
           monto_anterior: number;
           responsable: string | null;
           nota: string | null;
@@ -206,7 +219,6 @@ export type Database = {
           id?: number;
           anio: number;
           subcategoria_id: string;
-          monto?: number;
           monto_anterior?: number;
           responsable?: string | null;
           nota?: string | null;
@@ -299,6 +311,11 @@ export type Database = {
       fn_guardar_movimiento: {
         Args: { p: Json };
         Returns: number;
+      };
+      /** Guarda los doce meses de una línea del presupuesto y su metadata (0010). */
+      fn_guardar_presupuesto: {
+        Args: { p: Json };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;

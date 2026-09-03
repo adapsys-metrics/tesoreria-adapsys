@@ -13,6 +13,7 @@ import { Flujo } from "@/components/flujo/Flujo";
 import { Registro } from "@/components/movimientos/Registro";
 import { Encabezado } from "@/components/chrome/Encabezado";
 import { Cuentas } from "@/components/chrome/Cuentas";
+import { Presupuesto } from "@/components/presupuesto/Presupuesto";
 import { SUBCATEGORIAS } from "@/lib/catalogo";
 
 vi.mock("next/navigation", () => ({
@@ -489,6 +490,66 @@ describe("Vista de entrada", () => {
     expect(screen.getByText(/Viendo solo/)).toBeDefined();
     const cuerpo = within(document.querySelector("tbody")!);
     expect(cuerpo.queryAllByText("conciliado")).toHaveLength(0);
+  });
+});
+
+describe("Presupuesto anual", () => {
+  it("abre vacío y dice cómo empezar", () => {
+    // Sin presupuesto cargado la tabla no tiene filas: sin explicación parecería
+    // rota en vez de recién empezada.
+    montar(<Presupuesto />);
+    expect(screen.getByText("Presupuesto anual")).toBeDefined();
+    expect(screen.getByText(/Todavía no hay presupuesto/)).toBeDefined();
+  });
+
+  it("generar arma la parte operativa desde los movimientos", () => {
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    expect(screen.queryByText(/Todavía no hay presupuesto/)).toBeNull();
+    expect(screen.getByText("Gastos Operativos")).toBeDefined();
+    // Aparecen líneas reales del catálogo, no un total suelto.
+    expect(screen.getAllByLabelText(/^Presupuesto de /).length).toBeGreaterThan(0);
+  });
+
+  it("no presupuesta las líneas de inversión: esas se escriben a mano", () => {
+    // La sección de inversión igual aparece, porque hay gasto real en líneas sin
+    // presupuestar — y verlo es justamente el punto. Lo que no debe pasar es que
+    // generar les invente un presupuesto.
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+
+    const naturalezaDe = new Map(SUBCATEGORIAS.map((s) => [s.nombre, s.naturaleza]));
+    const conPresupuesto = screen
+      .getAllByLabelText(/^Presupuesto de /)
+      .filter((i) => (i as HTMLInputElement).value !== "")
+      .map((i) => (i.getAttribute("aria-label") ?? "").replace("Presupuesto de ", ""));
+
+    expect(conPresupuesto.length).toBeGreaterThan(0);
+    expect(conPresupuesto.filter((n) => naturalezaDe.get(n) !== "operativo")).toEqual([]);
+  });
+
+  it("cambiar el mes de cierre mueve el presupuesto a la fecha", () => {
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    const totalDe = () =>
+      Array.from(document.querySelectorAll("tbody tr")).at(-1)?.textContent ?? "";
+    const enero = (() => {
+      fireEvent.change(screen.getByLabelText("Cierre a"), { target: { value: "1" } });
+      return totalDe();
+    })();
+    fireEvent.change(screen.getByLabelText("Cierre a"), { target: { value: "12" } });
+    expect(totalDe()).not.toBe(enero);
+  });
+
+  it("editar el presupuesto de una línea recalcula su variación", () => {
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    const campo = screen.getAllByLabelText(/^Presupuesto de /)[0]! as HTMLInputElement;
+    const antes = campo.value;
+    fireEvent.blur(campo, { target: { value: "999.999.999" } });
+    expect(
+      (screen.getAllByLabelText(/^Presupuesto de /)[0]! as HTMLInputElement).value
+    ).not.toBe(antes);
   });
 });
 

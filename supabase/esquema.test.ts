@@ -60,6 +60,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0007_guardar_movimiento.sql"));
   await db.exec(leer("migrations/0008_numero_de_documento.sql"));
   await db.exec(leer("migrations/0009_usuarios_autorizados.sql"));
+  await db.exec(leer("migrations/0010_presupuesto_mensual.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -507,6 +508,96 @@ describe("quién puede entrar", () => {
 
   it("sin sesión no entra nadie", async () => {
     expect(await como(null)).toBe(false);
+  });
+});
+
+describe("presupuesto mensual", () => {
+  const meses = (anio: number, sub: string, montos: number[]) =>
+    `insert into presupuesto_meses (anio, subcategoria_id, mes, monto) values ` +
+    montos.map((m, i) => `(${anio}, '${sub}', ${i + 1}, ${m})`).join(",");
+
+  it("guarda un monto por mes y el anual es su suma", async () => {
+    expect(await intentar(meses(2026, "arriendo-oficina", Array(12).fill(8_991_000)))).toBeNull();
+    const r = await db.query<{ anual: string; ytd: string }>(
+      `select sum(monto)::text as anual,
+              sum(monto) filter (where mes <= 3)::text as ytd
+       from presupuesto_meses where anio = 2026 and subcategoria_id = 'arriendo-oficina'`
+    );
+    expect(r.rows[0]).toEqual({ anual: "107892000", ytd: "26973000" });
+  });
+
+  it("no deja repetir el mismo mes de la misma línea", async () => {
+    // La clave primaria es (año, subcategoría, mes): sin ella una carga repetida
+    // duplicaría el presupuesto sin que nada avisara.
+    expect(await intentar(meses(2026, "arriendo-oficina", [1]))).toMatch(/duplicate key/);
+  });
+
+  it("rechaza un mes fuera de rango", async () => {
+    expect(
+      await intentar(
+        `insert into presupuesto_meses (anio, subcategoria_id, mes, monto)
+         values (2026, 'sueldos', 13, 1)`
+      )
+    ).toMatch(/presupuesto_meses_mes_check/);
+  });
+
+  it("rechaza una subcategoría que no existe", async () => {
+    expect(
+      await intentar(
+        `insert into presupuesto_meses (anio, subcategoria_id, mes, monto)
+         values (2026, 'no-existe', 1, 1)`
+      )
+    ).toMatch(/foreign key/);
+  });
+
+  it("fn_guardar_presupuesto graba los doce meses en el mes que corresponde", async () => {
+    // El primer elemento del arreglo es enero. Una versión de esta función corría
+    // el índice y enero se perdía en silencio: el anual quedaba bien salvo por un
+    // mes, y el acumulado a enero daba cero.
+    const p = {
+      anio: 2027,
+      subcategoria_id: "sueldos",
+      responsable: "Finanzas",
+      nota: "",
+      monto_anterior: 0,
+      meses: [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200],
+    };
+    expect(
+      await intentar(`select fn_guardar_presupuesto('${JSON.stringify(p)}'::jsonb)`)
+    ).toBeNull();
+
+    const r = await db.query<{ mes: number; monto: string }>(
+      `select mes, monto::text from presupuesto_meses
+       where anio = 2027 and subcategoria_id = 'sueldos' order by mes`
+    );
+    expect(r.rows).toHaveLength(12);
+    expect(r.rows[0]).toEqual({ mes: 1, monto: "100" });
+    expect(r.rows[11]).toEqual({ mes: 12, monto: "1200" });
+
+    const meta = await db.query<{ responsable: string }>(
+      `select responsable from presupuesto where anio = 2027 and subcategoria_id = 'sueldos'`
+    );
+    expect(meta.rows[0]).toEqual({ responsable: "Finanzas" });
+  });
+
+  it("guardar dos veces reemplaza, no acumula", async () => {
+    const p = { anio: 2027, subcategoria_id: "sueldos", meses: [7] };
+    expect(
+      await intentar(`select fn_guardar_presupuesto('${JSON.stringify(p)}'::jsonb)`)
+    ).toBeNull();
+    const r = await db.query<{ n: number; total: string }>(
+      `select count(*)::int as n, sum(monto)::text as total from presupuesto_meses
+       where anio = 2027 and subcategoria_id = 'sueldos'`
+    );
+    expect(r.rows[0]).toEqual({ n: 1, total: "7" });
+    await db.exec(`delete from presupuesto_meses where anio = 2027;
+                   delete from presupuesto where anio = 2027;`);
+  });
+
+  it("el mismo año de otra línea convive sin chocar", async () => {
+    expect(await intentar(meses(2026, "sueldos", Array(12).fill(1000)))).toBeNull();
+    expect(await contar("presupuesto_meses")).toBe(24);
+    await db.exec(`delete from presupuesto_meses`);
   });
 });
 

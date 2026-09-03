@@ -1,0 +1,171 @@
+/* Control presupuestario anual. La densidad manda igual que en el resto: son
+   hasta 293 líneas posibles y lo que se recorre son las columnas de números. */
+
+.barra {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.etiqueta {
+  font-family: var(--font-sans);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.entradaAnio,
+.selectMes {
+  font-family: var(--font-cifras);
+  font-size: 12px;
+  padding: 5px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+}
+
+.entradaAnio {
+  width: 80px;
+}
+
+.botonGenerar {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  padding: 7px 13px;
+  border: 1px solid var(--teal);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--teal);
+  margin-left: auto;
+}
+
+.botonGenerar:hover {
+  background: var(--teal-soft);
+}
+
+.bandaCarga,
+.bandaError {
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.bandaCarga {
+  background: var(--surface);
+  color: var(--muted);
+  font-family: var(--font-cifras);
+}
+
+.bandaError {
+  background: var(--brick-soft);
+  color: var(--brick);
+}
+
+/* ── Filas ── */
+
+.filaCategoria {
+  background: var(--fila-categoria);
+  font-weight: 600;
+}
+
+.nombreCategoria {
+  font-size: 11.5px;
+}
+
+.nombreSub {
+  padding-left: 22px;
+}
+
+.filaTotalSeccion {
+  background: var(--seccion);
+  font-weight: 600;
+}
+
+.filaTotalGeneral {
+  background: var(--teal);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.filaTotalGeneral td {
+  color: #ffffff;
+}
+
+/* ── Edición en la fila ── */
+
+.entradaMonto {
+  font-family: var(--font-cifras);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  width: 110px;
+  padding: 3px 6px;
+  text-align: right;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+}
+
+/* El campo se insinúa al pasar por encima: en una tabla de solo lectura salvo una
+   columna, marcar las 293 celdas editables con un borde sería más ruido que dato. */
+.entradaMonto:hover {
+  border-color: var(--rule);
+  background: var(--surface);
+}
+
+.entradaMonto:focus {
+  border-color: var(--teal);
+  background: var(--surface);
+  outline: none;
+}
+
+.selectResponsable {
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  padding: 2px 4px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  background: var(--paper);
+  max-width: 140px;
+}
+
+.alerta {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--brick-soft);
+  color: var(--brick);
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.avanceAlerta {
+  color: var(--brick);
+  font-weight: 600;
+}
+
+.vacio {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}

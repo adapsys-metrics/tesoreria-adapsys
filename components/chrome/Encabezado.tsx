@@ -17,7 +17,7 @@ const VISTAS = [
   { href: "/flujo", texto: "Flujo de caja" },
   { href: "/movimientos", texto: "Movimientos" },
   { href: null, texto: "Conciliación" },
-  { href: null, texto: "Presupuesto anual" },
+  { href: "/presupuesto", texto: "Presupuesto anual" },
   { href: null, texto: "Reportes" },
   { href: null, texto: "Categorías" },
 ];

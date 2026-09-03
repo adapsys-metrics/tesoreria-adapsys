@@ -146,6 +146,30 @@ export function distribucionOperativa(
   return porSub;
 }
 
+/**
+ * Cambia el anual de una línea conservando su forma mensual.
+ *
+ * Importa en lo operativo: si "Sueldos" tiene un aguinaldo en diciembre, subirle
+ * el presupuesto un 5% no debe aplanar diciembre contra el resto. Cuando la línea
+ * no tiene forma —todos los meses en cero— se reparte pareja, que es lo único
+ * razonable sin más información.
+ */
+export function reescalar(meses: Meses, nuevoAnual: number): Meses {
+  const actual = anualDe(meses);
+  if (actual === 0) return distribuirLineal(nuevoAnual);
+
+  const factor = Math.abs(nuevoAnual) / actual;
+  const escalados = meses.map((m) => Math.round(m * factor));
+  // El redondeo de cada mes desvía el total; la diferencia se corrige en el mes
+  // que más pesa, que es donde menos se nota.
+  const desvio = Math.round(Math.abs(nuevoAnual)) - anualDe(escalados);
+  if (desvio !== 0) {
+    const mayor = escalados.indexOf(Math.max(...escalados));
+    escalados[mayor] = (escalados[mayor] ?? 0) + desvio;
+  }
+  return escalados;
+}
+
 /** Arma la fila de una subcategoría con sus columnas calculadas. */
 export function filaDe(
   subcategoria_id: string,
