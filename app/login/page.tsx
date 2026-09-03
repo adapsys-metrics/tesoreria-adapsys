@@ -29,6 +29,11 @@ export default function Login() {
         redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: {
           hd: process.env.NEXT_PUBLIC_DOMINIO_CORPORATIVO ?? "adapsysgroup.com",
+          // Google siempre pregunta con qué cuenta entrar. Sin esto reusa la
+          // sesión ya iniciada en el navegador y entra sin preguntar, que en una
+          // máquina con varias cuentas —o compartida— significa entrar como quien
+          // no era y no enterarse.
+          prompt: "select_account",
         },
       },
     });

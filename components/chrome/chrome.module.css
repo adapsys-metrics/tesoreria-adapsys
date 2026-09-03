@@ -357,3 +357,37 @@
   min-width: 0;
   padding: 18px 20px 60px;
 }
+
+/* ── Sesión ── */
+
+.sesion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.correo {
+  color: var(--muted);
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.salir {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--muted);
+  padding: 3px 8px;
+}
+
+.salir:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}

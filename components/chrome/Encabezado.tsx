@@ -8,6 +8,7 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Cifra, clases } from "@/components/ui/primitivas";
 import { clp } from "@/lib/formato";
 import { SelectorEmpresas } from "./SelectorEmpresas";
+import { Sesion } from "./Sesion";
 import css from "./chrome.module.css";
 
 // Las cuatro vistas sin ruta todavía se muestran deshabilitadas en vez de omitirse,
@@ -53,6 +54,8 @@ export function Encabezado() {
         </div>
 
         <SelectorEmpresas />
+
+        <Sesion />
 
         <div className={css.cifras}>
           <Cifra rotulo="Efectivo CLP" valor={efectivo} tono="var(--teal)" />
