@@ -5,6 +5,7 @@ import {
   distribucionOperativa,
   distribuirLineal,
   ejecutadoPorSubcategoria,
+  entraAlPresupuesto,
   filaDe,
   finDeMes,
   presupuestoAgotado,
@@ -70,6 +71,61 @@ describe("distribuirLineal", () => {
 
   it("toma el monto en magnitud, venga con signo o sin él", () => {
     expect(anualDe(distribuirLineal(-1_000_000))).toBe(1_000_000);
+  });
+});
+
+describe("entraAlPresupuesto", () => {
+  const ADAPSYS = ["adap", "cons", "clting", "ctria"];
+
+  it("deja fuera a las sociedades relacionadas", () => {
+    // SANTA MARÍA comparte el sistema pero no el presupuesto (§4.6): sus gastos
+    // inflarían el ejecutado de líneas que las cuatro no gastaron.
+    expect(entraAlPresupuesto({ empresa_id: "sm" }, ADAPSYS)).toBe(false);
+  });
+
+  it("incluye a las cuatro del grupo", () => {
+    for (const e of ADAPSYS) expect(entraAlPresupuesto({ empresa_id: e }, ADAPSYS)).toBe(true);
+  });
+
+  it("incluye lo que todavía no tiene empresa", () => {
+    // Las proyecciones que no saben por qué sociedad se gestionan pertenecen al
+    // consolidado justamente por eso.
+    expect(entraAlPresupuesto({ empresa_id: null }, ADAPSYS)).toBe(true);
+  });
+});
+
+describe("el control presupuestario, de punta a punta", () => {
+  // Lo que hace la vista: filtrar primero y calcular después. Se prueba junto
+  // porque el error que importa es olvidar el filtro, no equivocarse en la suma.
+  const ADAPSYS = ["adap", "cons", "clting", "ctria"];
+  const ejecutadoDelGrupo = (ms: Movimiento[], mes: number) =>
+    ejecutadoPorSubcategoria(
+      ms.filter((m) => entraAlPresupuesto(m, ADAPSYS)),
+      2026,
+      mes
+    );
+
+  it("no suma el gasto de una relacionada", () => {
+    const e = ejecutadoDelGrupo(
+      [
+        gasto("1", "2026-02-10", "arriendo-oficina", -1_000_000),
+        gasto("2", "2026-02-10", "arriendo-oficina", -9_000_000, { empresa_id: "sm" }),
+      ],
+      3
+    );
+    // Solo el millón de Adapsys: Santa María no comparte este presupuesto.
+    expect(e.get("arriendo-oficina")).toBe(1_000_000);
+  });
+
+  it("tampoco la deja entrar a la distribución que genera el operativo", () => {
+    const meses = distribucionOperativa(
+      [gasto("1", "2026-05-10", "arriendo-oficina", -3_000_000, { empresa_id: "sm" })].filter((m) =>
+        entraAlPresupuesto(m, ADAPSYS)
+      ),
+      2026,
+      () => true
+    );
+    expect(meses.get("arriendo-oficina")).toBeUndefined();
   });
 });
 

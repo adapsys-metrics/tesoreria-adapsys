@@ -57,6 +57,22 @@ export function finDeMes(anio: number, mes: number): string {
   return `${anio}-${String(mes).padStart(2, "0")}-${String(ultimo).padStart(2, "0")}`;
 }
 
+/**
+ * ¿Este movimiento entra al control presupuestario?
+ *
+ * El presupuesto es uno solo para las cuatro empresas del grupo Adapsys (§4.6).
+ * SANTA MARÍA es una sociedad relacionada: comparte el sistema pero no el
+ * presupuesto, así que sus gastos no pueden sumar acá — inflarían el ejecutado de
+ * líneas que las cuatro no gastaron.
+ *
+ * Lo que no tiene empresa sí entra: son las proyecciones que todavía no saben por
+ * qué sociedad se gestionan, y pertenecen al consolidado justamente por eso.
+ */
+export const entraAlPresupuesto = (
+  m: { empresa_id: string | null },
+  empresas: readonly string[]
+): boolean => m.empresa_id === null || empresas.includes(m.empresa_id);
+
 /** Mes de una fecha ISO, 1 a 12. */
 const mesDe = (fecha: string) => Number(fecha.slice(5, 7));
 

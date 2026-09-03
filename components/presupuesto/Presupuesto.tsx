@@ -8,7 +8,7 @@
 // empresas — por eso lee `movimientos` y no `movimientosFiltrados`.
 
 import { useEffect, useMemo, useState } from "react";
-import { CATEGORIAS, RESPONSABLES, SUBCATEGORIAS } from "@/lib/catalogo";
+import { CATEGORIAS, IDS_ADAPSYS, RESPONSABLES, SUBCATEGORIAS } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { supabaseConfigurado } from "@/lib/supabase/estado";
@@ -23,6 +23,7 @@ import {
   distribucionOperativa,
   distribuirLineal,
   ejecutadoPorSubcategoria,
+  entraAlPresupuesto,
   filaDe,
   finDeMes,
   presupuestoAgotado,
@@ -91,9 +92,18 @@ export function Presupuesto() {
     );
   };
 
+  // Solo las cuatro del grupo Adapsys (§4.6). SANTA MARÍA comparte el sistema pero
+  // no el presupuesto, y sumar sus gastos inflaría líneas que las cuatro no
+  // gastaron. Se filtra una vez acá y todo lo que sigue —ejecutado, distribución y
+  // el detalle que se abre al hacer clic— parte de la misma base.
+  const delPresupuesto = useMemo(
+    () => movimientos.filter((m) => entraAlPresupuesto(m, IDS_ADAPSYS)),
+    [movimientos]
+  );
+
   const ejecutado = useMemo(
-    () => ejecutadoPorSubcategoria(movimientos, anio, mes),
-    [movimientos, anio, mes]
+    () => ejecutadoPorSubcategoria(delPresupuesto, anio, mes),
+    [delPresupuesto, anio, mes]
   );
 
   /** Las líneas que componen un monto de la columna "gasto a la fecha".
@@ -102,7 +112,7 @@ export function Presupuesto() {
   const lineasDe = (subs: Set<string>): LineaExpandida[] => {
     const desde = `${anio}-01-01`;
     const hasta = finDeMes(anio, mes);
-    return expandir(movimientos).filter(
+    return expandir(delPresupuesto).filter(
       (f) =>
         f.estado !== "proyectado" &&
         f.fecha >= desde &&
@@ -166,7 +176,7 @@ export function Presupuesto() {
   );
 
   const generarOperativo = () => {
-    const distribucion = distribucionOperativa(movimientos, anio, esOperativa);
+    const distribucion = distribucionOperativa(delPresupuesto, anio, esOperativa);
     for (const [sub, meses] of distribucion) guardar(sub, meses);
   };
 
@@ -191,7 +201,7 @@ export function Presupuesto() {
     <div>
       <Cabecera
         titulo="Presupuesto anual"
-        bajada="Consolidado de las cuatro empresas Adapsys: no usa el filtro de empresas (§4.6). El gasto a la fecha se calcula de los movimientos; el presupuesto se escribe acá."
+        bajada="Consolidado de las cuatro empresas Adapsys — SANTA MARÍA queda fuera por ser relacionada, y el filtro de empresas no aplica acá (§4.6). El gasto a la fecha se calcula de los movimientos; el presupuesto se escribe en esta pantalla."
       />
 
       <div className={css.barra}>
