@@ -541,6 +541,32 @@ describe("Presupuesto anual", () => {
     expect(totalDe()).not.toBe(enero);
   });
 
+  it("el gasto a la fecha abre los movimientos que lo componen", () => {
+    // Sin esto no hay forma de contrastar el número contra la realidad: se ve un
+    // total y hay que salir a buscar a mano de dónde salió.
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+
+    const montos = screen.getAllByTitle("Ver los movimientos que componen este monto");
+    expect(montos.length).toBeGreaterThan(0);
+    fireEvent.click(montos[0]!);
+
+    const panel = screen.getByRole("dialog");
+    expect(panel).toBeDefined();
+    // Trae movimientos de verdad y se pueden reclasificar sin salir de la vista.
+    expect(within(panel).getAllByLabelText("Subcategoría").length).toBeGreaterThan(0);
+    expect(panel.textContent).toMatch(/Enero a/);
+  });
+
+  it("el detalle se cierra con Escape", () => {
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    fireEvent.click(screen.getAllByTitle("Ver los movimientos que componen este monto")[0]!);
+    expect(screen.queryByRole("dialog")).not.toBeNull();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("no controla impuestos, bancos, inversiones ni socios, pero los muestra", () => {
     // §4.6: se excluyen del control —no son gasto que se decida presupuestar— pero
     // igual salen de la caja, así que van en una banda aparte.

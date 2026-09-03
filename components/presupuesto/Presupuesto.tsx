@@ -24,6 +24,7 @@ import {
   distribuirLineal,
   ejecutadoPorSubcategoria,
   filaDe,
+  finDeMes,
   presupuestoAgotado,
   reescalar,
   sobreRitmo,
@@ -32,6 +33,9 @@ import {
   type Meses,
 } from "@/lib/presupuesto";
 import { HOY } from "@/lib/fechas";
+import { expandir } from "@/lib/dominio";
+import { PanelDetalle, type Detalle } from "@/components/flujo/PanelDetalle";
+import type { LineaExpandida } from "@/lib/tipos";
 import { clp, mag, pct } from "@/lib/formato";
 import { Cabecera, Rotulo, clases } from "@/components/ui/primitivas";
 import tabla from "@/components/ui/tabla.module.css";
@@ -49,7 +53,8 @@ const NATURALEZA_DE = new Map(SUBCATEGORIAS.map((s) => [s.id, s.naturaleza]));
 const esOperativa = (id: string) => NATURALEZA_DE.get(id) === "operativo";
 
 export function Presupuesto() {
-  const { movimientos } = useTesoreria();
+  const { movimientos, tc, editarLinea, editarMovimiento } = useTesoreria();
+  const [detalle, setDetalle] = useState<Detalle | null>(null);
 
   const [anio, setAnio] = useState(() => Number(HOY.slice(0, 4)));
   const [mes, setMes] = useState(() => Number(HOY.slice(5, 7)));
@@ -90,6 +95,39 @@ export function Presupuesto() {
     () => ejecutadoPorSubcategoria(movimientos, anio, mes),
     [movimientos, anio, mes]
   );
+
+  /** Las líneas que componen un monto de la columna "gasto a la fecha".
+   *  Se filtra igual que ejecutadoPorSubcategoria —mismo rango, mismos estados—
+   *  para que lo que se abre sume exactamente lo que se ve. */
+  const lineasDe = (subs: Set<string>): LineaExpandida[] => {
+    const desde = `${anio}-01-01`;
+    const hasta = finDeMes(anio, mes);
+    return expandir(movimientos).filter(
+      (f) =>
+        f.estado !== "proyectado" &&
+        f.fecha >= desde &&
+        f.fecha <= hasta &&
+        f.subcategoria_id !== null &&
+        subs.has(f.subcategoria_id)
+    );
+  };
+
+  const abrir = (titulo: string, subs: Set<string>) => {
+    const items = lineasDe(subs);
+    if (!items.length) return;
+    setDetalle({ titulo, periodo: `Enero a ${NOMBRES_MES[mes - 1]} de ${anio}`, items });
+  };
+
+  const reclasificar = (fila: LineaExpandida, subcategoria_id: string) => {
+    if (fila.indice_linea !== null) {
+      editarLinea(fila.movimiento_id, fila.indice_linea, "subcategoria_id", subcategoria_id);
+    } else {
+      // Sin líneas: clasificarlo crea la primera.
+      editarMovimiento(fila.movimiento_id, "lineas", [
+        { subcategoria_id, monto: fila.monto, glosa: fila.glosa },
+      ]);
+    }
+  };
 
   /** Una sección con sus categorías y el total. Solo aparecen las líneas con
    *  presupuesto o con gasto: el catálogo tiene 293 subcategorías y mostrarlas
@@ -221,6 +259,7 @@ export function Presupuesto() {
                 meses={datos.meses}
                 metadata={datos.metadata}
                 guardar={guardar}
+                abrir={abrir}
               />
             ))}
 
@@ -228,7 +267,19 @@ export function Presupuesto() {
               <td className={tabla.td} colSpan={2}>
                 Total gastos
               </td>
-              <Numeros total={totalGeneral} />
+              <Numeros
+                total={totalGeneral}
+                abrir={() =>
+                  abrir(
+                    "Total gastos",
+                    new Set(
+                      secciones.flatMap((s) =>
+                        s.categorias.flatMap((c) => c.filas.map((f) => f.subcategoria_id))
+                      )
+                    )
+                  )
+                }
+              />
             </tr>
           </tbody>
         </table>
@@ -259,6 +310,15 @@ export function Presupuesto() {
         </div>
       )}
 
+      {detalle && (
+        <PanelDetalle
+          detalle={detalle}
+          cerrar={() => setDetalle(null)}
+          tc={tc}
+          reclasificar={reclasificar}
+        />
+      )}
+
       {!cargando && totalGeneral.anual === 0 && (
         <div className={css.vacio}>
           Todavía no hay presupuesto para {anio}. Con <strong>Generar operativo</strong> se arma la
@@ -270,13 +330,37 @@ export function Presupuesto() {
   );
 }
 
+/** Monto de gasto que abre el detalle. Sin gasto no hay nada que abrir, así que
+ *  se muestra plano: un botón que no hace nada es peor que un número. */
+function Gasto({ valor, abrir }: { valor: number; abrir?: () => void }) {
+  if (!valor || !abrir) return <>{mag(valor)}</>;
+  return (
+    <button
+      type="button"
+      onClick={abrir}
+      title="Ver los movimientos que componen este monto"
+      className={css.montoClicable}
+    >
+      {mag(valor)}
+    </button>
+  );
+}
+
 /** Las cuatro columnas de números de un total. */
-function Numeros({ total }: { total: ReturnType<typeof totalizar> }) {
+function Numeros({
+  total,
+  abrir,
+}: {
+  total: ReturnType<typeof totalizar>;
+  abrir?: () => void;
+}) {
   return (
     <>
       <td className={clases(tabla.td, tabla.tdNum)}>{mag(total.anual)}</td>
       <td className={clases(tabla.td, tabla.tdNum)}>{mag(total.ytd)}</td>
-      <td className={clases(tabla.td, tabla.tdNum)}>{mag(total.real)}</td>
+      <td className={clases(tabla.td, tabla.tdNum)}>
+        <Gasto valor={total.real} abrir={abrir} />
+      </td>
       <td
         className={clases(tabla.td, tabla.tdNum)}
         style={{ color: total.variacion > 0 ? "var(--brick)" : undefined }}
@@ -296,6 +380,7 @@ function SeccionFilas({
   meses,
   metadata,
   guardar,
+  abrir,
 }: {
   seccion: {
     titulo: string;
@@ -306,6 +391,7 @@ function SeccionFilas({
   meses: Map<string, Meses>;
   metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
   guardar: (sub: string, meses: Meses, linea?: FilaPresupuesto | typeof LINEA_VACIA) => void;
+  abrir: (titulo: string, subs: Set<string>) => void;
 }) {
   return (
     <>
@@ -325,6 +411,7 @@ function SeccionFilas({
           meses={meses}
           metadata={metadata}
           guardar={guardar}
+          abrir={abrir}
         />
       ))}
 
@@ -332,7 +419,15 @@ function SeccionFilas({
         <td className={tabla.td} colSpan={2}>
           Total {seccion.titulo.toLowerCase()}
         </td>
-        <Numeros total={seccion.total} />
+        <Numeros
+          total={seccion.total}
+          abrir={() =>
+            abrir(
+              seccion.titulo,
+              new Set(seccion.categorias.flatMap((c) => c.filas.map((f) => f.subcategoria_id)))
+            )
+          }
+        />
       </tr>
     </>
   );
@@ -346,6 +441,7 @@ function FilasDeCategoria({
   meses,
   metadata,
   guardar,
+  abrir,
 }: {
   categoria: { id: string; nombre: string };
   filas: FilaPresupuesto[];
@@ -354,6 +450,7 @@ function FilasDeCategoria({
   meses: Map<string, Meses>;
   metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
   guardar: (sub: string, meses: Meses, linea?: never) => void;
+  abrir: (titulo: string, subs: Set<string>) => void;
 }) {
   return (
     <>
@@ -361,7 +458,10 @@ function FilasDeCategoria({
         <td className={clases(tabla.td, css.nombreCategoria)} colSpan={2}>
           {categoria.nombre}
         </td>
-        <Numeros total={total} />
+        <Numeros
+          total={total}
+          abrir={() => abrir(categoria.nombre, new Set(filas.map((f) => f.subcategoria_id)))}
+        />
       </tr>
 
       {filas.map((f) => (
@@ -372,6 +472,7 @@ function FilasDeCategoria({
           mesesActuales={meses.get(f.subcategoria_id) ?? sinMeses()}
           guardar={guardar}
           metadata={metadata}
+          abrir={abrir}
         />
       ))}
     </>
@@ -383,12 +484,14 @@ function Fila({
   mesesActuales,
   guardar,
   metadata,
+  abrir,
 }: {
   fila: FilaPresupuesto;
   mes: number;
   mesesActuales: Meses;
   guardar: (sub: string, meses: Meses, linea?: never) => void;
   metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
+  abrir: (titulo: string, subs: Set<string>) => void;
 }) {
   const nombre = SUBCATEGORIAS.find((s) => s.id === fila.subcategoria_id)?.nombre ?? fila.subcategoria_id;
 
@@ -459,7 +562,12 @@ function Fila({
       </td>
 
       <td className={clases(tabla.td, tabla.tdNum)}>{mag(fila.ytd)}</td>
-      <td className={clases(tabla.td, tabla.tdNum)}>{mag(fila.real)}</td>
+      <td className={clases(tabla.td, tabla.tdNum)}>
+        <Gasto
+          valor={fila.real}
+          abrir={() => abrir(nombre, new Set([fila.subcategoria_id]))}
+        />
+      </td>
       <td
         className={clases(tabla.td, tabla.tdNum)}
         style={{ color: fila.variacion > 0 ? "var(--brick)" : undefined }}
