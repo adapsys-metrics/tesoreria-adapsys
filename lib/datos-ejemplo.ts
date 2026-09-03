@@ -270,6 +270,18 @@ const PROYECTADO: Movimiento[] = [
   // El horizonte pasa del año calendario a propósito (§4.7).
   crear(fecha(ANIO + 1, 1, 18), "adap", "Mastercard dólar 7184", "TARJETA ESTADO CUENTA DOLAR 01-2027", "tarjeta", -829.94, usd()),
   crear(fecha(ANIO + 1, 1, 26), "cons", "Irina Cayo", "BXX Sueldo enero 2027", "sueldos", -200, usd()),
+
+  // ── Cartera: plata por entrar que todavía no pasó por el banco ──
+  //
+  // Los proyectos aprobados son estimaciones con fecha que se mueve; las facturas
+  // por cobrar ya tienen documento emitido. Van en registros distintos porque son
+  // grados de certeza distintos, y se avanzan de uno al otro (lib/cobranza.ts).
+  crear(fecha(ANIO, 9, 19), "adap", "BANCO ITAÚ", "FA? Coaching Adriano Fernández", "cobranza", 4568898, { cuenta_id: "x3" }),
+  crear(fecha(ANIO, 9, 25), "clting", "GOLD FIELDS", "FA? Offsite Salares Norte", "cobranza2", 13949721, { cuenta_id: "x3" }),
+  crear(fecha(ANIO, 10, 21), "cons", "DUOC UC", "FA? Movilizando la transformación", "cobranza", 71599605, { cuenta_id: "x3" }),
+  crear(fecha(ANIO, 8, 22), "cons", "CONSALUD", "FA273 Propuesta Adopción de IA — Etapa II", "cobranza2", 71449791, { cuenta_id: "x1" }),
+  crear(fecha(ANIO, 9, 6), "clting", "BHP", "FA204 Jornada Regional Technology Program", "cobranza", 5003679, { cuenta_id: "x1" }),
+  crear(fecha(ANIO, 9, 3), "cons", "STATKRAFT", "FA274 Actividades julio 2026", "cobranza2", 11876, { cuenta_id: "x2", ...usd() }),
 ];
 
 export const MOVIMIENTOS_EJEMPLO: Movimiento[] = [...HISTORICO, ...PROYECTADO];

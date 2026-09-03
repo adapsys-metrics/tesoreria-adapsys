@@ -484,3 +484,13 @@
 .saldoQuieto {
   color: var(--tenue);
 }
+
+/* Cuando no se puede avanzar el movimiento se dice por qué, en vez de mostrar un
+   botón apagado. Un control deshabilitado sin explicación obliga a adivinar. */
+.sinAccion {
+  font-size: 9.5px;
+  line-height: 1.35;
+  color: var(--muted);
+  display: inline-block;
+  max-width: 130px;
+}

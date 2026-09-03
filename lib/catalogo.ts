@@ -57,6 +57,25 @@ export const CUENTAS: Cuenta[] = [
   { id: "x4", empresa_id: "adap", nombre: "Proyectos aprobados USD", moneda: "USD", tipo: "cxc", saldo_inicial: 0, principal: false },
 ];
 
+/**
+ * La cadena de cobranza: por dónde pasa un ingreso antes de llegar al banco.
+ *
+ * Un proyecto aprobado es una estimación con fecha que se mueve; cuando se emite
+ * la factura pasa a ser un documento con número y fecha firme; cuando se cobra,
+ * entra al banco. Son tres estados distintos de certeza y por eso son tres
+ * registros y no un campo.
+ *
+ * Va explícito y no deducido del nombre de la cuenta: si mañana se agrega una
+ * etapa o se renombra un registro, se cambia acá y en ningún otro lado.
+ */
+export const CADENA_COBRANZA: { desde: string; hacia: string }[] = [
+  { desde: "x3", hacia: "x1" }, // Proyectos aprobados CLP → Facturas por cobrar CLP
+  { desde: "x4", hacia: "x2" }, // Proyectos aprobados USD → Facturas por cobrar USD
+];
+
+/** Registros donde la plata está por entrar y todavía no pasó por el banco. */
+export const CUENTAS_COBRANZA = ["x1", "x2", "x3", "x4"];
+
 export const NATURALEZAS: { id: Naturaleza; nombre: string }[] = [
   { id: "ingreso", nombre: "Ingresos" },
   { id: "inversion", nombre: "Gastos de Inversión" },

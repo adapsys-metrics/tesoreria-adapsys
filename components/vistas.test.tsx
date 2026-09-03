@@ -364,6 +364,46 @@ describe("Columna de saldo (el «Balance» de Quicken)", () => {
   });
 });
 
+describe("Cobrar recorre la cadena, no salta al banco", () => {
+  const conCartera = (registro: string) =>
+    render(
+      <ProveedorTesoreria registroInicial={registro}>
+        <Cuentas />
+        <Registro />
+      </ProveedorTesoreria>
+    );
+
+  it("un proyecto aprobado ofrece facturar, no cobrar", () => {
+    conCartera("cuenta:x3");
+    expect(screen.getAllByText("Facturar").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Cobrar")).toBeNull();
+  });
+
+  it("una factura por cobrar ofrece cobrar", () => {
+    conCartera("cuenta:x1");
+    expect(screen.getAllByText("Cobrar").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Facturar")).toBeNull();
+  });
+
+  it("facturar lo saca de proyectos aprobados y lo deja en la cartera", () => {
+    conCartera("cuenta:x3");
+    const antes = document.querySelectorAll("tbody tr").length;
+    fireEvent.click(screen.getAllByText("Facturar")[0]!);
+    // Sale de este registro…
+    expect(document.querySelectorAll("tbody tr").length).toBe(antes - 1);
+    // …y sigue siendo plata por entrar, no un movimiento del banco.
+    expect(screen.getByTitle(/Ver facturas por cobrar en CLP/)).toBeDefined();
+  });
+
+  it("el saldo de la cartera es lo pendiente, no cero", () => {
+    // Antes valía cero: la regla del banco descarta lo proyectado, y en una cuenta
+    // de cobranza todo lo pendiente es justamente proyectado.
+    conCartera("cuenta:x1");
+    const fila = screen.getByTitle(/Salir de Facturas por cobrar/);
+    expect(fila.textContent).not.toMatch(/\$0$/);
+  });
+});
+
 describe("Vista de entrada", () => {
   it("abre en los egresos proyectados", () => {
     // Lo primero que se mira cada día es lo que viene, no el histórico.

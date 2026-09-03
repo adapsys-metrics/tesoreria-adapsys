@@ -10,6 +10,7 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { descuadre, enCLP } from "@/lib/dominio";
 import { claveDeCuenta, esRegistroDeBanco } from "@/lib/registros";
 import { saldosCorrientes } from "@/lib/saldos";
+import { pasoDe } from "@/lib/cobranza";
 import {
   alternarOrden,
   ordenDeEntrada,
@@ -55,6 +56,7 @@ export function Registro() {
     agregarLinea,
     cambiarCuenta,
     pagar,
+    avanzarCobranza,
     registroSeleccionado,
     movimientos,
   } = useTesoreria();
@@ -258,6 +260,7 @@ export function Registro() {
                   m.fecha >= HOY;
                 const abierto = abiertos.includes(m.id);
                 const dif = descuadre(m);
+                const paso = pasoDe(m, cuentas);
                 const esSplit = m.lineas.length > 1;
                 const valor = enCLP(m, tc);
 
@@ -362,17 +365,28 @@ export function Registro() {
                       )}
 
                       <td className={tabla.td}>
-                        {m.estado === "proyectado" ? (
+                        {/* La acción depende de dónde esté el movimiento: un
+                            proyecto aprobado se factura, una factura se cobra y un
+                            egreso proyectado se marca pagado. Ver lib/cobranza.ts. */}
+                        {paso.accion === "ninguna" ? (
+                          paso.motivo ? (
+                            <span className={css.sinAccion} title={paso.motivo}>
+                              {paso.motivo}
+                            </span>
+                          ) : (
+                            <Pill estado={m.estado} />
+                          )
+                        ) : (
                           <button
                             type="button"
-                            onClick={() => pagar(m.id)}
-                            title="Sacarlo de proyectado: pasa a afectar el saldo de la cuenta"
+                            onClick={() =>
+                              paso.accion === "pagar" ? pagar(m.id) : avanzarCobranza(m.id)
+                            }
+                            title={paso.titulo}
                             className={css.botonPagar}
                           >
-                            Marcar pagado
+                            {paso.etiqueta}
                           </button>
-                        ) : (
-                          <Pill estado={m.estado} />
                         )}
                       </td>
 

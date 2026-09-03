@@ -33,6 +33,7 @@ import {
   enCLP,
 } from "@/lib/dominio";
 import { perteneceAlRegistro, saldoDeCuenta } from "@/lib/registros";
+import { pasoDe } from "@/lib/cobranza";
 import { pct } from "@/lib/formato";
 import type { Cuenta, Linea, Movimiento, Tasas } from "@/lib/tipos";
 
@@ -81,6 +82,8 @@ type Contexto = Estado & {
   setTc: (v: number) => void;
   setTasas: (t: Tasas) => void;
   pagar: (id: string) => void;
+  /** Facturar un proyecto aprobado, o cobrar una factura. Ver lib/cobranza.ts. */
+  avanzarCobranza: (id: string) => void;
   conciliar: (id: string) => void;
   /** Cambia cuenta, empresa y moneda juntas: la cuenta determina las otras dos. */
   cambiarCuenta: (id: string, cuenta_id: string) => void;
@@ -241,6 +244,44 @@ export function ProveedorTesoreria({
         x.id === id && x.estado === "proyectado" ? { ...x, estado: "pagado" } : x
       ),
     }));
+  }, []);
+
+  /**
+   * Avanza un ingreso por la cadena de cobranza (§ lib/cobranza.ts).
+   *
+   * Facturar lo mueve a la cartera de cobranza y lo deja proyectado: sigue siendo
+   * plata por entrar. Cobrar lo mueve a la cuenta del banco y lo pasa a `pagado`,
+   * porque entró de verdad pero todavía no se cuadró contra la cartola.
+   *
+   * Es un solo mutador porque cuenta y estado tienen que cambiar juntos: en dos
+   * pasos existiría un instante en que la factura ya está en el banco pero sigue
+   * marcada como proyección, y el saldo diría algo falso.
+   */
+  const avanzarCobranza = useCallback((id: string) => {
+    setEstado((p) => {
+      const m = p.movimientos.find((x) => x.id === id);
+      if (!m) return p;
+      const cuentas = CUENTAS.map((c) => ({ ...c, saldo: 0 }));
+      const paso = pasoDe(m, cuentas);
+      if (paso.accion !== "facturar" && paso.accion !== "cobrar") return p;
+
+      const cobrado = paso.accion === "cobrar";
+      return {
+        ...p,
+        movimientos: p.movimientos.map((x) =>
+          x.id === id
+            ? {
+                ...x,
+                cuenta_id: paso.destino.id,
+                // Al entrar al banco el movimiento adopta la empresa de la cuenta:
+                // la cuenta manda sobre la empresa, no al revés.
+                empresa_id: cobrado ? paso.destino.empresa_id : x.empresa_id,
+                estado: cobrado ? ("pagado" as const) : x.estado,
+              }
+            : x
+        ),
+      };
+    });
   }, []);
 
   /**
@@ -506,6 +547,7 @@ export function ProveedorTesoreria({
     setTc: (v) => setEstado((p) => ({ ...p, tc: v })),
     setTasas: (t) => setEstado((p) => ({ ...p, tasas: t })),
     pagar,
+    avanzarCobranza,
     conciliar,
     cambiarCuenta,
     editarMovimiento,

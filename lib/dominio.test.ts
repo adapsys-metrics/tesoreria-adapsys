@@ -269,11 +269,15 @@ describe("datos de ejemplo", () => {
     expect(inconsistentes.map((m) => `${m.id} ${m.contraparte}`)).toEqual([]);
   });
 
-  it("la empresa del movimiento es la de su cuenta", () => {
-    const empresaDeCuenta = new Map(CUENTAS.map((c) => [c.id, c.empresa_id]));
-    const inconsistentes = conCuenta.filter(
-      (m) => empresaDeCuenta.get(m.cuenta_id!) !== m.empresa_id
-    );
+  it("la empresa del movimiento es la de su cuenta bancaria", () => {
+    // Solo en las cuentas del banco. Las de cobranza cuelgan de CLA ADAPTACIÓN por
+    // tener que colgar de alguna, pero la cartera es de las cuatro empresas y cada
+    // movimiento lleva la suya — es lo que decide a qué cuenta entra al cobrarse.
+    const porId = new Map(CUENTAS.map((c) => [c.id, c]));
+    const inconsistentes = conCuenta.filter((m) => {
+      const cuenta = porId.get(m.cuenta_id!);
+      return cuenta?.tipo === "banco" && cuenta.empresa_id !== m.empresa_id;
+    });
     expect(inconsistentes.map((m) => `${m.id} ${m.contraparte}`)).toEqual([]);
   });
 
@@ -282,7 +286,7 @@ describe("datos de ejemplo", () => {
     // así que estos totales tienen que ser siempre los mismos. Si este test se cae
     // sin que nadie haya tocado los datos a propósito, algo dejó de ser determinista
     // y los tests de las vistas van a empezar a parpadear.
-    expect(MOVIMIENTOS_EJEMPLO).toHaveLength(198);
+    expect(MOVIMIENTOS_EJEMPLO).toHaveLength(204);
     const conciliados = MOVIMIENTOS_EJEMPLO.filter((m) => m.estado === "conciliado");
     expect(conciliados).toHaveLength(147);
     expect(conciliados.reduce((a, m) => a + m.monto, 0)).toBe(183142000);
