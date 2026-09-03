@@ -70,13 +70,17 @@ export function Encabezado() {
           <Cifra rotulo="Por cobrar" texto={porCobrarTexto} tono="var(--muted)" />
         </div>
 
+        {/* El nombre importa: con Supabase conectado esto recarga desde la base,
+            no descarta nada. Decía RESET / "volver a los datos de ejemplo", que es
+            lo que hacía antes de que hubiera base — un botón que dice que va a
+            borrar y en realidad refresca es peor que no tenerlo. */}
         <button
           type="button"
           onClick={reiniciar}
-          title="Volver a los datos de ejemplo"
+          title="Traer los datos frescos de la base, por si alguien más cambió algo"
           className={css.reset}
         >
-          RESET
+          RECARGAR
         </button>
       </div>
 

@@ -444,7 +444,7 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "FA9001" } });
     // Se cuentan filas de movimiento: el editor abierto también es un <tr>.
     const filasDeMovimiento = Array.from(document.querySelectorAll("tbody tr")).filter((tr) =>
-      /^\d{2}-\d{2}-\d{2}$/.test(tr.querySelector("td")?.textContent?.trim() ?? "")
+      /^\d{2}-\d{2}-\d{2}/.test(tr.querySelector("td")?.textContent?.trim() ?? "")
     );
     expect(filasDeMovimiento).toHaveLength(1);
   });
@@ -489,6 +489,44 @@ describe("Vista de entrada", () => {
     expect(screen.getByText(/Viendo solo/)).toBeDefined();
     const cuerpo = within(document.querySelector("tbody")!);
     expect(cuerpo.queryAllByText("conciliado")).toHaveLength(0);
+  });
+});
+
+describe("Borrar un movimiento", () => {
+  const abrirEditor = () => {
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+  };
+
+  it("pide confirmación antes de borrar", () => {
+    // Es la única acción del editor que no se puede deshacer: no hay historial.
+    abrirEditor();
+    const antes = document.querySelectorAll("tbody tr").length;
+    fireEvent.click(screen.getByText("Borrar movimiento"));
+    expect(screen.getByText(/No se puede deshacer/)).toBeDefined();
+    // Todavía no borró nada.
+    expect(document.querySelectorAll("tbody tr").length).toBe(antes);
+  });
+
+  it("cancelar deja el movimiento donde estaba", () => {
+    abrirEditor();
+    const antes = document.querySelectorAll("tbody tr").length;
+    fireEvent.click(screen.getByText("Borrar movimiento"));
+    fireEvent.click(screen.getByText("Cancelar"));
+    expect(screen.getByText("Borrar movimiento")).toBeDefined();
+    expect(document.querySelectorAll("tbody tr").length).toBe(antes);
+  });
+
+  it("confirmar lo saca de la lista", () => {
+    abrirEditor();
+    const filas = () =>
+      Array.from(document.querySelectorAll("tbody tr")).filter((tr) =>
+        /^\d{2}-\d{2}-\d{2}/.test(tr.querySelector("td")?.textContent?.trim() ?? "")
+      ).length;
+    const antes = filas();
+    fireEvent.click(screen.getByText("Borrar movimiento"));
+    fireEvent.click(screen.getByText("Sí, borrar"));
+    expect(filas()).toBe(antes - 1);
   });
 });
 

@@ -113,6 +113,22 @@ export async function guardarMovimiento(
   return String(data);
 }
 
+/**
+ * Borra un movimiento. Sus líneas se van solas por el `on delete cascade`.
+ *
+ * Es un borrado de verdad y no una anulación con contraasiento. CLAUDE.md §10
+ * apunta a lo segundo —"nada se borra, se anula"— y es lo correcto cuando haya
+ * auditoría; hoy no la hay, así que un contraasiento sería dos filas que nadie
+ * puede rastrear en vez de una que estorba.
+ */
+export async function borrarMovimiento(
+  supabase: SupabaseClient<Database>,
+  id: string
+): Promise<void> {
+  const { error } = await supabase.from("movimientos").delete().eq("id", Number(id));
+  if (error) throw new Error(`No se pudo borrar el movimiento: ${error.message}`);
+}
+
 export async function cargarMovimientos(
   supabase: SupabaseClient<Database>
 ): Promise<Movimiento[]> {

@@ -6,6 +6,7 @@
 // proyectado a pagado mueve el saldo de la cuenta (§4.1), y eso no puede ocurrir
 // como efecto colateral de cambiar un <select>.
 
+import { useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { enCLP } from "@/lib/dominio";
 import { clp } from "@/lib/formato";
@@ -23,10 +24,19 @@ const DOCS: { id: DocTipo; nombre: string }[] = [
 ];
 
 export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) {
-  const { tc, cuentas, editarMovimiento, cambiarCuenta, pagar, conciliar, avanzarCobranza } =
-    useTesoreria();
+  const {
+    tc,
+    cuentas,
+    editarMovimiento,
+    cambiarCuenta,
+    pagar,
+    conciliar,
+    avanzarCobranza,
+    borrarMovimiento,
+  } = useTesoreria();
 
   const paso = pasoDe(m, cuentas);
+  const [confirmando, setConfirmando] = useState(false);
 
   return (
     <div className={css.editor}>
@@ -185,6 +195,43 @@ export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) 
       )}
 
       <EditorSplits movimiento={m} />
+
+      {/* Borrar va al final y en dos pasos. Es la única acción del editor que no
+          se puede deshacer —no hay historial de cambios todavía— así que no puede
+          estar a un clic de distancia entre botones que sí se deshacen. */}
+      <div className={css.zonaBorrar}>
+        {confirmando ? (
+          <>
+            <span className={css.avisoBorrar}>
+              Se borra el movimiento y sus {m.lineas.length === 1 ? "línea" : "líneas"}. No se puede
+              deshacer.
+            </span>
+            <button
+              type="button"
+              onClick={() => borrarMovimiento(m.id)}
+              className={css.botonBorrarFirme}
+            >
+              Sí, borrar
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmando(false)}
+              className={css.botonAmpliar}
+            >
+              Cancelar
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmando(true)}
+            title="Para un movimiento registrado por error"
+            className={css.botonBorrar}
+          >
+            Borrar movimiento
+          </button>
+        )}
+      </div>
     </div>
   );
 }

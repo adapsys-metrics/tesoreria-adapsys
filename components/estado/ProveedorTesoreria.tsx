@@ -23,7 +23,12 @@ import {
 import { CUENTAS, IDS_ADAPSYS } from "@/lib/catalogo";
 import { MOVIMIENTOS_EJEMPLO, TC_USD } from "@/lib/datos-ejemplo";
 import { crearClienteNavegador } from "@/lib/supabase/client";
-import { cargarMovimientos, guardarMovimiento } from "@/lib/supabase/datos";
+import {
+  borrarMovimiento as borrarEnBase,
+  cargarMovimientos,
+  esNuevo,
+  guardarMovimiento,
+} from "@/lib/supabase/datos";
 import { supabaseConfigurado } from "@/lib/supabase/estado";
 import {
   SUB_IVA_COMPRAS,
@@ -97,6 +102,8 @@ type Contexto = Estado & {
   aplicarImpuesto: (id: string, tipo: "iva" | "bhe") => void;
   pegarLineas: (id: string, texto: string) => void;
   agregarMovimiento: (m: Omit<Movimiento, "id">) => void;
+  /** Borra un movimiento registrado por error. Las líneas se van con él. */
+  borrarMovimiento: (id: string) => void;
   reiniciar: () => void;
 };
 
@@ -486,6 +493,22 @@ export function ProveedorTesoreria({
     }));
   }, []);
 
+  /**
+   * Borra un movimiento registrado por error.
+   *
+   * El borrado va primero al estado y después a la base, como el resto de las
+   * ediciones: si falla, la banda de error avisa que lo que se ve en pantalla no
+   * es lo que hay guardado. Un movimiento que sigue en la base tras un borrado
+   * fallido reaparece al recargar, que es la corrección más honesta.
+   */
+  const borrarMovimiento = useCallback((id: string) => {
+    setEstado((p) => ({ ...p, movimientos: p.movimientos.filter((m) => m.id !== id) }));
+    if (!supabaseConfigurado) return;
+    // Un movimiento con id provisorio todavía no llegó a la base: no hay qué borrar.
+    if (esNuevo(id)) return;
+    borrarEnBase(crearClienteNavegador(), id).catch((e: Error) => setErrorGuardado(e.message));
+  }, []);
+
   const reiniciar = useCallback(() => {
     // Con Supabase conectado "reiniciar" no puede significar volver a los datos de
     // ejemplo: los datos son de la base y no hay nada local que descartar. Recarga,
@@ -577,6 +600,7 @@ export function ProveedorTesoreria({
     aplicarImpuesto,
     pegarLineas,
     agregarMovimiento,
+    borrarMovimiento,
     reiniciar,
   };
 
