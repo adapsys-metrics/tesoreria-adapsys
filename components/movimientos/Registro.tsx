@@ -95,10 +95,6 @@ export function Registro() {
   const [abiertos, setAbiertos] = useState<string[]>([]);
   const [orden, setOrden] = useState(() => ordenDeEntrada(false));
 
-  // Facturar pide el número: es el momento en que el documento pasa a existir, y
-  // dejarlo para después significa que nunca se escribe.
-  const [facturando, setFacturando] = useState<string | null>(null);
-  const [numeroFactura, setNumeroFactura] = useState("");
 
   const lista = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -136,12 +132,6 @@ export function Registro() {
       },
     });
   }, [movimientosFiltrados, busqueda, soloPendiente, orden, tc, cuentasBanco]);
-
-  const confirmarFactura = (id: string) => {
-    avanzarCobranza(id, numeroFactura);
-    setFacturando(null);
-    setNumeroFactura("");
-  };
 
   const alternar = (id: string) =>
     setAbiertos(abiertos.includes(id) ? abiertos.filter((x) => x !== id) : [...abiertos, id]);
@@ -391,41 +381,24 @@ export function Registro() {
                           ) : (
                             <Pill estado={m.estado} />
                           )
-                        ) : facturando === m.id ? (
-                          <span className={css.facturar}>
-                            <input
-                              autoFocus
-                              value={numeroFactura}
-                              onChange={(e) => setNumeroFactura(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") confirmarFactura(m.id);
-                                if (e.key === "Escape") setFacturando(null);
-                              }}
-                              placeholder="N° factura"
-                              aria-label="Número de factura"
-                              className={css.inputFactura}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => confirmarFactura(m.id)}
-                              title="Emitir con este número"
-                              className={css.botonPagar}
-                            >
-                              OK
-                            </button>
-                          </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => {
                               if (paso.accion === "pagar") return pagar(m.id);
+                              // Facturar abre el editor: hay que revisar número,
+                              // fecha y monto antes de emitir. Se confirma ahí.
                               if (paso.accion === "facturar") {
-                                setNumeroFactura(m.documento ?? "");
-                                return setFacturando(m.id);
+                                if (!abierto) alternar(m.id);
+                                return;
                               }
                               avanzarCobranza(m.id);
                             }}
-                            title={paso.titulo}
+                            title={
+                              paso.accion === "facturar"
+                                ? "Abre el movimiento para completar el número, la fecha y el monto"
+                                : paso.titulo
+                            }
                             className={css.botonPagar}
                           >
                             {paso.etiqueta}

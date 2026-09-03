@@ -386,27 +386,36 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
     expect(screen.queryByText("Facturar")).toBeNull();
   });
 
-  it("facturar pide el número antes de mover nada", () => {
-    // El número existe justo en ese momento; dejarlo para después significa que
-    // nunca se escribe.
+  it("facturar abre el editor en vez de mover el movimiento", () => {
+    // Al emitir cambia el número, pero también la fecha —que pasa de estimada a
+    // firme— y a veces el monto. Mover primero y editar después obliga a ir a
+    // buscarlo al otro registro.
     conCartera("cuenta:x3");
     const antes = document.querySelectorAll("tbody tr").length;
     fireEvent.click(screen.getAllByText("Facturar")[0]!);
-    expect(screen.getByLabelText("Número de factura")).toBeDefined();
-    // Todavía no se movió: primero el número.
-    expect(document.querySelectorAll("tbody tr").length).toBe(antes);
+    expect(screen.getByText("Emitir y pasar a cobranza")).toBeDefined();
+    expect(screen.getAllByLabelText("Número de documento").length).toBeGreaterThan(0);
+    // Todavía no se movió: sigue en proyectos aprobados, ahora con su editor abierto.
+    expect(screen.getByTitle(/Salir de Proyectos aprobados/)).toBeDefined();
+  });
+
+  it("no deja emitir sin número de documento", () => {
+    conCartera("cuenta:x3");
+    fireEvent.click(screen.getAllByText("Facturar")[0]!);
+    const emitir = screen.getByText("Emitir y pasar a cobranza") as HTMLButtonElement;
+    expect(emitir.disabled).toBe(true);
   });
 
   it("con el número, sale de proyectos aprobados y queda en la cartera", () => {
     conCartera("cuenta:x3");
     const antes = document.querySelectorAll("tbody tr").length;
     fireEvent.click(screen.getAllByText("Facturar")[0]!);
-    fireEvent.change(screen.getByLabelText("Número de factura"), {
+    fireEvent.change(screen.getAllByLabelText("Número de documento")[0]!, {
       target: { value: "FA9001" },
     });
-    fireEvent.click(screen.getByText("OK"));
-    // Sale de este registro…
-    expect(document.querySelectorAll("tbody tr").length).toBe(antes - 1);
+    fireEvent.click(screen.getByText("Emitir y pasar a cobranza"));
+    // La fila y su editor salen de este registro…
+    expect(document.querySelectorAll("tbody tr").length).toBeLessThan(antes);
     // …y sigue siendo plata por entrar, no un movimiento del banco.
     expect(screen.getByTitle(/Ver facturas por cobrar en CLP/)).toBeDefined();
   });
@@ -414,15 +423,19 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
   it("el número queda guardado y se puede buscar por él", () => {
     conCartera("cuenta:x3");
     fireEvent.click(screen.getAllByText("Facturar")[0]!);
-    fireEvent.change(screen.getByLabelText("Número de factura"), {
+    fireEvent.change(screen.getAllByLabelText("Número de documento")[0]!, {
       target: { value: "FA9001" },
     });
-    fireEvent.click(screen.getByText("OK"));
+    fireEvent.click(screen.getByText("Emitir y pasar a cobranza"));
 
     fireEvent.click(screen.getByTitle(/Ver facturas por cobrar en CLP/));
     expect(screen.getByText("FA9001")).toBeDefined();
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "FA9001" } });
-    expect(document.querySelectorAll("tbody tr").length).toBe(1);
+    // Se cuentan filas de movimiento: el editor abierto también es un <tr>.
+    const filasDeMovimiento = Array.from(document.querySelectorAll("tbody tr")).filter((tr) =>
+      /^\d{2}-\d{2}-\d{2}$/.test(tr.querySelector("td")?.textContent?.trim() ?? "")
+    );
+    expect(filasDeMovimiento).toHaveLength(1);
   });
 
   it("el saldo de la cartera es lo pendiente, no cero", () => {

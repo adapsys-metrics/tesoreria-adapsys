@@ -11,6 +11,7 @@ import { enCLP } from "@/lib/dominio";
 import { clp } from "@/lib/formato";
 import type { DocTipo, Movimiento } from "@/lib/tipos";
 import { Pill, clases } from "@/components/ui/primitivas";
+import { pasoDe } from "@/lib/cobranza";
 import { EditorSplits } from "./EditorSplits";
 import { SelectorCuenta } from "./SelectorCuenta";
 import css from "./movimientos.module.css";
@@ -22,10 +23,39 @@ const DOCS: { id: DocTipo; nombre: string }[] = [
 ];
 
 export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) {
-  const { tc, editarMovimiento, cambiarCuenta, pagar, conciliar } = useTesoreria();
+  const { tc, cuentas, editarMovimiento, cambiarCuenta, pagar, conciliar, avanzarCobranza } =
+    useTesoreria();
+
+  const paso = pasoDe(m, cuentas);
 
   return (
     <div className={css.editor}>
+      {/* Facturar se confirma acá y no en la fila: al emitir cambia el número,
+          pero también la fecha —que pasa de estimada a firme— y a veces el monto.
+          Un campo suelto en la fila obligaba a abrir el editor igual y a escribir
+          el número dos veces. */}
+      {paso.accion === "facturar" && (
+        <div className={css.franjaFacturar}>
+          <div>
+            <strong>Emitir factura.</strong> Revisa el número, la fecha y el monto
+            definitivos; al confirmar pasa a {paso.destino.nombre} y sigue siendo plata
+            por entrar.
+          </div>
+          <button
+            type="button"
+            onClick={() => avanzarCobranza(m.id)}
+            disabled={!m.documento?.trim()}
+            title={
+              m.documento?.trim()
+                ? `Pasa a ${paso.destino.nombre}`
+                : "Falta el número de documento"
+            }
+            className={css.botonEmitir}
+          >
+            Emitir y pasar a cobranza
+          </button>
+        </div>
+      )}
       <div className={css.camposEditor}>
         <label className={css.campo}>
           <span className={css.etiquetaCampo}>Fecha</span>

@@ -509,19 +509,38 @@
   white-space: nowrap;
 }
 
-/* Campo en línea para el número al facturar. */
-.facturar {
-  display: inline-flex;
+/* Franja de confirmación al facturar, arriba del editor. Se distingue del resto
+   del formulario porque no edita: ejecuta una transición que mueve el movimiento
+   de registro, y eso no puede parecer un campo más. */
+.franjaFacturar {
+  display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -2px -2px 14px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  background: var(--teal-soft);
+  border-left: 3px solid var(--teal);
+  font-size: 11.5px;
+  line-height: 1.5;
 }
 
-.inputFactura {
-  font-family: var(--font-cifras);
-  font-size: 10px;
-  width: 90px;
-  padding: 3px 5px;
-  border: 1px solid var(--teal);
-  border-radius: 3px;
-  background: var(--surface);
+.botonEmitir {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--teal);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.botonEmitir:disabled {
+  background: var(--tenue);
+  cursor: not-allowed;
 }
