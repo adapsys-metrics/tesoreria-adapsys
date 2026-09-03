@@ -169,3 +169,10 @@
   line-height: 1.6;
   color: var(--muted);
 }
+
+/* Agotado pesa más que ir sobre ritmo: uno se puede corregir con el resto del
+   año, el otro ya no. Por eso va en sólido y el otro en tinte. */
+.alertaAgotado {
+  background: var(--brick);
+  color: #ffffff;
+}

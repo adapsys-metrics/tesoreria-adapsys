@@ -7,6 +7,7 @@ import {
   ejecutadoPorSubcategoria,
   filaDe,
   finDeMes,
+  presupuestoAgotado,
   sobreRitmo,
   totalizar,
   ytdDe,
@@ -255,6 +256,36 @@ describe("sobreRitmo", () => {
   it("una línea sin presupuesto a la fecha no dispara la alarma", () => {
     // Todavía no le tocaba gastar: la desviación se ve en la variación, no acá.
     expect(sobreRitmo(filaDe("x", LINEA, distribuirLineal(0), 999_999, 3))).toBe(false);
+  });
+});
+
+describe("presupuestoAgotado", () => {
+  const anual = distribuirLineal(1_200_000);
+
+  it("marca la línea que ya usó todo lo del año", () => {
+    // Aunque el acumulado a la fecha esté lejos: lo que importa es que no queda
+    // nada para lo que resta y cualquier gasto nuevo ya es sobregasto.
+    expect(presupuestoAgotado(filaDe("x", LINEA, anual, 1_200_000, 3))).toBe(true);
+  });
+
+  it("también cuando se pasó del anual", () => {
+    expect(presupuestoAgotado(filaDe("x", LINEA, anual, 1_500_000, 3))).toBe(true);
+  });
+
+  it("no marca la que todavía tiene saldo", () => {
+    expect(presupuestoAgotado(filaDe("x", LINEA, anual, 1_199_999, 12))).toBe(false);
+  });
+
+  it("una línea sin presupuesto no está agotada: nunca tuvo", () => {
+    // Su desviación se ve en el gasto sin presupuestar, no acá.
+    expect(presupuestoAgotado(filaDe("x", LINEA, distribuirLineal(0), 500_000, 3))).toBe(false);
+  });
+
+  it("es distinto de ir sobre ritmo", () => {
+    // Gastó de más para marzo pero le queda presupuesto para el año.
+    const apurada = filaDe("x", LINEA, anual, 400_000, 3);
+    expect(sobreRitmo(apurada)).toBe(true);
+    expect(presupuestoAgotado(apurada)).toBe(false);
   });
 });
 

@@ -24,6 +24,7 @@ import {
   distribuirLineal,
   ejecutadoPorSubcategoria,
   filaDe,
+  presupuestoAgotado,
   reescalar,
   sobreRitmo,
   totalizar,
@@ -347,7 +348,18 @@ function Fila({
   metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
 }) {
   const nombre = SUBCATEGORIAS.find((s) => s.id === fila.subcategoria_id)?.nombre ?? fila.subcategoria_id;
-  const alerta = sobreRitmo(fila);
+
+  // Dos avisos distintos, y la diferencia importa. "Sobre presupuesto" dice que va
+  // más rápido de lo previsto para esta altura del año, y puede corregirse solo.
+  // "Agotado" dice que no queda nada para lo que resta: de ahí en adelante todo
+  // gasto nuevo es sobregasto, y eso es lo que hay que ver venir.
+  const agotado = presupuestoAgotado(fila);
+  const alerta = agotado || sobreRitmo(fila);
+  const aviso = agotado
+    ? { texto: "presupuesto agotado", titulo: `Ya se usó el 100% del presupuesto del año` }
+    : sobreRitmo(fila)
+      ? { texto: "sobre presupuesto", titulo: "Gastado más de lo presupuestado a esta fecha" }
+      : null;
 
   const cambiarAnual = (texto: string) => {
     const nuevo = Number(texto.replace(/\D/g, ""));
@@ -366,9 +378,12 @@ function Fila({
     <tr className="fila">
       <td className={clases(tabla.td, css.nombreSub)}>
         {nombre}
-        {alerta && (
-          <span className={css.alerta} title="Gastado más de lo presupuestado a esta fecha">
-            sobre presupuesto
+        {aviso && (
+          <span
+            className={clases(css.alerta, agotado && css.alertaAgotado)}
+            title={aviso.titulo}
+          >
+            {aviso.texto}
           </span>
         )}
       </td>

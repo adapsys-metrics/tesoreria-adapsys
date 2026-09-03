@@ -202,6 +202,17 @@ export function filaDe(
 export const sobreRitmo = (fila: FilaPresupuesto): boolean =>
   fila.ytd > 0 && fila.real > fila.ytd;
 
+/**
+ * ¿Ya se gastó todo lo del año?
+ *
+ * Es distinto de ir sobre ritmo y por eso se marca aparte. Sobre ritmo dice "vas
+ * más rápido de lo previsto para esta altura", que puede corregirse solo. Agotado
+ * dice "no queda presupuesto para lo que resta del año", y a partir de ahí
+ * cualquier gasto nuevo es sobregasto — que es justo lo que hay que ver venir.
+ */
+export const presupuestoAgotado = (fila: FilaPresupuesto): boolean =>
+  fila.avance !== null && fila.avance >= 1;
+
 /** Suma de un conjunto de filas, para los subtotales por categoría y sección. */
 export function totalizar(filas: FilaPresupuesto[]): {
   anual: number;

@@ -541,6 +541,20 @@ describe("Presupuesto anual", () => {
     expect(totalDe()).not.toBe(enero);
   });
 
+  it("una línea que gastó todo su presupuesto sigue a la vista y se marca", () => {
+    // Es lo que hay que ver venir: a partir de ahí cualquier gasto nuevo ya es
+    // sobregasto. Bajarle el presupuesto a 1 fuerza el caso sobre datos reales.
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    const campo = screen.getAllByLabelText(/^Presupuesto de /)[0]!;
+    const nombre = (campo.getAttribute("aria-label") ?? "").replace("Presupuesto de ", "");
+    fireEvent.blur(campo, { target: { value: "1" } });
+
+    expect(screen.getAllByText("presupuesto agotado").length).toBeGreaterThan(0);
+    // Y la línea no desapareció de la tabla.
+    expect(screen.getByLabelText(`Presupuesto de ${nombre}`)).toBeDefined();
+  });
+
   it("editar el presupuesto de una línea recalcula su variación", () => {
     montar(<Presupuesto />);
     fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
