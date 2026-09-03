@@ -59,6 +59,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0006_vista_sin_clasificar_con_origen.sql"));
   await db.exec(leer("migrations/0007_guardar_movimiento.sql"));
   await db.exec(leer("migrations/0008_numero_de_documento.sql"));
+  await db.exec(leer("migrations/0009_usuarios_autorizados.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -452,6 +453,60 @@ describe("fn_guardar_movimiento", () => {
     ).toBeNull();
     await db.exec(`delete from movimientos where contraparte in
       ('GTD', 'Sin clasificar', 'GAP IMA 2026', 'GTD descuadrado')`);
+  });
+});
+
+describe("quién puede entrar", () => {
+  /** Corre una consulta haciéndose pasar por un correo, como hace PostgREST. */
+  const como = async (email: string | null): Promise<boolean> => {
+    const claims = email ? JSON.stringify({ email }) : "{}";
+    const r = await db.query<{ ok: boolean }>(
+      `select fn_es_usuario_autorizado() as ok
+       from (select set_config('request.jwt.claims', '${claims}', true)) _`
+    );
+    return r.rows[0]!.ok;
+  };
+
+  it("deja entrar a las tres personas de administración", async () => {
+    for (const email of [
+      "matias.espinoza@adapsysgroup.com",
+      "litsy.verasay@adapsysgroup.com",
+      "patricia.alarcon@adapsysgroup.com",
+    ]) {
+      expect(await como(email)).toBe(true);
+    }
+  });
+
+  it("no le basta con tener correo corporativo", async () => {
+    // Este es el agujero que cierra la migración: antes entraba cualquiera de la
+    // empresa y veía los saldos de las cinco sociedades y los sueldos por persona.
+    expect(await como("otra.persona@adapsysgroup.com")).toBe(false);
+  });
+
+  it("no deja entrar a un correo de fuera aunque esté en la lista", async () => {
+    // Dos filtros independientes: una fila mal agregada no alcanza.
+    await db.exec(
+      `insert into usuarios_autorizados (email, nombre) values ('alguien@gmail.com', 'Alguien')`
+    );
+    expect(await como("alguien@gmail.com")).toBe(false);
+    await db.exec(`delete from usuarios_autorizados where email = 'alguien@gmail.com'`);
+  });
+
+  it("desactivar a alguien le quita el acceso sin borrar el registro", async () => {
+    await db.exec(
+      `update usuarios_autorizados set activo = false where email = 'litsy.verasay@adapsysgroup.com'`
+    );
+    expect(await como("litsy.verasay@adapsysgroup.com")).toBe(false);
+    // El registro sigue: es lo que se pregunta después de un incidente.
+    expect(await contar("usuarios_autorizados")).toBe(3);
+    await db.exec(
+      `update usuarios_autorizados set activo = true where email = 'litsy.verasay@adapsysgroup.com'`
+    );
+    expect(await como("litsy.verasay@adapsysgroup.com")).toBe(true);
+  });
+
+  it("sin sesión no entra nadie", async () => {
+    expect(await como(null)).toBe(false);
   });
 });
 

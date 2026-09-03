@@ -91,6 +91,12 @@ export type Database = {
           },
         ];
       };
+      usuarios_autorizados: {
+        Row: { email: string; nombre: string; activo: boolean; creado_en: string };
+        Insert: { email: string; nombre: string; activo?: boolean; creado_en?: string };
+        Update: Partial<Database["public"]["Tables"]["usuarios_autorizados"]["Insert"]>;
+        Relationships: [];
+      };
       movimientos: {
         Row: {
           id: number;

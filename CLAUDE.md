@@ -13,6 +13,12 @@ Es el idioma en que el equipo piensa el negocio y traducirlo introduce ambigüed
 Adapsys (CLA Adaptación Ltda) es una consultora chilena. Administración y finanzas la llevan
 **3 personas**, todas con permiso de escritura. No hay necesidad de roles complejos al día uno.
 
+**Son 3 personas, no "el dominio".** El acceso va por lista explícita en la tabla
+`usuarios_autorizados`, administrable desde el panel de Supabase. Filtrar solo por
+`@adapsysgroup.com` dejaría entrar a consultores y operaciones a ver los saldos de las cinco
+sociedades, los sueldos por persona y los retiros de socios. Los dos filtros conviven: hay que
+estar en la lista **y** tener correo corporativo.
+
 ### El problema real
 
 No es que falten funcionalidades: Quicken funciona. El problema es que
