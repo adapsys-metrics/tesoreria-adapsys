@@ -36,6 +36,10 @@ const mov = (p: Partial<Movimiento>): Movimiento => ({
 const gasto = (id: string, fecha: string, sub: string, monto: number, extra: Partial<Movimiento> = {}) =>
   mov({ id, fecha, monto, lineas: [{ subcategoria_id: sub, monto, glosa: null }], ...extra });
 
+// El TC no cambia nada mientras todo esté en pesos; se nombra para que se lea
+// por qué el parámetro está ahí.
+const TC = 970;
+
 const LINEA: LineaPresupuesto = { monto: 0, monto_anterior: 0, responsable: "", nota: "" };
 
 describe("finDeMes", () => {
@@ -103,7 +107,7 @@ describe("el control presupuestario, de punta a punta", () => {
       ms.filter((m) => entraAlPresupuesto(m, ADAPSYS)),
       2026,
       mes
-    );
+    , TC);
 
   it("no suma el gasto de una relacionada", () => {
     const e = ejecutadoDelGrupo(
@@ -124,7 +128,7 @@ describe("el control presupuestario, de punta a punta", () => {
       ),
       2026,
       () => true
-    );
+    , TC);
     expect(meses.get("arriendo-oficina")).toBeUndefined();
   });
 });
@@ -143,7 +147,7 @@ describe("distribucionOperativa", () => {
       ],
       2026,
       esOperativa
-    ).get("retiros-socios")!;
+    , TC).get("retiros-socios")!;
 
     expect(anualDe(meses)).toBe(60_000_000);
     expect(meses[2]).toBe(20_000_000); // marzo
@@ -162,8 +166,20 @@ describe("distribucionOperativa", () => {
       ],
       2026,
       esOperativa
-    ).get("sueldos")!;
+    , TC).get("sueldos")!;
     expect(anualDe(meses)).toBe(1000);
+  });
+
+  it("convierte los dólares igual que el ejecutado", () => {
+    // Si el presupuesto se generara sin convertir y el gasto se midiera convertido,
+    // toda línea pagada en dólares arrancaría el año con un sobregasto de 1.000 a 1.
+    const d = distribucionOperativa(
+      [gasto("1", "2026-02-01", "sistop", -100, { moneda: "USD" })],
+      2026,
+      () => true,
+      970
+    );
+    expect(d.get("sistop")![1]).toBe(97_000);
   });
 
   it("deja fuera las subcategorías de inversión, que van a mano", () => {
@@ -171,7 +187,7 @@ describe("distribucionOperativa", () => {
       [gasto("1", "2026-02-01", "equipos-computacionales", -900)],
       2026,
       esOperativa
-    );
+    , TC);
     expect(d.size).toBe(0);
   });
 
@@ -189,7 +205,7 @@ describe("distribucionOperativa", () => {
       ],
       2026,
       esOperativa
-    );
+    , TC);
     expect(d.get("telefonia-e-internet")![7]).toBe(306745); // agosto
     expect(d.get("iva-compras")![7]).toBe(58281);
   });
@@ -199,7 +215,7 @@ describe("distribucionOperativa", () => {
       [gasto("1", "2025-12-31", "sueldos", -100), gasto("2", "2026-01-01", "sueldos", -100)],
       2026,
       esOperativa
-    );
+    , TC);
     expect(anualDe(d.get("sueldos")!)).toBe(100);
   });
 });
@@ -233,7 +249,7 @@ describe("reescalar", () => {
 
 describe("ejecutadoPorSubcategoria", () => {
   it("suma en magnitud: el presupuesto se muestra sin signo (§4.6)", () => {
-    const e = ejecutadoPorSubcategoria([gasto("1", "2026-01-05", "arriendo-oficina", -8_814_748)], 2026, 3);
+    const e = ejecutadoPorSubcategoria([gasto("1", "2026-01-05", "arriendo-oficina", -8_814_748)], 2026, 3, TC);
     expect(e.get("arriendo-oficina")).toBe(8_814_748);
   });
 
@@ -250,9 +266,47 @@ describe("ejecutadoPorSubcategoria", () => {
       ],
       2026,
       3
-    );
+    , TC);
     expect(e.get("telefonia-e-internet")).toBe(306745);
     expect(e.get("iva-compras")).toBe(58281);
+  });
+
+  it("convierte los dólares al TC del año", () => {
+    // Caso real: la tarjeta en dólares paga casi todas las suscripciones. Sin
+    // convertir, un cargo de US$67,5 entraba al presupuesto como 68 pesos y el
+    // gasto en sistemas digitales desaparecía de la vista.
+    const e = ejecutadoPorSubcategoria(
+      [gasto("1", "2026-01-16", "sistop", -67.5, { moneda: "USD" })],
+      2026,
+      3,
+      970
+    );
+    expect(e.get("sistop")).toBe(65_475);
+  });
+
+  it("usa el TC del propio movimiento cuando la operación lo tuvo", () => {
+    const e = ejecutadoPorSubcategoria(
+      [gasto("1", "2026-01-16", "sistop", -100, { moneda: "USD", tipo_cambio: 900 })],
+      2026,
+      3,
+      970
+    );
+    expect(e.get("sistop")).toBe(90_000);
+  });
+
+  it("una devolución baja el gasto de la línea, no lo sube", () => {
+    // Tomando magnitud línea por línea, que un proveedor devuelva plata gastaba
+    // más. La magnitud va al final, con las devoluciones ya descontadas.
+    const e = ejecutadoPorSubcategoria(
+      [
+        gasto("1", "2026-02-10", "sistop", -1_000_000),
+        gasto("2", "2026-02-20", "sistop", 300_000),
+      ],
+      2026,
+      3,
+      970
+    );
+    expect(e.get("sistop")).toBe(700_000);
   });
 
   it("no cuenta lo proyectado: el real es lo que ocurrió", () => {
@@ -260,18 +314,18 @@ describe("ejecutadoPorSubcategoria", () => {
       [gasto("1", "2026-02-01", "sueldos", -900, { estado: "proyectado" })],
       2026,
       3
-    );
+    , TC);
     expect(e.get("sueldos")).toBeUndefined();
   });
 
   it("corta en el último día del mes elegido", () => {
     const movs = [gasto("1", "2026-03-31", "sueldos", -100), gasto("2", "2026-04-01", "sueldos", -100)];
-    expect(ejecutadoPorSubcategoria(movs, 2026, 3).get("sueldos")).toBe(100);
-    expect(ejecutadoPorSubcategoria(movs, 2026, 4).get("sueldos")).toBe(200);
+    expect(ejecutadoPorSubcategoria(movs, 2026, 3, TC).get("sueldos")).toBe(100);
+    expect(ejecutadoPorSubcategoria(movs, 2026, 4, TC).get("sueldos")).toBe(200);
   });
 
   it("ignora lo que no está clasificado", () => {
-    expect(ejecutadoPorSubcategoria([mov({ monto: -5000 })], 2026, 12).size).toBe(0);
+    expect(ejecutadoPorSubcategoria([mov({ monto: -5000 })], 2026, 12, TC).size).toBe(0);
   });
 });
 

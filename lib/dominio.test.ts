@@ -287,10 +287,10 @@ describe("datos de ejemplo", () => {
     // así que estos totales tienen que ser siempre los mismos. Si este test se cae
     // sin que nadie haya tocado los datos a propósito, algo dejó de ser determinista
     // y los tests de las vistas van a empezar a parpadear.
-    expect(MOVIMIENTOS_EJEMPLO).toHaveLength(204);
+    expect(MOVIMIENTOS_EJEMPLO).toHaveLength(211);
     const conciliados = MOVIMIENTOS_EJEMPLO.filter((m) => m.estado === "conciliado");
-    expect(conciliados).toHaveLength(147);
-    expect(conciliados.reduce((a, m) => a + m.monto, 0)).toBe(183142000);
+    expect(conciliados).toHaveLength(154);
+    expect(conciliados.reduce((a, m) => a + m.monto, 0)).toBe(183140369);
   });
 
   it("nada conciliado queda en el futuro (§4.1)", () => {

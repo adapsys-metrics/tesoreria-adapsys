@@ -61,6 +61,7 @@ export function PanelDetalle({
               {detalle.items.length} {detalle.items.length === 1 ? "mov" : "movs"}
             </div>
             <div
+              data-testid="total-detalle"
               className={css.total}
               style={{ color: total < 0 ? "var(--brick)" : "var(--teal)" }}
             >

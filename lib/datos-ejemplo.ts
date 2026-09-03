@@ -148,6 +148,12 @@ const split = (...pares: [string, number, string][]): { lineas: Linea[] } => ({
 });
 
 /** Enero a agosto, ya conciliado. */
+/** Marca un movimiento como denominado en dólares. El monto va posicional, para que
+ *  la línea implícita quede con el mismo valor y no se genere un descuadre.
+ *  En el prototipo estos venían con tc: 0, que caía al TC del estado; acá el TC queda
+ *  explícito porque el esquema lo exige para todo movimiento en USD. */
+const usd = (): Extra => ({ moneda: "USD", tipo_cambio: TC_USD });
+
 const HISTORICO: Movimiento[] = (() => {
   const out: Movimiento[] = [];
   RECURRENTES.forEach((r, ri) => {
@@ -170,14 +176,36 @@ const HISTORICO: Movimiento[] = (() => {
       );
     }
   });
+
+  // El estado de cuenta de la tarjeta en dólares, con el que se pagan casi todas
+  // las suscripciones. Está acá porque es el caso que rompe cualquier suma que
+  // ignore la moneda: sin convertir, estos US$233 entran como 233 pesos.
+  for (let m = 1; m <= 7; m++) {
+    out.push(
+      crear(
+        fecha(ANIO, m, 16),
+        "adap",
+        "Mastercard dólar 7184",
+        `TARJETA ESTADO CUENTA DOLAR ${String(m).padStart(2, "0")}-${ANIO}`,
+        "sistemas-analitica-avanzada-ia-y-r",
+        -233,
+        {
+          estado: "conciliado",
+          ...usd(),
+          lineas: [
+            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -67.5, glosa: "Mailchimp" },
+            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -23.75, glosa: "Chat GPT" },
+            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -23.75, glosa: "Microsoft Power BI" },
+            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -12.5, glosa: "Trello" },
+            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -100, glosa: "Siteground" },
+            { subcategoria_id: "automatizacion-y-metrics", monto: -5.5, glosa: "Zapier" },
+          ],
+        }
+      )
+    );
+  }
   return out;
 })();
-
-/** Marca un movimiento como denominado en dólares. El monto va posicional, para que
- *  la línea implícita quede con el mismo valor y no se genere un descuadre.
- *  En el prototipo estos venían con tc: 0, que caía al TC del estado; acá el TC queda
- *  explícito porque el esquema lo exige para todo movimiento en USD. */
-const usd = (): Extra => ({ moneda: "USD", tipo_cambio: TC_USD });
 
 /** Agosto 2026 a enero 2027, proyectado. Incluye los casos difíciles: splits de
  *  tarjeta, facturas afectas, boletas con retención y movimientos en dólares. */

@@ -102,8 +102,8 @@ export function Presupuesto() {
   );
 
   const ejecutado = useMemo(
-    () => ejecutadoPorSubcategoria(delPresupuesto, anio, mes),
-    [delPresupuesto, anio, mes]
+    () => ejecutadoPorSubcategoria(delPresupuesto, anio, mes, tc),
+    [delPresupuesto, anio, mes, tc]
   );
 
   /** Las líneas que componen un monto de la columna "gasto a la fecha".
@@ -176,7 +176,7 @@ export function Presupuesto() {
   );
 
   const generarOperativo = () => {
-    const distribucion = distribucionOperativa(delPresupuesto, anio, esOperativa);
+    const distribucion = distribucionOperativa(delPresupuesto, anio, esOperativa, tc);
     for (const [sub, meses] of distribucion) guardar(sub, meses);
   };
 

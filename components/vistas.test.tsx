@@ -558,6 +558,25 @@ describe("Presupuesto anual", () => {
     expect(panel.textContent).toMatch(/Enero a/);
   });
 
+  it("el detalle suma exactamente lo que dice la celda", () => {
+    // La celda y el panel se calculaban distinto: la celda sumaba montos en crudo
+    // y el panel convertía los dólares, así que una línea pagada con la tarjeta en
+    // dólares mostraba 919.372 en la tabla y 7.009.612 al abrirla.
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+
+    const cifra = (t: string) => Math.abs(Number(t.replace(/[^\d,-]/g, "").replace(",", ".")));
+
+    for (const celda of screen.getAllByTitle("Ver los movimientos que componen este monto")) {
+      const enLaTabla = cifra(celda.textContent ?? "");
+      fireEvent.click(celda);
+      const panel = screen.getByRole("dialog");
+      const enElPanel = cifra(within(panel).getByTestId("total-detalle").textContent ?? "");
+      expect(enElPanel).toBe(enLaTabla);
+      fireEvent.keyDown(document, { key: "Escape" });
+    }
+  });
+
   it("el detalle se cierra con Escape", () => {
     montar(<Presupuesto />);
     fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));

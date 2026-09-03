@@ -22,7 +22,7 @@
 // inversión se reparte pareja, lo operativo por las fechas de sus proyecciones, y
 // cualquiera de los doce se puede corregir a mano.
 
-import { expandir } from "@/lib/dominio";
+import { enCLP, expandir } from "@/lib/dominio";
 import type { LineaPresupuesto, Movimiento, Naturaleza } from "@/lib/tipos";
 
 /** Los doce meses del año, índice 0 = enero. */
@@ -107,12 +107,19 @@ export const anualDe = (meses: Meses): number => meses.reduce((s, m) => s + m, 0
  * monto entre varias subcategorías, y sumar por movimiento le adjudicaría el total
  * a una sola. Los proyectados no entran: el real es lo que ocurrió.
  *
- * En magnitud, sin signo, como se muestran los montos del presupuesto (§4.6).
+ * Los movimientos en dólares se convierten con el TC del año (§4.6). Sin convertir,
+ * un cargo de US$68 entraría al presupuesto como 68 pesos: el gasto en suscripciones
+ * —que se pagan casi todas con la tarjeta en dólares— desaparecía.
+ *
+ * Se suma con signo y la magnitud se toma al final (§4.6): una nota de crédito debe
+ * bajar el gasto de la línea, no subirlo. Tomando magnitud línea por línea, devolver
+ * plata gastaba más.
  */
 export function ejecutadoPorSubcategoria(
   movimientos: Movimiento[],
   anio: number,
-  mes: number
+  mes: number,
+  tc: number
 ): Map<string, number> {
   const desde = `${anio}-01-01`;
   const hasta = finDeMes(anio, mes);
@@ -122,11 +129,9 @@ export function ejecutadoPorSubcategoria(
     if (fila.estado === "proyectado") continue;
     if (fila.fecha < desde || fila.fecha > hasta) continue;
     if (!fila.subcategoria_id) continue;
-    total.set(
-      fila.subcategoria_id,
-      (total.get(fila.subcategoria_id) ?? 0) + Math.abs(fila.monto)
-    );
+    total.set(fila.subcategoria_id, (total.get(fila.subcategoria_id) ?? 0) + enCLP(fila, tc));
   }
+  for (const [sub, monto] of total) total.set(sub, Math.abs(monto));
   return total;
 }
 
@@ -141,11 +146,16 @@ export function ejecutadoPorSubcategoria(
  * Es una foto: se genera al armar el año y después se edita a mano. Si se
  * recalculara en vivo, reprogramar un pago a diciembre bajaría el presupuesto de
  * marzo y nunca se vería un sobregasto.
+ *
+ * Convierte los dólares igual que el ejecutado: si el presupuesto se generara sin
+ * convertir y el gasto se midiera convertido, toda línea pagada en dólares
+ * arrancaría el año con un sobregasto de mil por uno.
  */
 export function distribucionOperativa(
   movimientos: Movimiento[],
   anio: number,
-  esOperativa: (subcategoria_id: string) => boolean
+  esOperativa: (subcategoria_id: string) => boolean,
+  tc: number
 ): Map<string, Meses> {
   const desde = `${anio}-01-01`;
   const hasta = `${anio}-12-31`;
@@ -156,9 +166,11 @@ export function distribucionOperativa(
     if (!fila.subcategoria_id || !esOperativa(fila.subcategoria_id)) continue;
     const meses = porSub.get(fila.subcategoria_id) ?? vacios();
     const i = mesDe(fila.fecha) - 1;
-    meses[i] = (meses[i] ?? 0) + Math.abs(fila.monto);
+    meses[i] = (meses[i] ?? 0) + enCLP(fila, tc);
     porSub.set(fila.subcategoria_id, meses);
   }
+  // La magnitud se toma por mes, ya con las devoluciones descontadas.
+  for (const [sub, meses] of porSub) porSub.set(sub, meses.map(Math.abs));
   return porSub;
 }
 
