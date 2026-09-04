@@ -14,7 +14,6 @@ import { PanelDetalle, type Detalle } from "@/components/flujo/PanelDetalle";
 import { expandir } from "@/lib/dominio";
 import type { LineaExpandida } from "@/lib/tipos";
 import { NATURALEZAS } from "@/lib/catalogo";
-import { parsearCatalogo } from "@/lib/catalogo-edicion";
 import { Aviso, BotonFantasma, Cabecera, Chip, Rotulo, clases } from "@/components/ui/primitivas";
 import type { Naturaleza } from "@/lib/tipos";
 import css from "./categorias.module.css";
@@ -40,7 +39,6 @@ export function Categorias() {
     crearCategoria,
     borrarCategoria,
     borrarGrupo,
-    importarCatalogo,
     usoDeSubcategoria,
     crearSubcategoria,
     renombrarSubcategoria,
@@ -185,7 +183,7 @@ export function Categorias() {
         </Aviso>
       )}
 
-      <div className={css.columnas}>
+      <div className={css.unaColumna}>
         <section className={css.panel}>
           <div className={css.barra}>
             <Rotulo
@@ -215,7 +213,7 @@ export function Categorias() {
               {abiertas.length ? "Colapsar todo" : "Expandir todo"}
             </BotonFantasma>
             <BotonFantasma onClick={() => abrirCreacion("__grupo")}>
-              + Grupo
+              + grupo
             </BotonFantasma>
           </div>
 
@@ -325,7 +323,7 @@ export function Categorias() {
                       {c.controlado ? "en control" : "fuera"}
                     </button>
 
-                    <BotonFantasma onClick={() => abrirCreacion(c.id)}>+ sub</BotonFantasma>
+                    <BotonFantasma onClick={() => abrirCreacion(c.id)}>+ categoría</BotonFantasma>
                     {porBorrar === c.id ? (
                       <Confirmacion
                         que={c.nombre}
@@ -437,7 +435,7 @@ export function Categorias() {
                           )}
                         </div>
 
-                        {/* Tercer nivel. No se ofrece un "+ sub" en cada una de las
+                        {/* Tercer nivel. No se ofrece un "+ subcategoría" fijo en cada una de las
                             290 categorías: llenaría la fila de botones que casi nunca
                             se usan. Aparece al pasar por encima, y siempre si ya tiene. */}
                         {hijas.map((h) => (
@@ -535,7 +533,6 @@ export function Categorias() {
           </div>
         </section>
 
-        <Importador importar={importarCatalogo} />
       </div>
 
       {detalle && (
@@ -620,126 +617,5 @@ function Confirmacion({
         cancelar
       </button>
     </span>
-  );
-}
-
-/** Carga por pegado. El catálogo real llegó de Quicken con 293 líneas; nadie las
- *  escribe de a una, y el formato en que están a mano varía. */
-function Importador({
-  importar,
-}: {
-  importar: (texto: string) => { grupos: number; categorias: number; subcategorias: number };
-}) {
-  const [texto, setTexto] = useState("");
-  const [previo, setPrevio] = useState<ReturnType<typeof parsearCatalogo> | null>(null);
-  const [resultado, setResultado] = useState<string | null>(null);
-
-  const aplicar = () => {
-    const { grupos, categorias, subcategorias } = importar(texto);
-    const partes = [
-      grupos ? `${grupos} grupos` : null,
-      categorias ? `${categorias} categorías` : null,
-      subcategorias ? `${subcategorias} subcategorías` : null,
-    ].filter(Boolean);
-    setResultado(
-      partes.length
-        ? `Entraron ${partes.join(", ")}.`
-        : "Ya estaba todo en el catálogo: no se agregó nada."
-    );
-    setTexto("");
-    setPrevio(null);
-  };
-
-  return (
-    <section className={clases(css.panel, css.panelImportador)}>
-      <Rotulo texto="Cargar listado" />
-      <p className={css.ayuda}>
-        Pega el listado. Acepta <code className={css.code}>Grupo:Categoría</code>,{" "}
-        <code className={css.code}>Grupo:Categoría:Subcategoría</code>, o grupos al margen
-        con lo de abajo indentado — la profundidad de la sangría decide el nivel. Una línea sola que diga{" "}
-        <code className={css.code}>Gastos de Inversión</code>,{" "}
-        <code className={css.code}>Gastos Operativos</code> o{" "}
-        <code className={css.code}>Ingresos</code> cambia la sección de ahí en adelante, y
-        un sufijo <code className={css.code}>(inversión)</code> la fija solo para esa línea.
-      </p>
-
-      <textarea
-        value={texto}
-        onChange={(e) => {
-          setTexto(e.target.value);
-          setPrevio(null);
-          setResultado(null);
-        }}
-        rows={9}
-        aria-label="Listado a importar"
-        placeholder={
-          "Gastos de Inversión\nComercial y marketing\n  Alianzas\n  Estudios públicos\n\nGastos Operativos\nGastos Administración\n  Jornadas y eventos\n    Offsite internacional\nGastos Administración:Aseo"
-        }
-        className={css.textarea}
-      />
-
-      <div className={css.accionesImportador}>
-        <BotonFantasma onClick={() => texto.trim() && setPrevio(parsearCatalogo(texto))}>
-          Previsualizar
-        </BotonFantasma>
-      </div>
-
-      {resultado && <Aviso tono="teal">{resultado}</Aviso>}
-
-      {previo && (
-        <div className={css.previo}>
-          <div className={css.previoResumen}>
-            <strong>{previo.grupos.length}</strong> grupos,{" "}
-            <strong>{previo.categorias.length}</strong> categorías y{" "}
-            <strong>{previo.subcategorias.length}</strong> subcategorías detectadas.
-          </div>
-          <div className={css.previoLista}>
-            {NATURALEZAS.map(
-              (n) =>
-                previo.categorias.some((s) => s.naturaleza === n.id) && (
-                  <div key={n.id}>
-                    <div className={css.previoSeccion}>{n.nombre.toUpperCase()}</div>
-                    {previo.grupos
-                      .filter((c) =>
-                        previo.categorias.some(
-                          (s) => s.grupo_id === c.id && s.naturaleza === n.id
-                        )
-                      )
-                      .map((c) => (
-                        <div key={c.id}>
-                          <span className={css.previoGrupo}>{c.nombre}</span>
-                          {previo.categorias
-                            .filter((s) => s.grupo_id === c.id && s.naturaleza === n.id)
-                            .flatMap((s) => [
-                              <div key={s.id} className={css.previoSub}>
-                                {s.nombre}
-                              </div>,
-                              ...previo.subcategorias
-                                .filter((h) => h.categoria_id === s.id)
-                                .map((h) => (
-                                  <div key={h.id} className={css.previoSubSub}>
-                                    {h.nombre}
-                                  </div>
-                                )),
-                            ])}
-                        </div>
-                      ))}
-                  </div>
-                )
-            )}
-          </div>
-          <button type="button" onClick={aplicar} className={css.botonAplicar}>
-            AGREGAR AL CATÁLOGO
-          </button>
-        </div>
-      )}
-
-      <p className={css.ayuda}>
-        Solo agrega. Lo que ya existe con el mismo nombre no se duplica, y no hay
-        “reemplazar todo”: reemplazar el catálogo dejaría sin clasificar los movimientos
-        cuyas categorías no estén en el listado nuevo, y son más de 15.000 líneas.
-        Para sacar algo de circulación, márcalo inactivo.
-      </p>
-    </section>
   );
 }

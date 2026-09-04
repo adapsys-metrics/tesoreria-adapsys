@@ -8,6 +8,13 @@
   align-items: start;
 }
 
+/* Sin el panel de carga, el árbol ocupa el ancho completo: son 290 categorías con
+   nombres largos y el espacio se nota. */
+.unaColumna {
+  display: grid;
+  gap: 14px;
+}
+
 @media (max-width: 1100px) {
   .columnas {
     grid-template-columns: 1fr;

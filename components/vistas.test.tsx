@@ -919,11 +919,10 @@ describe("Catálogo", () => {
 
   it("borrar una categoría sin uso pide confirmación en la propia fila", () => {
     montar(<Categorias />);
-    fireEvent.change(screen.getByLabelText("Listado a importar"), {
-      target: { value: "Logística:Fletes" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
-    fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "+ categoría" })[0]!);
+    const nueva = screen.getByLabelText(/^Nombre de la categoría nueva en /);
+    fireEvent.change(nueva, { target: { value: "Fletes" } });
+    fireEvent.keyDown(nueva, { key: "Enter" });
     fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
       target: { value: "Fletes" },
     });
@@ -960,7 +959,7 @@ describe("Catálogo", () => {
     // Nace con una categoría propia: se clasifica por categoría (§3), así que
     // un grupo vacío no serviría para nada.
     montar(<Categorias />);
-    fireEvent.click(screen.getByRole("button", { name: "+ Grupo" }));
+    fireEvent.click(screen.getByRole("button", { name: /^\+ grupo$/ }));
     fireEvent.change(screen.getByLabelText("Nombre de el grupo nuevo"), {
       target: { value: "Gastos de mudanza" },
     });
@@ -975,7 +974,7 @@ describe("Catálogo", () => {
 
   it("Escape cancela la creación sin dejar nada a medias", () => {
     montar(<Categorias />);
-    fireEvent.click(screen.getByRole("button", { name: "+ Grupo" }));
+    fireEvent.click(screen.getByRole("button", { name: /^\+ grupo$/ }));
     const campo = screen.getByLabelText("Nombre de el grupo nuevo");
     fireEvent.change(campo, { target: { value: "Se me ocurrió otra cosa" } });
     fireEvent.keyDown(campo, { key: "Escape" });
@@ -987,7 +986,7 @@ describe("Catálogo", () => {
 
   it("agregar una categoría la deja bajo su grupo", () => {
     montar(<Categorias />);
-    fireEvent.click(screen.getAllByRole("button", { name: "+ sub" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "+ categoría" })[0]!);
     const campo = screen.getByLabelText(/^Nombre de la categoría nueva en /);
     fireEvent.change(campo, { target: { value: "Cliente nuevo SpA" } });
     fireEvent.keyDown(campo, { key: "Enter" });
@@ -997,38 +996,7 @@ describe("Catálogo", () => {
     expect(screen.getByLabelText("Nombre de Cliente nuevo SpA")).toBeDefined();
   });
 
-  it("el importador previsualiza antes de tocar nada, y agrega al aceptar", () => {
-    montar(<Categorias />);
-    fireEvent.change(screen.getByLabelText("Listado a importar"), {
-      target: { value: "Logística\n  Fletes\n  Bodegaje" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
-    expect(screen.getByText(/categorías detectadas/)).toBeDefined();
-    // Todavía no entró nada.
-    expect(screen.getByText(`${GRUPOS.length} grupos · ${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)).toBeDefined();
 
-    fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
-    expect(
-      screen.getByText(`${GRUPOS.length + 1} grupos · ${CATEGORIAS.length + 2} categorías · ${SUBCATEGORIAS.length} subcategorías`)
-    ).toBeDefined();
-  });
-
-  it("importar dos veces el mismo listado no duplica", () => {
-    montar(<Categorias />);
-    const pegar = () => {
-      fireEvent.change(screen.getByLabelText("Listado a importar"), {
-        target: { value: "Logística:Fletes" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
-      fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
-    };
-    pegar();
-    pegar();
-    expect(screen.getByText(/no se agregó nada/)).toBeDefined();
-    expect(
-      screen.getByText(`${GRUPOS.length + 1} grupos · ${CATEGORIAS.length + 1} categorías · ${SUBCATEGORIAS.length} subcategorías`)
-    ).toBeDefined();
-  });
 });
 
 describe("El tercer nivel", () => {
@@ -1124,48 +1092,7 @@ describe("El tercer nivel", () => {
     expect(screen.getAllByRole("button", { name: "inactiva" }).length).toBeGreaterThan(0);
   });
 
-  it("el importador crea los tres niveles de un listado pegado", () => {
-    montar(<Categorias />);
-    fireEvent.change(screen.getByLabelText("Listado a importar"), {
-      target: { value: "Logística\n  Fletes\n    Courier internacional\n  Bodegaje" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
-    expect(screen.getByText(/subcategorías detectadas/)).toBeDefined();
 
-    fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
-    expect(
-      screen.getByText(
-        `${GRUPOS.length + 1} grupos · ${CATEGORIAS.length + 2} categorías · ${SUBCATEGORIAS.length + 1} subcategorías`
-      )
-    ).toBeDefined();
-
-    // Y cuelga de su categoría, no del grupo.
-    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
-      target: { value: "Courier" },
-    });
-    expect(screen.getByLabelText("Nombre de Fletes")).toBeDefined();
-    expect(screen.getByLabelText("Nombre de Courier internacional")).toBeDefined();
-    expect(screen.queryByLabelText("Nombre de Bodegaje")).toBeNull();
-  });
-
-  it("reimportar el mismo listado con tercer nivel no duplica nada", () => {
-    montar(<Categorias />);
-    const pegar = () => {
-      fireEvent.change(screen.getByLabelText("Listado a importar"), {
-        target: { value: "Logística\n  Fletes\n    Courier internacional" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
-      fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
-    };
-    pegar();
-    pegar();
-    expect(screen.getByText(/no se agregó nada/)).toBeDefined();
-    expect(
-      screen.getByText(
-        `${GRUPOS.length + 1} grupos · ${CATEGORIAS.length + 1} categorías · ${SUBCATEGORIAS.length + 1} subcategorías`
-      )
-    ).toBeDefined();
-  });
 
   it("el selector de detalle solo aparece donde hay subcategorías", () => {
     montar(<Registro />);

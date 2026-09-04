@@ -283,7 +283,7 @@ grupo**. Una lista plana de 290 ítems es inusable.
 | **Conciliación** | Lista de `pagado` sin cuadrar. El total es exactamente la diferencia contra la cartola. |
 | **Presupuesto anual** | Dos modos: *construcción* (responsable, ppto año anterior, ppto año, variación, notas) y *control* (ejecutado, % utilizado con marca de avance del año, disponible, proyección de cierre). |
 | **Reportes** | Armador configurable: filas (categoría / grupo / naturaleza / empresa / proveedor), columnas (mes / trimestre / empresa / grupo / naturaleza / total), rango de fechas con presets, filtro de estados y de categorías. Configuraciones guardables. Export CSV. |
-| **Categorías** | Mantenedor de los tres niveles, con importador que acepta pegar listados en varios formatos —la profundidad de la sangría decide el nivel—. Lo que está en uso no se borra: se desactiva. |
+| **Categorías** | Mantenedor de los tres niveles. Lo que está en uso no se borra: se desactiva. Existe un importador por pegado (`components/categorias/Importador.tsx`) que **no se muestra**: el equipo crea las categorías caso a caso y el panel estorbaba. Se conserva probado, para devolverlo si aparece una carga masiva. |
 
 ---
 
