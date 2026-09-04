@@ -65,6 +65,46 @@ describe("parsearCatalogo", () => {
     expect(categorias.find((s) => s.nombre === "Equipamiento")!.naturaleza).toBe("inversion");
   });
 
+  it("la sangría más profunda es el tercer nivel, no otra categoría", () => {
+    // Leer la sangría como un sí/no aplastaba el tercer nivel contra el segundo: es
+    // exactamente el error que traía la importación desde Quicken (§3.1).
+    const { grupos, categorias, subcategorias } = parsearCatalogo(
+      ["Gastos Administración", "  Jornadas y eventos", "    Offsite internacional", "  Aseo"].join("\n")
+    );
+    expect(grupos.map((g) => g.nombre)).toEqual(["Gastos Administración"]);
+    expect(categorias.map((c) => c.nombre)).toEqual(["Jornadas y eventos", "Aseo"]);
+    expect(subcategorias.map((s) => s.nombre)).toEqual(["Offsite internacional"]);
+    expect(subcategorias[0]!.categoria_id).toBe(categorias[0]!.id);
+  });
+
+  it("lee la ruta completa con dos puntos", () => {
+    const { grupos, categorias, subcategorias } = parsearCatalogo(
+      "Gastos Administración:Jornadas y eventos:Offsite internacional"
+    );
+    expect(grupos).toHaveLength(1);
+    expect(categorias.map((c) => c.nombre)).toEqual(["Jornadas y eventos"]);
+    expect(subcategorias.map((s) => s.nombre)).toEqual(["Offsite internacional"]);
+  });
+
+  it("no se confunde si se mezclan tabuladores y espacios", () => {
+    // Viene pegado de otro programa: la mezcla es la norma. Comparando caracteres
+    // crudos, un tabulador quedaría por debajo de dos espacios.
+    const { categorias, subcategorias } = parsearCatalogo(
+      ["Administración", "\tJornadas", "\t  Offsite"].join("\n")
+    );
+    expect(categorias.map((c) => c.nombre)).toEqual(["Jornadas"]);
+    expect(subcategorias.map((s) => s.nombre)).toEqual(["Offsite"]);
+  });
+
+  it("la subcategoría no lleva naturaleza propia: la hereda de su categoría", () => {
+    const { categorias, subcategorias } = parsearCatalogo(
+      ["Gastos de Inversión", "Compra activos", "  Equipos", "    Notebooks"].join("\n")
+    );
+    expect(categorias.find((c) => c.nombre === "Equipos")!.naturaleza).toBe("inversion");
+    expect(subcategorias[0]!.nombre).toBe("Notebooks");
+    expect(subcategorias[0]).not.toHaveProperty("naturaleza");
+  });
+
   it("un grupo sin categorías recibe una con su nombre", () => {
     // Se clasifica por categoría (§3): un grupo vacío no se podría usar.
     const { categorias } = parsearCatalogo("Impuestos");

@@ -1124,6 +1124,49 @@ describe("El tercer nivel", () => {
     expect(screen.getAllByRole("button", { name: "inactiva" }).length).toBeGreaterThan(0);
   });
 
+  it("el importador crea los tres niveles de un listado pegado", () => {
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Listado a importar"), {
+      target: { value: "Logística\n  Fletes\n    Courier internacional\n  Bodegaje" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
+    expect(screen.getByText(/subcategorías detectadas/)).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
+    expect(
+      screen.getByText(
+        `${GRUPOS.length + 1} grupos · ${CATEGORIAS.length + 2} categorías · ${SUBCATEGORIAS.length + 1} subcategorías`
+      )
+    ).toBeDefined();
+
+    // Y cuelga de su categoría, no del grupo.
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Courier" },
+    });
+    expect(screen.getByLabelText("Nombre de Fletes")).toBeDefined();
+    expect(screen.getByLabelText("Nombre de Courier internacional")).toBeDefined();
+    expect(screen.queryByLabelText("Nombre de Bodegaje")).toBeNull();
+  });
+
+  it("reimportar el mismo listado con tercer nivel no duplica nada", () => {
+    montar(<Categorias />);
+    const pegar = () => {
+      fireEvent.change(screen.getByLabelText("Listado a importar"), {
+        target: { value: "Logística\n  Fletes\n    Courier internacional" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
+      fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
+    };
+    pegar();
+    pegar();
+    expect(screen.getByText(/no se agregó nada/)).toBeDefined();
+    expect(
+      screen.getByText(
+        `${GRUPOS.length + 1} grupos · ${CATEGORIAS.length + 1} categorías · ${SUBCATEGORIAS.length + 1} subcategorías`
+      )
+    ).toBeDefined();
+  });
+
   it("el selector de detalle solo aparece donde hay subcategorías", () => {
     montar(<Registro />);
     // Sin abrir ninguna línea de una categoría con tercer nivel, no hay selector de

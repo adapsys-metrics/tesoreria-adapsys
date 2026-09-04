@@ -628,17 +628,22 @@ function Confirmacion({
 function Importador({
   importar,
 }: {
-  importar: (texto: string) => { grupos: number; categorias: number };
+  importar: (texto: string) => { grupos: number; categorias: number; subcategorias: number };
 }) {
   const [texto, setTexto] = useState("");
   const [previo, setPrevio] = useState<ReturnType<typeof parsearCatalogo> | null>(null);
   const [resultado, setResultado] = useState<string | null>(null);
 
   const aplicar = () => {
-    const { grupos, categorias } = importar(texto);
+    const { grupos, categorias, subcategorias } = importar(texto);
+    const partes = [
+      grupos ? `${grupos} grupos` : null,
+      categorias ? `${categorias} categorías` : null,
+      subcategorias ? `${subcategorias} subcategorías` : null,
+    ].filter(Boolean);
     setResultado(
-      grupos || categorias
-        ? `Entraron ${grupos} grupos y ${categorias} categorías.`
+      partes.length
+        ? `Entraron ${partes.join(", ")}.`
         : "Ya estaba todo en el catálogo: no se agregó nada."
     );
     setTexto("");
@@ -649,8 +654,9 @@ function Importador({
     <section className={clases(css.panel, css.panelImportador)}>
       <Rotulo texto="Cargar listado" />
       <p className={css.ayuda}>
-        Pega el listado. Acepta <code className={css.code}>Grupo:Categoría</code> o
-        grupos al margen con las categorías indentadas. Una línea sola que diga{" "}
+        Pega el listado. Acepta <code className={css.code}>Grupo:Categoría</code>,{" "}
+        <code className={css.code}>Grupo:Categoría:Subcategoría</code>, o grupos al margen
+        con lo de abajo indentado — la profundidad de la sangría decide el nivel. Una línea sola que diga{" "}
         <code className={css.code}>Gastos de Inversión</code>,{" "}
         <code className={css.code}>Gastos Operativos</code> o{" "}
         <code className={css.code}>Ingresos</code> cambia la sección de ahí en adelante, y
@@ -667,7 +673,7 @@ function Importador({
         rows={9}
         aria-label="Listado a importar"
         placeholder={
-          "Gastos de Inversión\nComercial y marketing\n  Alianzas\n  Estudios públicos\n\nGastos Operativos\nGastos Administración:Arriendos\nGastos Administración:Aseo"
+          "Gastos de Inversión\nComercial y marketing\n  Alianzas\n  Estudios públicos\n\nGastos Operativos\nGastos Administración\n  Jornadas y eventos\n    Offsite internacional\nGastos Administración:Aseo"
         }
         className={css.textarea}
       />
@@ -683,8 +689,9 @@ function Importador({
       {previo && (
         <div className={css.previo}>
           <div className={css.previoResumen}>
-            <strong>{previo.grupos.length}</strong> grupos y{" "}
-            <strong>{previo.categorias.length}</strong> categorías detectadas.
+            <strong>{previo.grupos.length}</strong> grupos,{" "}
+            <strong>{previo.categorias.length}</strong> categorías y{" "}
+            <strong>{previo.subcategorias.length}</strong> subcategorías detectadas.
           </div>
           <div className={css.previoLista}>
             {NATURALEZAS.map(
@@ -703,11 +710,18 @@ function Importador({
                           <span className={css.previoGrupo}>{c.nombre}</span>
                           {previo.categorias
                             .filter((s) => s.grupo_id === c.id && s.naturaleza === n.id)
-                            .map((s) => (
+                            .flatMap((s) => [
                               <div key={s.id} className={css.previoSub}>
                                 {s.nombre}
-                              </div>
-                            ))}
+                              </div>,
+                              ...previo.subcategorias
+                                .filter((h) => h.categoria_id === s.id)
+                                .map((h) => (
+                                  <div key={h.id} className={css.previoSubSub}>
+                                    {h.nombre}
+                                  </div>
+                                )),
+                            ])}
                         </div>
                       ))}
                   </div>

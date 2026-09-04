@@ -151,7 +151,11 @@ type Contexto = Estado & {
   borrarCategoria: (id: string) => void;
   borrarGrupo: (id: string) => void;
   /** Agrega lo que traiga el listado pegado. Devuelve cuánto entró. */
-  importarCatalogo: (texto: string) => { grupos: number; categorias: number };
+  importarCatalogo: (texto: string) => {
+    grupos: number;
+    categorias: number;
+    subcategorias: number;
+  };
 
   // ── Tercer nivel ──────────────────────────────────────────────────────────
   /** Cuántas líneas apuntan a cada subcategoría. Menos crítico que el de categoría:
@@ -911,36 +915,57 @@ export function ProveedorTesoreria({
         ),
       })),
     importarCatalogo: (texto) => {
-      const nuevo = parsearCatalogo(texto, idsDelCatalogo(estado));
-      // Un grupo que ya existe con ese nombre recibe las categorías nuevas
-      // en vez de duplicarse: pegar el listado dos veces no debe crear "Administración"
-      // y "Administración-2".
-      const porNombre = new Map(estado.grupos.map((c) => [c.nombre, c.id]));
+      const leido = parsearCatalogo(texto, idsDelCatalogo(estado));
+
+      // Lo que ya existe con el mismo nombre se reutiliza en vez de duplicarse: pegar
+      // el listado dos veces no debe crear "Administración" y "Administración-2". Se
+      // resuelve nivel por nivel, de arriba hacia abajo, porque la identidad de un
+      // hijo es (padre, nombre) y el padre puede haberse acabado de traducir.
       const traduccion = new Map<string, string>();
-      const grupos = nuevo.grupos.filter((c) => {
-        const ya = porNombre.get(c.nombre);
+
+      const gruposPorNombre = new Map(estado.grupos.map((g) => [g.nombre, g.id]));
+      const grupos = leido.grupos.filter((g) => {
+        const ya = gruposPorNombre.get(g.nombre);
         if (ya) {
-          traduccion.set(c.id, ya);
+          traduccion.set(g.id, ya);
           return false;
         }
         return true;
       });
-      const yaHay = new Set(
-        estado.categorias.map((x) => `${x.grupo_id}\u0000${x.nombre}`)
+
+      const clave = (padre: string, nombre: string) => `${padre}\u0000${nombre}`;
+      const catsPorClave = new Map(
+        estado.categorias.map((c) => [clave(c.grupo_id, c.nombre), c.id])
       );
-      const categorias = nuevo.categorias
-        .map((x) => ({ ...x, grupo_id: traduccion.get(x.grupo_id) ?? x.grupo_id }))
-        .filter((x) => !yaHay.has(`${x.grupo_id}\u0000${x.nombre}`));
+      const categorias = leido.categorias
+        .map((c) => ({ ...c, grupo_id: traduccion.get(c.grupo_id) ?? c.grupo_id }))
+        .filter((c) => {
+          const ya = catsPorClave.get(clave(c.grupo_id, c.nombre));
+          if (ya) {
+            traduccion.set(c.id, ya);
+            return false;
+          }
+          return true;
+        });
+
+      const subsPorClave = new Set(
+        estado.subcategorias.map((x) => clave(x.categoria_id, x.nombre))
+      );
+      const subcategorias = leido.subcategorias
+        .map((x) => ({ ...x, categoria_id: traduccion.get(x.categoria_id) ?? x.categoria_id }))
+        .filter((x) => !subsPorClave.has(clave(x.categoria_id, x.nombre)));
 
       setEstado((p) => ({
         ...p,
-        grupos: [
-          ...p.grupos,
-          ...grupos.map((c, i) => ({ ...c, orden: p.grupos.length + i + 1 })),
-        ],
+        grupos: [...p.grupos, ...grupos.map((g, i) => ({ ...g, orden: p.grupos.length + i + 1 }))],
         categorias: [...p.categorias, ...categorias],
+        subcategorias: [...p.subcategorias, ...subcategorias],
       }));
-      return { grupos: grupos.length, categorias: categorias.length };
+      return {
+        grupos: grupos.length,
+        categorias: categorias.length,
+        subcategorias: subcategorias.length,
+      };
     },
   };
 

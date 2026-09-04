@@ -429,3 +429,8 @@
   cursor: pointer;
   white-space: nowrap;
 }
+
+.previoSubSub {
+  padding-left: 24px;
+  color: var(--muted-claro);
+}
