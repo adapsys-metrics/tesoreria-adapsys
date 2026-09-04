@@ -11,7 +11,7 @@
 // no aparece en ninguna cartola. Si la selección mezcla, se muestran los dos totales
 // por separado y queda a la vista que son cosas distintas (§4.5).
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { clp } from "@/lib/formato";
 import css from "./seleccion.module.css";
 import { clases } from "./primitivas";
@@ -27,9 +27,16 @@ export type Seleccion = {
   /** Selecciona todo lo visible, o limpia si ya estaba todo. */
   alternarTodo: () => void;
   limpiar: () => void;
+  /** Extiende o achica con el teclado, al moverse de una fila a otra con shift.
+   *  Crece al alejarse del ancla y se achica al volver hacia ella, que es como se
+   *  comportan las listas en todas partes. */
+  extender: (actual: number, nuevo: number) => void;
   cantidad: number;
   /** true solo si TODO lo visible está seleccionado. */
   todoSeleccionado: boolean;
+  /** Identifica esta tabla, para que las flechas encuentren la casilla vecina y no
+   *  la de otra tabla montada al mismo tiempo (el registro y el panel conviven). */
+  grupo: string;
 };
 
 /**
@@ -40,6 +47,7 @@ export type Seleccion = {
 export function useSeleccion(ids: string[]): Seleccion {
   const [elegidos, setElegidos] = useState<ReadonlySet<string>>(new Set());
   const ancla = useRef<number | null>(null);
+  const grupo = useId();
 
   // Lo que deja de verse deja de contar. Si al filtrar quedaran seleccionadas filas
   // invisibles, el total diría un número que no se corresponde con nada en pantalla,
@@ -88,6 +96,28 @@ export function useSeleccion(ids: string[]): Seleccion {
     [ids]
   );
 
+  const extender = useCallback(
+    (actual: number, nuevo: number) => {
+      const desde = ancla.current ?? actual;
+      setElegidos((prev) => {
+        const siguiente = new Set(prev);
+        const anclado = ids[desde];
+        if (anclado) siguiente.add(anclado);
+        if (Math.abs(nuevo - desde) > Math.abs(actual - desde)) {
+          const entra = ids[nuevo];
+          if (entra) siguiente.add(entra);
+        } else {
+          // Volviendo hacia el ancla: la fila que se deja atrás sale de la selección.
+          const sale = ids[actual];
+          if (sale && actual !== desde) siguiente.delete(sale);
+        }
+        return siguiente;
+      });
+      ancla.current = desde;
+    },
+    [ids]
+  );
+
   const limpiar = useCallback(() => {
     setElegidos(new Set());
     ancla.current = null;
@@ -102,9 +132,11 @@ export function useSeleccion(ids: string[]): Seleccion {
       setElegidos(todoSeleccionado ? new Set() : new Set(ids));
       ancla.current = null;
     },
+    extender,
     limpiar,
     cantidad: elegidos.size,
     todoSeleccionado,
+    grupo,
   };
 }
 
@@ -152,6 +184,7 @@ export function BarraSeleccion({
           Dos monedas: van por separado porque una transferencia ocurre en una.
         </span>
       )}
+      <span className={css.atajo}>shift + ↑↓ extiende</span>
       <button type="button" onClick={seleccion.limpiar} className={css.limpiar}>
         limpiar
       </button>
@@ -171,14 +204,35 @@ export function CasillaFila({
   seleccion: Seleccion;
   etiqueta: string;
 }) {
+  // Las flechas mueven el foco a la casilla vecina; con shift, además arrastran la
+  // selección. Se busca por atributo en el DOM en vez de mantener un arreglo de refs:
+  // la lista se reordena y se filtra todo el tiempo, y los refs quedarían viejos.
+  const irA = (destino: number, conShift: boolean) => {
+    const vecina = document.querySelector<HTMLInputElement>(
+      `input[data-seleccion="${CSS.escape(seleccion.grupo)}"][data-indice="${destino}"]`
+    );
+    if (!vecina) return;
+    if (conShift) seleccion.extender(indice, destino);
+    vecina.focus();
+  };
+
   return (
     <input
       type="checkbox"
       checked={seleccion.tiene(id)}
       aria-label={etiqueta}
-      // onChange no trae el shift; el click sí, y es el que arma el rango.
+      data-seleccion={seleccion.grupo}
+      data-indice={indice}
+      // onChange no trae el shift; el click sí, y es el que arma el rango. La barra
+      // espaciadora dispara un click nativo, así que marca sin código extra.
       onChange={() => {}}
       onClick={(e) => seleccion.alternar(id, indice, e.shiftKey)}
+      onKeyDown={(e) => {
+        if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+        // Sin esto la página hace scroll y el foco se pierde de vista.
+        e.preventDefault();
+        irA(indice + (e.key === "ArrowDown" ? 1 : -1), e.shiftKey);
+      }}
       className={css.casilla}
     />
   );

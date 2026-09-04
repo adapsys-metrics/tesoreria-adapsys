@@ -67,6 +67,45 @@ describe("Seleccionar y sumar", () => {
     expect(screen.getByRole("status").textContent).toContain("5 seleccionados");
   });
 
+  it("shift + flechas extiende sin tocar el mouse", () => {
+    montar(<Registro />);
+    const cs = casillas();
+    fireEvent.click(cs[0]!);
+    fireEvent.keyDown(cs[0]!, { key: "ArrowDown", shiftKey: true });
+    fireEvent.keyDown(cs[1]!, { key: "ArrowDown", shiftKey: true });
+    expect(screen.getByRole("status").textContent).toContain("3 seleccionados");
+  });
+
+  it("volver hacia atrás con shift achica la selección", () => {
+    // Es lo que hace cualquier lista: alejarse del ancla suma, acercarse resta. Si
+    // solo sumara, pasarse una fila obligaría a empezar de nuevo.
+    montar(<Registro />);
+    const cs = casillas();
+    fireEvent.click(cs[0]!);
+    fireEvent.keyDown(cs[0]!, { key: "ArrowDown", shiftKey: true });
+    fireEvent.keyDown(cs[1]!, { key: "ArrowDown", shiftKey: true });
+    fireEvent.keyDown(cs[2]!, { key: "ArrowUp", shiftKey: true });
+    expect(screen.getByRole("status").textContent).toContain("2 seleccionados");
+  });
+
+  it("las flechas solas mueven el foco sin marcar nada", () => {
+    montar(<Registro />);
+    const cs = casillas();
+    cs[0]!.focus();
+    fireEvent.keyDown(cs[0]!, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(cs[1]);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("la flecha no se sale de la lista por los extremos", () => {
+    montar(<Registro />);
+    const cs = casillas();
+    cs[0]!.focus();
+    fireEvent.keyDown(cs[0]!, { key: "ArrowUp", shiftKey: true });
+    expect(document.activeElement).toBe(cs[0]);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
   it("limpiar deja la barra fuera", () => {
     montar(<Registro />);
     fireEvent.click(casillas()[0]!);

@@ -72,3 +72,18 @@
   background: var(--fila-split);
   box-shadow: inset 2px 0 0 var(--teal);
 }
+
+/* El atajo se muestra recién con algo seleccionado: es cuando sirve saberlo, y no
+   estorba a quien ya lo sabe. */
+.atajo {
+  margin-left: auto;
+  font-family: var(--font-cifras);
+  font-size: 9.5px;
+  color: var(--teal);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.atajo + .limpiar {
+  margin-left: 10px;
+}
