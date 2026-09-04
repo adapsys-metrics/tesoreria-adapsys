@@ -1,0 +1,74 @@
+/* La barra aparece solo con algo seleccionado, pegada arriba de la tabla para que el
+   total quede a la vista mientras se siguen eligiendo filas más abajo. */
+.barra {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header-sticky);
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--teal-soft);
+  border-radius: 3px;
+  margin-bottom: 6px;
+}
+
+.barraCompacta {
+  margin: 0;
+  border-radius: 0;
+}
+
+.cuenta {
+  font-family: var(--font-cifras);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--teal);
+  white-space: nowrap;
+}
+
+.totales {
+  display: flex;
+  gap: 14px;
+}
+
+.total {
+  font-family: var(--font-cifras);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.aviso {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.limpiar {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  font-family: var(--font-cifras);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: var(--teal);
+  cursor: pointer;
+}
+
+.limpiar:hover {
+  text-decoration: underline;
+}
+
+.casilla {
+  cursor: pointer;
+  margin: 0;
+  accent-color: var(--teal);
+}
+
+/* Una fila seleccionada se marca entera, no solo su casilla: al recorrer 200 filas
+   lo que se sigue es la banda, no un cuadradito de 13px. */
+.filaSeleccionada {
+  background: var(--fila-split);
+  box-shadow: inset 2px 0 0 var(--teal);
+}

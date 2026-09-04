@@ -24,6 +24,8 @@ import { Cabecera, Nota, Pill, Vacio, clases } from "@/components/ui/primitivas"
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { EditorMovimiento } from "./EditorMovimiento";
 import { FormaNuevo } from "./FormaNuevo";
+import { BarraSeleccion, CasillaFila, useSeleccion } from "@/components/ui/seleccion";
+import cssSel from "@/components/ui/seleccion.module.css";
 import css from "./movimientos.module.css";
 import tabla from "@/components/ui/tabla.module.css";
 
@@ -32,6 +34,7 @@ import tabla from "@/components/ui/tabla.module.css";
 type Columna = { titulo: string; orden: ColumnaOrden | null; num?: boolean };
 
 const columnas = (conSaldo: boolean): Columna[] => [
+  { titulo: "", orden: null },
   { titulo: "Fecha", orden: "fecha" },
   { titulo: "Empresa", orden: "cuenta" },
   { titulo: "Proveedor / Cliente", orden: "contraparte" },
@@ -147,6 +150,12 @@ export function Registro() {
   const alternar = (id: string) =>
     setAbiertos(abiertos.includes(id) ? abiertos.filter((x) => x !== id) : [...abiertos, id]);
 
+  const seleccion = useSeleccion(useMemo(() => lista.map((m) => m.id), [lista]));
+  const seleccionados = useMemo(
+    () => lista.filter((m) => seleccion.tiene(m.id)),
+    [lista, seleccion]
+  );
+
   return (
     <>
       <Cabecera
@@ -233,7 +242,8 @@ export function Registro() {
         </Vacio>
       ) : (
         <div className={tabla.envoltorio}>
-          <table className={tabla.tabla} style={{ minWidth: 940 }}>
+          <BarraSeleccion items={seleccionados} seleccion={seleccion} />
+          <table className={tabla.tabla} style={{ minWidth: 960 }}>
             <thead>
               <tr>
                 {COLUMNAS.map((col) => (
@@ -248,7 +258,16 @@ export function Registro() {
                         : undefined
                     }
                   >
-                    {col.orden ? (
+                    {col.titulo === "" && col.orden === null && COLUMNAS[0] === col ? (
+                      <input
+                        type="checkbox"
+                        checked={seleccion.todoSeleccionado}
+                        onChange={seleccion.alternarTodo}
+                        aria-label="Seleccionar todo lo que se ve"
+                        title="Seleccionar todo lo que se ve"
+                        className={cssSel.casilla}
+                      />
+                    ) : col.orden ? (
                       <button
                         type="button"
                         onClick={() => setOrden(alternarOrden(orden, col.orden!))}
@@ -305,7 +324,26 @@ export function Registro() {
                       </tr>
                     )}
 
-                    <tr className={clases("fila", vencido && css.filaVencida)}>
+                    <tr
+                      // Marca estable para distinguir la fila del movimiento del
+                      // editor de splits y del separador de FUTURO, que también son
+                      // <tr>. Los tests colgaban de "el primer td empieza con fecha",
+                      // que se rompió al agregar la columna de selección.
+                      data-fila="movimiento"
+                      className={clases(
+                        "fila",
+                        vencido && css.filaVencida,
+                        seleccion.tiene(m.id) && cssSel.filaSeleccionada
+                      )}
+                    >
+                      <td className={clases(tabla.td, css.celdaCasilla)}>
+                        <CasillaFila
+                          id={m.id}
+                          indice={i}
+                          seleccion={seleccion}
+                          etiqueta={`Seleccionar ${m.contraparte ?? "movimiento"} del ${fechaCorta(m.fecha)}`}
+                        />
+                      </td>
                       <td className={clases(tabla.td, css.fecha)}>
                         {fechaCorta(m.fecha)}
                         {/* Los días de atraso van al lado de la fecha y no en una

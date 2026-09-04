@@ -352,9 +352,13 @@ describe("Columna de saldo (el «Balance» de Quicken)", () => {
     // mismo de los dos lados. Va en la PRIMERA fila y no en la última porque una
     // cuenta del banco abre de lo más reciente a lo más antiguo.
     conSidebar("cuenta:b1");
-    const filas = Array.from(document.querySelectorAll("tbody tr"));
-    const saldos = filas
-      .map((tr) => tr.querySelectorAll("td")[6]?.textContent ?? "")
+    // La columna se ubica por su encabezado, no por un índice fijo: agregar una
+    // columna a la izquierda no debería romper este test.
+    const encabezados = Array.from(document.querySelectorAll("thead th"));
+    const iSaldo = encabezados.findIndex((th) => th.textContent?.trim().startsWith("Saldo"));
+    expect(iSaldo).toBeGreaterThan(-1);
+    const saldos = Array.from(document.querySelectorAll('tr[data-fila="movimiento"]'))
+      .map((tr) => tr.querySelectorAll("td")[iSaldo]?.textContent ?? "")
       .filter(Boolean);
     expect(saldos.length).toBeGreaterThan(0);
     // La barra lateral antepone el símbolo de moneda, así que se compara por
@@ -445,10 +449,7 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
     expect(screen.getByText("FA9001")).toBeDefined();
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "FA9001" } });
     // Se cuentan filas de movimiento: el editor abierto también es un <tr>.
-    const filasDeMovimiento = Array.from(document.querySelectorAll("tbody tr")).filter((tr) =>
-      /^\d{2}-\d{2}-\d{2}/.test(tr.querySelector("td")?.textContent?.trim() ?? "")
-    );
-    expect(filasDeMovimiento).toHaveLength(1);
+    expect(document.querySelectorAll('tr[data-fila="movimiento"]')).toHaveLength(1);
   });
 
   it("la cartera no ofrece los botones de impuesto", () => {
@@ -664,10 +665,7 @@ describe("Borrar un movimiento", () => {
 
   it("confirmar lo saca de la lista", () => {
     abrirEditor();
-    const filas = () =>
-      Array.from(document.querySelectorAll("tbody tr")).filter((tr) =>
-        /^\d{2}-\d{2}-\d{2}/.test(tr.querySelector("td")?.textContent?.trim() ?? "")
-      ).length;
+    const filas = () => document.querySelectorAll('tr[data-fila="movimiento"]').length;
     const antes = filas();
     fireEvent.click(screen.getByText("Borrar movimiento"));
     fireEvent.click(screen.getByText("Sí, borrar"));

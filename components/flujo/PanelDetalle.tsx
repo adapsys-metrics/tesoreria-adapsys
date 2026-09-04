@@ -10,9 +10,11 @@ import { enCLP } from "@/lib/dominio";
 import { clp } from "@/lib/formato";
 import { fechaCorta } from "@/lib/fechas";
 import type { LineaExpandida } from "@/lib/tipos";
-import { Insignia, Pill } from "@/components/ui/primitivas";
+import { Insignia, Pill, clases } from "@/components/ui/primitivas";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
+import { BarraSeleccion, CasillaFila, useSeleccion } from "@/components/ui/seleccion";
+import cssSel from "@/components/ui/seleccion.module.css";
 import css from "./panel.module.css";
 
 export type Detalle = {
@@ -38,6 +40,13 @@ export function PanelDetalle({
   detallar?: (fila: LineaExpandida, subcategoria_id: string | null) => void;
 }) {
   const total = detalle.items.reduce((s, m) => s + enCLP(m, tc), 0);
+
+  // Acá la selección es lo que más sirve: se abrió el detalle justamente para revisar
+  // qué compone un monto, y muchas veces la pregunta es "¿estas cinco suman lo que
+  // llegó?". El id lleva el índice de línea porque un split aporta varias filas.
+  const idDe = (m: LineaExpandida) => `${m.movimiento_id}-${m.indice_linea ?? "u"}`;
+  const seleccion = useSeleccion(detalle.items.map(idDe));
+  const seleccionados = detalle.items.filter((m) => seleccion.tiene(idDe(m)));
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -78,13 +87,27 @@ export function PanelDetalle({
           </button>
         </div>
 
+        <BarraSeleccion items={seleccionados} seleccion={seleccion} compacta />
+
         <div className={css.lista}>
           <table className={css.tablaDetalle}>
             <tbody>
-              {detalle.items.map((m) => {
+              {detalle.items.map((m, i) => {
                 const valor = enCLP(m, tc);
+                const id = idDe(m);
                 return (
-                  <tr key={`${m.movimiento_id}-${m.indice_linea ?? "u"}`} className="fila">
+                  <tr
+                    key={id}
+                    className={clases("fila", seleccion.tiene(id) && cssSel.filaSeleccionada)}
+                  >
+                    <td className={css.celdaCasilla}>
+                      <CasillaFila
+                        id={id}
+                        indice={i}
+                        seleccion={seleccion}
+                        etiqueta={`Seleccionar ${m.contraparte ?? "movimiento"} del ${fechaCorta(m.fecha)}`}
+                      />
+                    </td>
                     <td className={css.celdaFecha}>{fechaCorta(m.fecha)}</td>
                     <td className={css.celdaCuerpo}>
                       <div className={css.lineaTitulo}>

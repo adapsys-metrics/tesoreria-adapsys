@@ -147,3 +147,9 @@
   background: var(--paper);
   line-height: 1.5;
 }
+
+.celdaCasilla {
+  width: 1%;
+  padding: 6px 0 6px 10px;
+  vertical-align: top;
+}

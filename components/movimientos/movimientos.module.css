@@ -621,3 +621,11 @@
   background: var(--brick);
   color: #ffffff;
 }
+
+/* La casilla de selección: lo más angosta posible. Es una columna que no lleva dato,
+   y en una tabla de 10 columnas cada píxel se lo quita a la glosa. */
+.celdaCasilla {
+  width: 1%;
+  padding-right: 0;
+  white-space: nowrap;
+}
