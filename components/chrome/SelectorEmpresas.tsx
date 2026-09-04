@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { EMPRESAS, GRUPOS, PRESETS_EMPRESA } from "@/lib/catalogo";
+import { EMPRESAS, GRUPOS_EMPRESA, PRESETS_EMPRESA } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { BotonMini, Check, clasePopover, clases } from "@/components/ui/primitivas";
 import { useCierre } from "@/components/ui/useCierre";
@@ -41,7 +41,7 @@ export function SelectorEmpresas() {
               </BotonMini>
             ))}
           </div>
-          {GRUPOS.map((g) => (
+          {GRUPOS_EMPRESA.map((g) => (
             <div key={g.id}>
               <div className={css.selectorGrupo}>{g.nombre}</div>
               {EMPRESAS.filter((e) => e.grupo === g.id).map((e) => (

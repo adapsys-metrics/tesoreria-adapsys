@@ -29,7 +29,7 @@ import type { LineaPresupuesto, Movimiento, Naturaleza } from "@/lib/tipos";
 export type Meses = number[];
 
 export type FilaPresupuesto = LineaPresupuesto & {
-  subcategoria_id: string;
+  categoria_id: string;
   meses: Meses;
   /** Suma de los doce. Es lo comprometido para el año. */
   anual: number;
@@ -101,10 +101,10 @@ export const ytdDe = (meses: Meses, mes: number): number =>
 export const anualDe = (meses: Meses): number => meses.reduce((s, m) => s + m, 0);
 
 /**
- * Ejecutado por subcategoría hasta el final del mes indicado.
+ * Ejecutado por categoría hasta el final del mes indicado.
  *
  * Se cuenta sobre las LÍNEAS y no sobre los movimientos (§3): un split reparte su
- * monto entre varias subcategorías, y sumar por movimiento le adjudicaría el total
+ * monto entre varias categorías, y sumar por movimiento le adjudicaría el total
  * a una sola. Los proyectados no entran: el real es lo que ocurrió.
  *
  * Los movimientos en dólares se convierten con el TC del año (§4.6). Sin convertir,
@@ -115,7 +115,7 @@ export const anualDe = (meses: Meses): number => meses.reduce((s, m) => s + m, 0
  * bajar el gasto de la línea, no subirlo. Tomando magnitud línea por línea, devolver
  * plata gastaba más.
  */
-export function ejecutadoPorSubcategoria(
+export function ejecutadoPorCategoria(
   movimientos: Movimiento[],
   anio: number,
   mes: number,
@@ -128,8 +128,8 @@ export function ejecutadoPorSubcategoria(
   for (const fila of expandir(movimientos)) {
     if (fila.estado === "proyectado") continue;
     if (fila.fecha < desde || fila.fecha > hasta) continue;
-    if (!fila.subcategoria_id) continue;
-    total.set(fila.subcategoria_id, (total.get(fila.subcategoria_id) ?? 0) + enCLP(fila, tc));
+    if (!fila.categoria_id) continue;
+    total.set(fila.categoria_id, (total.get(fila.categoria_id) ?? 0) + enCLP(fila, tc));
   }
   for (const [sub, monto] of total) total.set(sub, Math.abs(monto));
   return total;
@@ -154,7 +154,7 @@ export function ejecutadoPorSubcategoria(
 export function distribucionOperativa(
   movimientos: Movimiento[],
   anio: number,
-  esOperativa: (subcategoria_id: string) => boolean,
+  esOperativa: (categoria_id: string) => boolean,
   tc: number
 ): Map<string, Meses> {
   const desde = `${anio}-01-01`;
@@ -163,11 +163,11 @@ export function distribucionOperativa(
 
   for (const fila of expandir(movimientos)) {
     if (fila.fecha < desde || fila.fecha > hasta) continue;
-    if (!fila.subcategoria_id || !esOperativa(fila.subcategoria_id)) continue;
-    const meses = porSub.get(fila.subcategoria_id) ?? vacios();
+    if (!fila.categoria_id || !esOperativa(fila.categoria_id)) continue;
+    const meses = porSub.get(fila.categoria_id) ?? vacios();
     const i = mesDe(fila.fecha) - 1;
     meses[i] = (meses[i] ?? 0) + enCLP(fila, tc);
-    porSub.set(fila.subcategoria_id, meses);
+    porSub.set(fila.categoria_id, meses);
   }
   // La magnitud se toma por mes, ya con las devoluciones descontadas.
   for (const [sub, meses] of porSub) porSub.set(sub, meses.map(Math.abs));
@@ -198,9 +198,9 @@ export function reescalar(meses: Meses, nuevoAnual: number): Meses {
   return escalados;
 }
 
-/** Arma la fila de una subcategoría con sus columnas calculadas. */
+/** Arma la fila de una categoría con sus columnas calculadas. */
 export function filaDe(
-  subcategoria_id: string,
+  categoria_id: string,
   linea: LineaPresupuesto,
   meses: Meses,
   ejecutado: number,
@@ -210,7 +210,7 @@ export function filaDe(
   const ytd = ytdDe(meses, mes);
   return {
     ...linea,
-    subcategoria_id,
+    categoria_id,
     meses,
     anual,
     ytd,
@@ -241,7 +241,7 @@ export const sobreRitmo = (fila: FilaPresupuesto): boolean =>
 export const presupuestoAgotado = (fila: FilaPresupuesto): boolean =>
   fila.avance !== null && fila.avance >= 1;
 
-/** Suma de un conjunto de filas, para los subtotales por categoría y sección. */
+/** Suma de un conjunto de filas, para los subtotales por grupo y sección. */
 export function totalizar(filas: FilaPresupuesto[]): {
   anual: number;
   ytd: number;

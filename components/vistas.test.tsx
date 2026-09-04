@@ -4,7 +4,7 @@
 // líneas antes de su declaración, que reventaba al cargar el módulo).
 //
 // Por eso cada vista se monta de verdad, con los paneles expandidos: expandir todas
-// las categorías, abrir el detalle de una celda y abrir un editor de splits.
+// las grupos, abrir el detalle de una celda y abrir un editor de splits.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -15,7 +15,7 @@ import { Encabezado } from "@/components/chrome/Encabezado";
 import { Cuentas } from "@/components/chrome/Cuentas";
 import { Presupuesto } from "@/components/presupuesto/Presupuesto";
 import { Categorias } from "@/components/categorias/Categorias";
-import { CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
+import { GRUPOS, CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/flujo",
@@ -42,7 +42,7 @@ describe("Flujo de caja", () => {
     expect(screen.getByText("Flujo acumulado")).toBeDefined();
   });
 
-  it("expande todas las categorías sin romperse", () => {
+  it("expande todas las grupos sin romperse", () => {
     montar(<Flujo />);
     const antes = document.querySelectorAll("tbody tr").length;
     fireEvent.click(screen.getByText("Expandir todo"));
@@ -62,15 +62,15 @@ describe("Flujo de caja", () => {
     const panel = screen.getByRole("dialog");
     expect(panel).toBeDefined();
     // El panel permite reclasificar ahí mismo: el control existe y al accionarlo
-    // aparece la lista completa de subcategorías.
-    const selectores = within(panel).getAllByLabelText("Subcategoría");
+    // aparece la lista completa de categorías.
+    const selectores = within(panel).getAllByLabelText("Categoría");
     expect(selectores.length).toBeGreaterThan(0);
     fireEvent.click(selectores[0]!);
-    const abierto = within(panel).getAllByLabelText("Subcategoría")[0]!;
+    const abierto = within(panel).getAllByLabelText("Categoría")[0]!;
     expect(abierto.tagName).toBe("SELECT");
     // Contra el catálogo, no contra un número fijo: lo que se prueba es que el
     // selector las muestre todas, no cuántas hay.
-    expect(abierto.querySelectorAll("option").length).toBe(SUBCATEGORIAS.length);
+    expect(abierto.querySelectorAll("option").length).toBe(CATEGORIAS.length);
   });
 
   it("cierra el detalle con Escape", () => {
@@ -129,7 +129,7 @@ describe("Movimientos", () => {
     const botonSplit = screen.getAllByText(/Split · \d+ líneas/)[0]!;
     fireEvent.click(botonSplit);
 
-    // Las líneas del split aparecen con glosa, subcategoría y monto editables.
+    // Las líneas del split aparecen con glosa, categoría y monto editables.
     expect(screen.getAllByLabelText("Glosa de la línea").length).toBeGreaterThan(0);
     expect(screen.getAllByLabelText("Monto de la línea").length).toBeGreaterThan(0);
     expect(screen.getByText(/\+ IVA/)).toBeDefined();
@@ -519,7 +519,7 @@ describe("Presupuesto anual", () => {
     montar(<Presupuesto />);
     fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
 
-    const naturalezaDe = new Map(SUBCATEGORIAS.map((s) => [s.nombre, s.naturaleza]));
+    const naturalezaDe = new Map(CATEGORIAS.map((s) => [s.nombre, s.naturaleza]));
     const conPresupuesto = screen
       .getAllByLabelText(/^Presupuesto de /)
       .filter((i) => (i as HTMLInputElement).value !== "")
@@ -555,7 +555,7 @@ describe("Presupuesto anual", () => {
     const panel = screen.getByRole("dialog");
     expect(panel).toBeDefined();
     // Trae movimientos de verdad y se pueden reclasificar sin salir de la vista.
-    expect(within(panel).getAllByLabelText("Subcategoría").length).toBeGreaterThan(0);
+    expect(within(panel).getAllByLabelText("Categoría").length).toBeGreaterThan(0);
     expect(panel.textContent).toMatch(/Enero a/);
   });
 
@@ -596,17 +596,17 @@ describe("Presupuesto anual", () => {
     expect(screen.getByText("Fuera del control presupuestario")).toBeDefined();
 
     const sinControl = new Set(
-      CATEGORIAS.filter((c) => !c.controlado).map((c) => c.nombre)
+      GRUPOS.filter((c) => !c.controlado).map((c) => c.nombre)
     );
-    const nombreDe = new Map(SUBCATEGORIAS.map((s) => [s.nombre, s.categoria_id]));
-    const categoriaDe = new Map(CATEGORIAS.map((c) => [c.id, c.nombre]));
+    const nombreDe = new Map(CATEGORIAS.map((s) => [s.nombre, s.grupo_id]));
+    const grupoDe = new Map(GRUPOS.map((c) => [c.id, c.nombre]));
 
-    // Ninguna línea presupuestada pertenece a una categoría fuera de control.
+    // Ninguna línea presupuestada pertenece a una grupo fuera de control.
     const presupuestadas = screen
       .getAllByLabelText(/^Presupuesto de /)
       .map((i) => (i.getAttribute("aria-label") ?? "").replace("Presupuesto de ", ""));
     const infiltradas = presupuestadas.filter((n) =>
-      sinControl.has(categoriaDe.get(nombreDe.get(n) ?? "") ?? "")
+      sinControl.has(grupoDe.get(nombreDe.get(n) ?? "") ?? "")
     );
     expect(infiltradas).toEqual([]);
   });
@@ -824,20 +824,20 @@ describe("Entrar a una cuenta desde el sidebar", () => {
   });
 });
 
-describe("Categorías", () => {
+describe("Grupos", () => {
   it("monta y lista el catálogo completo", () => {
     montar(<Categorias />);
-    expect(screen.getByRole("heading", { name: "Categorías y subcategorías" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Grupos y categorías" })).toBeDefined();
     expect(
-      screen.getByText(`${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)
+      screen.getByText(`${GRUPOS.length} grupos · ${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)
     ).toBeDefined();
   });
 
-  it("expande todas las categorías sin romperse", () => {
-    // El caso que revienta: 293 subcategorías con sus selectores, todas a la vez.
+  it("expande todas las grupos sin romperse", () => {
+    // El caso que revienta: 293 categorías con sus selectores, todas a la vez.
     montar(<Categorias />);
     fireEvent.click(screen.getByRole("button", { name: /^Expandir$/ }));
-    expect(screen.getAllByLabelText(/^Naturaleza de /).length).toBe(SUBCATEGORIAS.length);
+    expect(screen.getAllByLabelText(/^Naturaleza de /).length).toBe(CATEGORIAS.length);
     fireEvent.click(screen.getByRole("button", { name: /^Colapsar$/ }));
     expect(screen.queryAllByLabelText(/^Naturaleza de /).length).toBe(0);
   });
@@ -851,7 +851,7 @@ describe("Categorías", () => {
     expect(screen.queryByLabelText("Nombre de Sueldos")).toBeNull();
   });
 
-  it("renombrar una subcategoría se ve en el flujo de caja", () => {
+  it("renombrar una categoría se ve en el flujo de caja", () => {
     // La prueba de que el catálogo dejó de ser una constante del bundle: si las
     // vistas siguieran leyendo de lib/catalogo.ts, el nombre viejo se quedaría ahí.
     render(
@@ -870,12 +870,12 @@ describe("Categorías", () => {
     expect(screen.getAllByText("Arriendo casa matriz").length).toBeGreaterThan(0);
   });
 
-  it("una categoría con dos naturalezas se marca mixta (§4.2)", () => {
+  it("una grupo con dos naturalezas se marca mixta (§4.2)", () => {
     montar(<Categorias />);
     expect(screen.getAllByText("mixta").length).toBeGreaterThan(0);
   });
 
-  it("sacar una categoría del control la mueve fuera del presupuesto", () => {
+  it("sacar una grupo del control la mueve fuera del presupuesto", () => {
     render(
       <ProveedorTesoreria registroInicial={null}>
         <Categorias />
@@ -887,7 +887,7 @@ describe("Categorías", () => {
     expect(screen.getAllByRole("button", { name: "fuera" }).length).toBe(antes + 1);
   });
 
-  it("no deja borrar una subcategoría con movimientos, y explica qué hacer", () => {
+  it("no deja borrar una categoría con movimientos, y explica qué hacer", () => {
     // Borrarla dejaría huérfanas sus líneas (§3). El aviso tiene que nombrar la
     // salida —desactivarla— o el usuario queda trabado sin saber por qué.
     montar(<Categorias />);
@@ -899,7 +899,7 @@ describe("Categorías", () => {
     expect(screen.getByLabelText("Nombre de Arriendo oficina")).toBeDefined();
   });
 
-  it("borrar una subcategoría sin uso pide confirmación en la propia fila", () => {
+  it("borrar una categoría sin uso pide confirmación en la propia fila", () => {
     montar(<Categorias />);
     fireEvent.change(screen.getByLabelText("Listado a importar"), {
       target: { value: "Logística:Fletes" },
@@ -920,7 +920,7 @@ describe("Categorías", () => {
     expect(screen.queryByLabelText("Nombre de Fletes")).toBeNull();
   });
 
-  it("desactivar una subcategoría la saca de los selectores, sin tocar lo clasificado", () => {
+  it("desactivar una categoría la saca de los selectores, sin tocar lo clasificado", () => {
     render(
       <ProveedorTesoreria registroInicial={null}>
         <Categorias />
@@ -934,16 +934,16 @@ describe("Categorías", () => {
     expect(screen.getAllByRole("button", { name: "inactiva" }).length).toBeGreaterThan(0);
 
     // El movimiento que la usaba sigue mostrándola: desactivar no reclasifica.
-    fireEvent.click(screen.getAllByLabelText("Subcategoría")[0]!);
-    expect(screen.getByRole("combobox", { name: "Subcategoría" })).toBeDefined();
+    fireEvent.click(screen.getAllByLabelText("Categoría")[0]!);
+    expect(screen.getByRole("combobox", { name: "Categoría" })).toBeDefined();
   });
 
-  it("crear una categoría la deja usable de inmediato", () => {
-    // Nace con una subcategoría propia: se clasifica por subcategoría (§3), así que
-    // una categoría vacía no serviría para nada.
+  it("crear una grupo la deja usable de inmediato", () => {
+    // Nace con una categoría propia: se clasifica por categoría (§3), así que
+    // una grupo vacía no serviría para nada.
     montar(<Categorias />);
-    fireEvent.click(screen.getByRole("button", { name: "+ Categoría" }));
-    fireEvent.change(screen.getByLabelText("Nombre de la categoría nueva"), {
+    fireEvent.click(screen.getByRole("button", { name: "+ Grupo" }));
+    fireEvent.change(screen.getByLabelText("Nombre de la grupo nueva"), {
       target: { value: "Gastos de mudanza" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Crear" }));
@@ -951,30 +951,30 @@ describe("Categorías", () => {
     fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
       target: { value: "mudanza" },
     });
-    // La categoría y su subcategoría inicial, ambas con el mismo nombre.
+    // La grupo y su categoría inicial, ambas con el mismo nombre.
     expect(screen.getAllByLabelText("Nombre de Gastos de mudanza").length).toBe(2);
   });
 
   it("Escape cancela la creación sin dejar nada a medias", () => {
     montar(<Categorias />);
-    fireEvent.click(screen.getByRole("button", { name: "+ Categoría" }));
-    const campo = screen.getByLabelText("Nombre de la categoría nueva");
+    fireEvent.click(screen.getByRole("button", { name: "+ Grupo" }));
+    const campo = screen.getByLabelText("Nombre de la grupo nueva");
     fireEvent.change(campo, { target: { value: "Se me ocurrió otra cosa" } });
     fireEvent.keyDown(campo, { key: "Escape" });
-    expect(screen.queryByLabelText("Nombre de la categoría nueva")).toBeNull();
+    expect(screen.queryByLabelText("Nombre de la grupo nueva")).toBeNull();
     expect(
-      screen.getByText(`${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)
+      screen.getByText(`${GRUPOS.length} grupos · ${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)
     ).toBeDefined();
   });
 
-  it("agregar una subcategoría la deja bajo su categoría", () => {
+  it("agregar una categoría la deja bajo su grupo", () => {
     montar(<Categorias />);
     fireEvent.click(screen.getAllByRole("button", { name: "+ sub" })[0]!);
-    const campo = screen.getByLabelText(/^Nombre de la subcategoría nueva en /);
+    const campo = screen.getByLabelText(/^Nombre de la categoría nueva en /);
     fireEvent.change(campo, { target: { value: "Cliente nuevo SpA" } });
     fireEvent.keyDown(campo, { key: "Enter" });
     expect(
-      screen.getByText(`${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length + 1} subcategorías`)
+      screen.getByText(`${GRUPOS.length} grupos · ${CATEGORIAS.length + 1} categorías · ${SUBCATEGORIAS.length} subcategorías`)
     ).toBeDefined();
     expect(screen.getByLabelText("Nombre de Cliente nuevo SpA")).toBeDefined();
   });
@@ -985,13 +985,13 @@ describe("Categorías", () => {
       target: { value: "Logística\n  Fletes\n  Bodegaje" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
-    expect(screen.getByText(/subcategorías detectadas/)).toBeDefined();
+    expect(screen.getByText(/categorías detectadas/)).toBeDefined();
     // Todavía no entró nada.
-    expect(screen.getByText(`${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)).toBeDefined();
+    expect(screen.getByText(`${GRUPOS.length} grupos · ${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)).toBeDefined();
 
     fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
     expect(
-      screen.getByText(`${CATEGORIAS.length + 1} categorías · ${SUBCATEGORIAS.length + 2} subcategorías`)
+      screen.getByText(`${GRUPOS.length + 1} grupos · ${CATEGORIAS.length + 2} categorías · ${SUBCATEGORIAS.length} subcategorías`)
     ).toBeDefined();
   });
 
@@ -1008,7 +1008,78 @@ describe("Categorías", () => {
     pegar();
     expect(screen.getByText(/no se agregó nada/)).toBeDefined();
     expect(
-      screen.getByText(`${CATEGORIAS.length + 1} categorías · ${SUBCATEGORIAS.length + 1} subcategorías`)
+      screen.getByText(`${GRUPOS.length + 1} grupos · ${CATEGORIAS.length + 1} categorías · ${SUBCATEGORIAS.length} subcategorías`)
     ).toBeDefined();
+  });
+});
+
+describe("El tercer nivel", () => {
+  // Quicken tenía tres niveles y el importador aplastó las tres ramas que lo usaban:
+  // dejó "Offsite internacional" como categoría hermana del grupo, cuando cuelga de
+  // "Jornadas y eventos organización". El modelo tiene que sostenerlo bien porque van
+  // a aparecer más.
+
+  it("las subcategorías cuelgan de su categoría, no del grupo", () => {
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Offsite" },
+    });
+    // Buscar por el nombre de la subcategoría llega hasta ella, aunque viva un nivel
+    // más abajo de lo que se busca.
+    expect(screen.getByLabelText("Nombre de Offsite internacional")).toBeDefined();
+    expect(screen.getByLabelText("Nombre de Jornadas y eventos organizacion")).toBeDefined();
+  });
+
+  it("no aparece como categoría en el flujo de caja", () => {
+    // Es lo que estaba mal: salía como línea propia al lado de su madre.
+    montar(<Flujo />);
+    fireEvent.click(screen.getByText("Expandir todo"));
+    expect(screen.queryByText("Offsite internacional")).toBeNull();
+  });
+
+  it("se puede crear una subcategoría nueva en cualquier categoría", () => {
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Arriendo oficina" },
+    });
+    fireEvent.click(screen.getByLabelText("Agregar subcategoría en Arriendo oficina"));
+    const campo = screen.getByLabelText("Nombre de la subcategoría nueva en Arriendo oficina");
+    fireEvent.change(campo, { target: { value: "Estacionamientos" } });
+    fireEvent.keyDown(campo, { key: "Enter" });
+
+    expect(
+      screen.getByText(
+        `${GRUPOS.length} grupos · ${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length + 1} subcategorías`
+      )
+    ).toBeDefined();
+  });
+
+  it("borrar una subcategoría no se lleva el gasto, solo el detalle", () => {
+    // A diferencia de una categoría, esta sí se puede borrar aunque esté en uso: la
+    // línea conserva categoría, monto y glosa.
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Manejador base de datos" },
+    });
+    fireEvent.click(screen.getByLabelText("Borrar Manejador base de datos"));
+    fireEvent.click(screen.getByLabelText("Confirmar borrar Manejador base de datos"));
+
+    expect(screen.queryByLabelText("Nombre de Manejador base de datos")).toBeNull();
+
+    // La categoría madre sigue en pie, con su hermana intacta.
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Analítica avanzada" },
+    });
+    expect(
+      screen.getByLabelText("Nombre de Sistemas Analítica avanzada, IA y Relac.")
+    ).toBeDefined();
+    expect(screen.getByLabelText("Nombre de Automatización y metrics")).toBeDefined();
+  });
+
+  it("el selector de detalle solo aparece donde hay subcategorías", () => {
+    montar(<Registro />);
+    // Sin abrir ninguna línea de una categoría con tercer nivel, no hay selector de
+    // detalle en ninguna parte: es opcional y no debe ocupar lugar donde no aplica.
+    expect(screen.queryByRole("combobox", { name: "Subcategoría" })).toBeNull();
   });
 });

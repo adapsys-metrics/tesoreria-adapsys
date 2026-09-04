@@ -8,7 +8,7 @@ import {
   expandir,
   sumaLineas,
 } from "@/lib/dominio";
-import { CUENTAS, CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
+import { CUENTAS, GRUPOS, CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
 import { MOVIMIENTOS_EJEMPLO, TC_USD } from "@/lib/datos-ejemplo";
 import { HOY } from "@/lib/fechas";
 import type { Movimiento } from "@/lib/tipos";
@@ -52,8 +52,8 @@ describe("conIva — factura afecta (§4.3)", () => {
     expect(descuadre(gtd!)).toBe(0);
   });
 
-  it("manda la línea de IVA a la categoría de impuestos (§4.4)", () => {
-    expect(conIva(-100000, "insumos-oficina").lineas[1]!.subcategoria_id).toBe("iva-compras");
+  it("manda la línea de IVA a la grupo de impuestos (§4.4)", () => {
+    expect(conIva(-100000, "insumos-oficina").lineas[1]!.categoria_id).toBe("iva-compras");
   });
 
   it("el total es mayor que el neto en un egreso", () => {
@@ -81,8 +81,8 @@ describe("conRetencion — boleta de honorarios (§4.3)", () => {
     expect(Math.abs(r.monto)).toBeLessThan(1000000);
   });
 
-  it("manda la retención a la categoría de impuestos (§4.4)", () => {
-    expect(conRetencion(-100000, "horas").lineas[1]!.subcategoria_id).toBe("retencion-bhe");
+  it("manda la retención a la grupo de impuestos (§4.4)", () => {
+    expect(conRetencion(-100000, "horas").lineas[1]!.categoria_id).toBe("retencion-bhe");
   });
 });
 
@@ -90,7 +90,7 @@ describe("expandir (§3)", () => {
   it("un movimiento sin líneas da una fila sin clasificar", () => {
     const filas = expandir([mov({ monto: -5000 })]);
     expect(filas).toHaveLength(1);
-    expect(filas[0]!.subcategoria_id).toBeNull();
+    expect(filas[0]!.categoria_id).toBeNull();
     expect(filas[0]!.monto).toBe(-5000);
     expect(filas[0]!.indice_linea).toBeNull();
   });
@@ -100,8 +100,8 @@ describe("expandir (§3)", () => {
       mov({
         monto: -365026,
         lineas: [
-          { subcategoria_id: "telefonia-e-internet", monto: -306745, glosa: "Neto" },
-          { subcategoria_id: "iva-compras", monto: -58281, glosa: "IVA" },
+          { categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -306745, glosa: "Neto" },
+          { categoria_id: "iva-compras", subcategoria_id: null, monto: -58281, glosa: "IVA" },
         ],
       }),
     ]);
@@ -118,7 +118,7 @@ describe("expandir (§3)", () => {
         tipo_cambio: 950,
         estado: "conciliado",
         empresa_id: "cons",
-        lineas: [{ subcategoria_id: "horas", monto: -100, glosa: null }],
+        lineas: [{ categoria_id: "horas", subcategoria_id: null, monto: -100, glosa: null }],
       }),
     ]);
     expect(filas[0]).toMatchObject({
@@ -133,8 +133,8 @@ describe("expandir (§3)", () => {
     const filas = expandir([
       mov({
         lineas: [
-          { subcategoria_id: "a", monto: -1, glosa: null },
-          { subcategoria_id: "b", monto: -2, glosa: null },
+          { categoria_id: "a", subcategoria_id: null, monto: -1, glosa: null },
+          { categoria_id: "b", subcategoria_id: null, monto: -2, glosa: null },
         ],
       }),
     ]);
@@ -163,8 +163,8 @@ describe("descuadre (§3)", () => {
     const m = mov({
       monto: -365026,
       lineas: [
-        { subcategoria_id: "a", monto: -306745, glosa: null },
-        { subcategoria_id: "b", monto: -58281, glosa: null },
+        { categoria_id: "a", subcategoria_id: null, monto: -306745, glosa: null },
+        { categoria_id: "b", subcategoria_id: null, monto: -58281, glosa: null },
       ],
     });
     expect(descuadre(m)).toBe(0);
@@ -174,7 +174,7 @@ describe("descuadre (§3)", () => {
   it("detecta el descuadre en vez de corregirlo", () => {
     const m = mov({
       monto: -365026,
-      lineas: [{ subcategoria_id: "a", monto: -306745, glosa: null }],
+      lineas: [{ categoria_id: "a", subcategoria_id: null, monto: -306745, glosa: null }],
     });
     expect(descuadre(m)).toBe(-58281);
   });
@@ -199,21 +199,22 @@ describe("cuentaPrincipalDe", () => {
 });
 
 describe("integridad del catálogo (§5)", () => {
-  it("tiene las 16 categorías y 293 subcategorías reales", () => {
+  it("tiene los 16 grupos, 290 categorías y 3 subcategorías reales", () => {
     // 284 importadas de Quicken (§5) + 9 que aparecieron al leer los movimientos
     // reales: 7 clientes nuevos y 2 que en Quicken eran tercer nivel.
-    expect(CATEGORIAS).toHaveLength(16);
-    expect(SUBCATEGORIAS).toHaveLength(293);
+    expect(GRUPOS).toHaveLength(16);
+    expect(CATEGORIAS).toHaveLength(290);
+    expect(SUBCATEGORIAS).toHaveLength(3);
   });
 
   it("no tiene ids repetidos", () => {
-    expect(new Set(SUBCATEGORIAS.map((s) => s.id)).size).toBe(SUBCATEGORIAS.length);
-    expect(new Set(CATEGORIAS.map((c) => c.id)).size).toBe(CATEGORIAS.length);
+    expect(new Set(CATEGORIAS.map((s) => s.id)).size).toBe(CATEGORIAS.length);
+    expect(new Set(GRUPOS.map((c) => c.id)).size).toBe(GRUPOS.length);
   });
 
-  it("toda subcategoría apunta a una categoría existente", () => {
-    const ids = new Set(CATEGORIAS.map((c) => c.id));
-    const huerfanas = SUBCATEGORIAS.filter((s) => !ids.has(s.categoria_id));
+  it("toda categoría apunta a una grupo existente", () => {
+    const ids = new Set(GRUPOS.map((c) => c.id));
+    const huerfanas = CATEGORIAS.filter((s) => !ids.has(s.grupo_id));
     expect(huerfanas).toEqual([]);
   });
 
@@ -226,10 +227,10 @@ describe("integridad del catálogo (§5)", () => {
 });
 
 describe("datos de ejemplo", () => {
-  it("toda línea apunta a una subcategoría que existe en el catálogo", () => {
-    const ids = new Set(SUBCATEGORIAS.map((s) => s.id));
+  it("toda línea apunta a una categoría que existe en el catálogo", () => {
+    const ids = new Set(CATEGORIAS.map((s) => s.id));
     const rotas = MOVIMIENTOS_EJEMPLO.flatMap((m) =>
-      m.lineas.filter((l) => !ids.has(l.subcategoria_id)).map((l) => l.subcategoria_id)
+      m.lineas.filter((l) => !ids.has(l.categoria_id)).map((l) => l.categoria_id)
     );
     expect([...new Set(rotas)]).toEqual([]);
   });

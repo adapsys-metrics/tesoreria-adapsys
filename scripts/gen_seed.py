@@ -4,6 +4,13 @@ Genera supabase/seed.sql a partir de lib/catalogo.ts, que es la fuente de verdad
 catálogo (ver CLAUDE.md §5 y §11). Si el catálogo cambia, se edita el TS y se corre
 este script; nunca al revés.
 
+OJO con los nombres de tabla. El seed se carga entre 0002 y 0003 —0003 inserta
+catálogo y necesita que exista— y en ese punto de la cadena las tablas todavía se
+llaman `categorias` (los grupos) y `subcategorias` (las categorías): el renombre a
+tres niveles ocurre recién en 0012, que arrastra las filas. Por eso el script escribe
+los nombres viejos aunque el TS ya use los nuevos, y el tercer nivel no va acá sino
+en 0012, que es donde nace.
+
 Uso: python3 scripts/gen_seed.py
 """
 import re
@@ -54,8 +61,8 @@ def main():
     texto = FUENTE.read_text(encoding="utf-8")
     empresas = extraer_objetos(extraer_bloque(texto, r"EMPRESAS: Empresa\[\]"))
     cuentas = extraer_objetos(extraer_bloque(texto, r"CUENTAS: Cuenta\[\]"))
+    grupos = extraer_objetos(extraer_bloque(texto, r"GRUPOS: Grupo\[\]"))
     categorias = extraer_objetos(extraer_bloque(texto, r"CATEGORIAS: Categoria\[\]"))
-    subcategorias = extraer_objetos(extraer_bloque(texto, r"SUBCATEGORIAS: Subcategoria\[\]"))
 
     out = [
         "-- Generado por scripts/gen_seed.py desde lib/catalogo.ts — no editar a mano.",
@@ -83,16 +90,19 @@ def main():
         cuentas,
         lambda f, c: f.get(c, False if c == "principal" else f.get(c)),
     )
+    # `categorias` acá son los GRUPOS del modelo actual: ver la nota de arriba.
     tabla(
         "categorias",
         ["id", "nombre", "orden", "controlado"],
-        categorias,
+        grupos,
         lambda f, c: f.get(c, True if c == "controlado" else f.get(c)),
     )
+    # Y `subcategorias` son las CATEGORÍAS. El grupo_id del TS se escribe como
+    # categoria_id, que es como se llama la columna hasta 0012.
     tabla(
         "subcategorias",
         ["id", "categoria_id", "nombre", "naturaleza", "activa"],
-        subcategorias,
+        [{**c, "categoria_id": c["grupo_id"]} for c in categorias],
         lambda f, c: f.get(c, True if c == "activa" else f.get(c)),
     )
 
@@ -108,7 +118,7 @@ def main():
     SALIDA.write_text("\n".join(out), encoding="utf-8")
     print(
         f"Escribí {SALIDA} — {len(empresas)} empresas, {len(cuentas)} cuentas, "
-        f"{len(categorias)} categorías, {len(subcategorias)} subcategorías."
+        f"{len(grupos)} grupos, {len(categorias)} categorías."
     )
 
 

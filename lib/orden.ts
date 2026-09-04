@@ -12,7 +12,7 @@ export type ColumnaOrden =
   | "cuenta"
   | "contraparte"
   | "glosa"
-  | "subcategoria"
+  | "categoria"
   | "monto"
   | "estado";
 
@@ -46,8 +46,8 @@ const PESO_ESTADO: Record<EstadoMovimiento, number> = {
 export type EtiquetasOrden = {
   /** Texto que muestra la columna de cuenta/empresa. */
   cuenta: (m: Movimiento) => string;
-  /** Texto que muestra la columna de subcategoría. */
-  subcategoria: (m: Movimiento) => string;
+  /** Texto que muestra la columna de categoría. */
+  categoria: (m: Movimiento) => string;
 };
 
 /** Siguiente estado del encabezado al hacer clic: la misma columna alterna el
@@ -90,8 +90,8 @@ export function ordenarMovimientos(
         return texto(a.contraparte ?? "", b.contraparte ?? "");
       case "glosa":
         return texto(a.glosa ?? "", b.glosa ?? "");
-      case "subcategoria":
-        return texto(etiquetas.subcategoria(a), etiquetas.subcategoria(b));
+      case "categoria":
+        return texto(etiquetas.categoria(a), etiquetas.categoria(b));
       case "monto":
         // En CLP para que pesos y dólares sean comparables. Con signo: el egreso
         // más grande arriba en ascendente, el ingreso más grande en descendente.

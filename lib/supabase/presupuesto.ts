@@ -9,7 +9,7 @@ import type { LineaPresupuesto } from "@/lib/tipos";
 import { MESES_DEL_ANIO, type Meses } from "@/lib/presupuesto";
 
 export type PresupuestoDelAnio = {
-  /** Los doce meses de cada subcategoría presupuestada. */
+  /** Los doce meses de cada categoría presupuestada. */
   meses: Map<string, Meses>;
   /** Responsable, nota y presupuesto del año anterior. */
   metadata: Map<string, LineaPresupuesto>;
@@ -23,10 +23,10 @@ export async function cargarPresupuesto(
   anio: number
 ): Promise<PresupuestoDelAnio> {
   const [porMes, meta] = await Promise.all([
-    supabase.from("presupuesto_meses").select("subcategoria_id,mes,monto").eq("anio", anio),
+    supabase.from("presupuesto_meses").select("categoria_id,mes,monto").eq("anio", anio),
     supabase
       .from("presupuesto")
-      .select("subcategoria_id,monto_anterior,responsable,nota")
+      .select("categoria_id,monto_anterior,responsable,nota")
       .eq("anio", anio),
   ]);
 
@@ -39,15 +39,15 @@ export async function cargarPresupuesto(
 
   const meses = new Map<string, Meses>();
   for (const fila of porMes.data ?? []) {
-    const actuales = meses.get(fila.subcategoria_id) ?? vacios();
+    const actuales = meses.get(fila.categoria_id) ?? vacios();
     // La base garantiza que el mes está entre 1 y 12; el índice es mes − 1.
     actuales[fila.mes - 1] = aNumero(fila.monto);
-    meses.set(fila.subcategoria_id, actuales);
+    meses.set(fila.categoria_id, actuales);
   }
 
   const metadata = new Map<string, LineaPresupuesto>();
   for (const fila of meta.data ?? []) {
-    metadata.set(fila.subcategoria_id, {
+    metadata.set(fila.categoria_id, {
       monto: 0, // el anual sale de los meses, no se guarda aparte
       monto_anterior: aNumero(fila.monto_anterior),
       responsable: fila.responsable ?? "",
@@ -68,14 +68,14 @@ export async function cargarPresupuesto(
 export async function guardarLineaPresupuesto(
   supabase: SupabaseClient<Database>,
   anio: number,
-  subcategoria_id: string,
+  categoria_id: string,
   linea: LineaPresupuesto,
   meses: Meses
 ): Promise<void> {
   const { error } = await supabase.rpc("fn_guardar_presupuesto", {
     p: {
       anio,
-      subcategoria_id,
+      categoria_id,
       monto_anterior: linea.monto_anterior,
       responsable: linea.responsable,
       nota: linea.nota,

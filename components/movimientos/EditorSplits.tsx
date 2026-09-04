@@ -9,6 +9,7 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { descuadre } from "@/lib/dominio";
 import { clp, pct } from "@/lib/formato";
 import type { Movimiento } from "@/lib/tipos";
+import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
 import { clases } from "@/components/ui/primitivas";
 import css from "./movimientos.module.css";
@@ -62,7 +63,18 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
               onChange={(e) => editarLinea(m.id, i, "glosa", e.target.value)}
               className={css.inputGlosa}
             />
+            <SelectorCategoria
+              valor={l.categoria_id}
+              onChange={(id) => {
+                editarLinea(m.id, i, "categoria_id", id);
+                // El detalle cuelga de la categoría: al cambiarla, el que había deja
+                // de pertenecer y no puede quedarse. La base lo rechazaría igual.
+                if (l.subcategoria_id) editarLinea(m.id, i, "subcategoria_id", null);
+              }}
+              compacto
+            />
             <SelectorSubcategoria
+              categoria_id={l.categoria_id}
               valor={l.subcategoria_id}
               onChange={(id) => editarLinea(m.id, i, "subcategoria_id", id)}
               compacto

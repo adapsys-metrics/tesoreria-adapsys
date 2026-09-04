@@ -20,7 +20,7 @@ const mov = (p: Partial<Movimiento> & { id: string }): Movimiento => ({
 
 const ETIQUETAS = {
   cuenta: (m: Movimiento) => m.cuenta_id ?? "",
-  subcategoria: (m: Movimiento) => m.lineas[0]?.subcategoria_id ?? "",
+  categoria: (m: Movimiento) => m.lineas[0]?.categoria_id ?? "",
 };
 
 const ordenar = (movs: Movimiento[], orden: Orden) =>
@@ -116,9 +116,9 @@ describe("textos", () => {
   it("los movimientos sin clasificar quedan al final de su columna", () => {
     const movs = [
       mov({ id: "sin" }),
-      mov({ id: "con", lineas: [{ subcategoria_id: "sueldos", monto: -1000, glosa: null }] }),
+      mov({ id: "con", lineas: [{ categoria_id: "sueldos", subcategoria_id: null, monto: -1000, glosa: null }] }),
     ];
-    expect(ordenar(movs, { columna: "subcategoria", sentido: "asc" })).toEqual(["con", "sin"]);
+    expect(ordenar(movs, { columna: "categoria", sentido: "asc" })).toEqual(["con", "sin"]);
   });
 });
 

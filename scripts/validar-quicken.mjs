@@ -10,7 +10,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { leerArchivo, agruparMovimientos } from "../lib/quicken.ts";
-import { CATEGORIAS, SUBCATEGORIAS } from "../lib/catalogo.ts";
+import { GRUPOS, CATEGORIAS } from "../lib/catalogo.ts";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIR = join(RAIZ, "datos-quicken");
@@ -18,12 +18,12 @@ const DIR = join(RAIZ, "datos-quicken");
 const clp = (n) =>
   new Intl.NumberFormat("es-CL", { maximumFractionDigits: 2 }).format(n);
 
-// El catálogo se compara normalizado: Quicken escribe la misma subcategoría con
+// El catálogo se compara normalizado: Quicken escribe la misma categoría con
 // y sin tilde según la época.
 const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
 const catalogo = new Set(
-  SUBCATEGORIAS.map((s) => {
-    const cat = CATEGORIAS.find((c) => c.id === s.categoria_id);
+  CATEGORIAS.map((s) => {
+    const cat = GRUPOS.find((c) => c.id === s.grupo_id);
     return norm(`${cat?.nombre ?? "?"}:${s.nombre}`);
   })
 );
@@ -62,11 +62,11 @@ for (const nombre of readdirSync(DIR).filter((f) => f.endsWith(".csv")).sort()) 
   else if (!calza) problemas.push(`${nombre}: suma ${clp(suma)} ≠ pie ${clp(neto)}`);
 
   for (const f of archivo.filas) {
-    const c = f.categoria.trim();
+    const c = f.grupo.trim();
     if (!c) continue;
     const partes = c.split(":");
     // El tercer nivel de Quicken ya está aplanado en el catálogo: la
-    // subcategoría es el último segmento, la categoría el primero.
+    // categoría es el último segmento, la grupo el primero.
     const clave = norm(`${partes[0]}:${partes[partes.length - 1]}`);
     if (!catalogo.has(clave)) huerfanas.set(c, (huerfanas.get(c) ?? 0) + 1);
   }
@@ -88,7 +88,7 @@ for (const nombre of readdirSync(DIR).filter((f) => f.endsWith(".csv")).sort()) 
 
 console.log(`\n${totMov} movimientos, ${totLin} líneas en total.`);
 
-console.log(`\n━━━ Subcategorías fuera del catálogo: ${huerfanas.size}`);
+console.log(`\n━━━ Categorías fuera del catálogo: ${huerfanas.size}`);
 for (const [c, n] of [...huerfanas].sort((a, b) => b[1] - a[1])) {
   console.log(`  ${String(n).padStart(4)}×  ${c}`);
 }

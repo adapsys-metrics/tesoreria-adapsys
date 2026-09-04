@@ -11,7 +11,7 @@ import { conIva, conRetencion, cuentaPrincipalDe } from "@/lib/dominio";
 import { clp, pct } from "@/lib/formato";
 import { HOY } from "@/lib/fechas";
 import type { DocTipo, Movimiento } from "@/lib/tipos";
-import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
+import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { SelectorCuenta } from "./SelectorCuenta";
 import css from "./movimientos.module.css";
 
@@ -31,7 +31,7 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
   const [contraparte, setContraparte] = useState("");
   const [glosa, setGlosa] = useState("");
   const [numeroDoc, setNumeroDoc] = useState("");
-  const [subcategoria, setSubcategoria] = useState("sueldos");
+  const [categoria, setCategoria] = useState("sueldos");
   const [base, setBase] = useState("");
   const [doc, setDoc] = useState<DocTipo>("exento");
 
@@ -41,12 +41,12 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
   // es exactamente lo que se va a grabar.
   const resultado =
     doc === "afecta"
-      ? conIva(montoBase, subcategoria, tasas.iva)
+      ? conIva(montoBase, categoria, tasas.iva)
       : doc === "honorario"
-        ? conRetencion(montoBase, subcategoria, tasas.bhe)
+        ? conRetencion(montoBase, categoria, tasas.bhe)
         : {
             monto: montoBase,
-            lineas: [{ subcategoria_id: subcategoria, monto: montoBase, glosa: null }],
+            lineas: [{ categoria_id: categoria, subcategoria_id: null, monto: montoBase, glosa: null }],
           };
 
   const cuenta = cuentas.find((c) => c.id === cuentaId) ?? cuentas[0]!;
@@ -123,8 +123,8 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
       </label>
 
       <label className={css.campo}>
-        <span className={css.etiquetaCampo}>Subcategoría</span>
-        <SelectorSubcategoria valor={subcategoria} onChange={setSubcategoria} />
+        <span className={css.etiquetaCampo}>Categoría</span>
+        <SelectorCategoria valor={categoria} onChange={setCategoria} />
       </label>
 
       <label className={css.campo}>

@@ -76,12 +76,12 @@
 
 /* Fondos de fila. Van acá y no inline para que el :hover de globals.css los
    pueda pisar sin necesidad de !important. */
-.filaCategoria {
+.filaGrupo {
   background: var(--surface);
   border-top: 1px solid var(--rule-soft);
 }
 
-.filaSubcategoria {
+.filaCategoria {
   background: var(--fila-anidada);
 }
 
@@ -108,7 +108,7 @@
   background: var(--teal-soft);
 }
 
-/* Nombre de categoría con su botón de colapso. */
+/* Nombre de grupo con su botón de colapso. */
 .botonColapso {
   display: inline-flex;
   align-items: center;

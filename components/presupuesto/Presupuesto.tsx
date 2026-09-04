@@ -22,7 +22,7 @@ import {
   SECCIONES,
   distribucionOperativa,
   distribuirLineal,
-  ejecutadoPorSubcategoria,
+  ejecutadoPorCategoria,
   entraAlPresupuesto,
   filaDe,
   finDeMes,
@@ -53,7 +53,7 @@ const sinMeses = (): Meses => Array<number>(MESES_DEL_ANIO).fill(0);
 
 export function Presupuesto() {
   const { movimientos, tc, editarLinea, editarMovimiento, catalogo } = useTesoreria();
-  const esOperativa = (id: string) => catalogo.subcategoriaDe(id).naturaleza === "operativo";
+  const esOperativa = (id: string) => catalogo.categoriaDe(id).naturaleza === "operativo";
   const [detalle, setDetalle] = useState<Detalle | null>(null);
 
   const [anio, setAnio] = useState(() => Number(HOY.slice(0, 4)));
@@ -101,12 +101,12 @@ export function Presupuesto() {
   );
 
   const ejecutado = useMemo(
-    () => ejecutadoPorSubcategoria(delPresupuesto, anio, mes, tc),
+    () => ejecutadoPorCategoria(delPresupuesto, anio, mes, tc),
     [delPresupuesto, anio, mes, tc]
   );
 
   /** Las líneas que componen un monto de la columna "gasto a la fecha".
-   *  Se filtra igual que ejecutadoPorSubcategoria —mismo rango, mismos estados—
+   *  Se filtra igual que ejecutadoPorCategoria —mismo rango, mismos estados—
    *  para que lo que se abre sume exactamente lo que se ve. */
   const lineasDe = (subs: Set<string>): LineaExpandida[] => {
     const desde = `${anio}-01-01`;
@@ -116,8 +116,8 @@ export function Presupuesto() {
         f.estado !== "proyectado" &&
         f.fecha >= desde &&
         f.fecha <= hasta &&
-        f.subcategoria_id !== null &&
-        subs.has(f.subcategoria_id)
+        f.categoria_id !== null &&
+        subs.has(f.categoria_id)
     );
   };
 
@@ -127,29 +127,29 @@ export function Presupuesto() {
     setDetalle({ titulo, periodo: `Enero a ${NOMBRES_MES[mes - 1]} de ${anio}`, items });
   };
 
-  const reclasificar = (fila: LineaExpandida, subcategoria_id: string) => {
+  const reclasificar = (fila: LineaExpandida, categoria_id: string) => {
     if (fila.indice_linea !== null) {
-      editarLinea(fila.movimiento_id, fila.indice_linea, "subcategoria_id", subcategoria_id);
+      editarLinea(fila.movimiento_id, fila.indice_linea, "categoria_id", categoria_id);
     } else {
       // Sin líneas: clasificarlo crea la primera.
       editarMovimiento(fila.movimiento_id, "lineas", [
-        { subcategoria_id, monto: fila.monto, glosa: fila.glosa },
+        { categoria_id, subcategoria_id: null, monto: fila.monto, glosa: fila.glosa },
       ]);
     }
   };
 
-  /** Una sección con sus categorías y el total. Solo aparecen las líneas con
-   *  presupuesto o con gasto: el catálogo tiene 293 subcategorías y mostrarlas
+  /** Una sección con sus grupos y el total. Solo aparecen las líneas con
+   *  presupuesto o con gasto: el catálogo tiene 293 categorías y mostrarlas
    *  todas dejaría el control enterrado entre ceros. */
   const secciones = useMemo(
     () =>
       SECCIONES.map(({ naturaleza, titulo }) => {
-        // Solo las categorías controladas (§4.6). Impuestos, bancos, inversiones,
+        // Solo las grupos controladas (§4.6). Impuestos, bancos, inversiones,
         // préstamos y socios no son gasto que se decida presupuestar: salen de lo
         // que se factura, de lo que se mueve o de una decisión de los dueños.
-        const categorias = catalogo.categorias.filter((c) => c.controlado).map((categoria) => {
+        const grupos = catalogo.grupos.filter((c) => c.controlado).map((grupo) => {
           const filas = catalogo
-            .subcategoriasDe(categoria.id, naturaleza)
+            .categoriasDe(grupo.id, naturaleza)
             .map((s) =>
               filaDe(
                 s.id,
@@ -160,14 +160,14 @@ export function Presupuesto() {
               )
             )
             .filter((f) => f.anual > 0 || f.real > 0);
-          return { categoria, filas, total: totalizar(filas) };
+          return { grupo, filas, total: totalizar(filas) };
         }).filter((c) => c.filas.length > 0);
 
         return {
           naturaleza,
           titulo,
-          categorias,
-          total: totalizar(categorias.flatMap((c) => c.filas)),
+          grupos,
+          total: totalizar(grupos.flatMap((c) => c.filas)),
         };
       }),
     [datos, ejecutado, mes, catalogo]
@@ -178,21 +178,21 @@ export function Presupuesto() {
     for (const [sub, meses] of distribucion) guardar(sub, meses);
   };
 
-  const totalGeneral = totalizar(secciones.flatMap((s) => s.categorias.flatMap((c) => c.filas)));
+  const totalGeneral = totalizar(secciones.flatMap((s) => s.grupos.flatMap((c) => c.filas)));
 
   /** Lo que queda fuera del control, con su gasto. Se muestra igual para que nadie
    *  olvide que existe: son millones que salen de la caja aunque no se presupuesten. */
   const fueraDeControl = useMemo(() => {
-    const categorias = catalogo.categorias
+    const grupos = catalogo.grupos
       .filter((c) => !c.controlado)
-      .map((categoria) => ({
-        categoria,
+      .map((grupo) => ({
+        grupo,
         real: catalogo
-          .subcategoriasDe(categoria.id)
+          .categoriasDe(grupo.id)
           .reduce((t, s) => t + (ejecutado.get(s.id) ?? 0), 0),
       }))
       .filter((c) => c.real > 0);
-    return { categorias, total: categorias.reduce((t, c) => t + c.real, 0) };
+    return { grupos, total: grupos.reduce((t, c) => t + c.real, 0) };
   }, [ejecutado, catalogo]);
 
   return (
@@ -231,7 +231,7 @@ export function Presupuesto() {
         <button
           type="button"
           onClick={generarOperativo}
-          title="Suma los movimientos operativos del año por subcategoría y los deja como presupuesto, repartidos por el mes de cada uno"
+          title="Suma los movimientos operativos del año por categoría y los deja como presupuesto, repartidos por el mes de cada uno"
           className={css.botonGenerar}
         >
           Generar operativo desde los movimientos
@@ -249,7 +249,7 @@ export function Presupuesto() {
         <table className={tabla.tabla}>
           <thead>
             <tr>
-              <th className={tabla.th}>Categoría</th>
+              <th className={tabla.th}>Grupo</th>
               <th className={tabla.th}>Responsable</th>
               <th className={clases(tabla.th, tabla.thNum)}>Presupuesto {anio}</th>
               <th className={clases(tabla.th, tabla.thNum)}>Presupuesto a la fecha</th>
@@ -282,7 +282,7 @@ export function Presupuesto() {
                     "Total gastos",
                     new Set(
                       secciones.flatMap((s) =>
-                        s.categorias.flatMap((c) => c.filas.map((f) => f.subcategoria_id))
+                        s.grupos.flatMap((c) => c.filas.map((f) => f.categoria_id))
                       )
                     )
                   )
@@ -293,7 +293,7 @@ export function Presupuesto() {
         </table>
       </div>
 
-      {fueraDeControl.categorias.length > 0 && (
+      {fueraDeControl.grupos.length > 0 && (
         <div className={css.fuera}>
           <Rotulo texto="Fuera del control presupuestario" />
           <p className={css.glosaFuera}>
@@ -303,9 +303,9 @@ export function Presupuesto() {
           </p>
           <table className={css.tablaFuera}>
             <tbody>
-              {fueraDeControl.categorias.map(({ categoria, real }) => (
-                <tr key={categoria.id}>
-                  <td className={tabla.td}>{categoria.nombre}</td>
+              {fueraDeControl.grupos.map(({ grupo, real }) => (
+                <tr key={grupo.id}>
+                  <td className={tabla.td}>{grupo.nombre}</td>
                   <td className={clases(tabla.td, tabla.tdNum)}>{mag(real)}</td>
                 </tr>
               ))}
@@ -392,7 +392,7 @@ function SeccionFilas({
 }: {
   seccion: {
     titulo: string;
-    categorias: { categoria: { id: string; nombre: string }; filas: FilaPresupuesto[]; total: ReturnType<typeof totalizar> }[];
+    grupos: { grupo: { id: string; nombre: string }; filas: FilaPresupuesto[]; total: ReturnType<typeof totalizar> }[];
     total: ReturnType<typeof totalizar>;
   };
   mes: number;
@@ -409,10 +409,10 @@ function SeccionFilas({
         </td>
       </tr>
 
-      {seccion.categorias.map(({ categoria, filas, total }) => (
-        <FilasDeCategoria
-          key={categoria.id}
-          categoria={categoria}
+      {seccion.grupos.map(({ grupo, filas, total }) => (
+        <FilasDeGrupo
+          key={grupo.id}
+          grupo={grupo}
           filas={filas}
           total={total}
           mes={mes}
@@ -432,7 +432,7 @@ function SeccionFilas({
           abrir={() =>
             abrir(
               seccion.titulo,
-              new Set(seccion.categorias.flatMap((c) => c.filas.map((f) => f.subcategoria_id)))
+              new Set(seccion.grupos.flatMap((c) => c.filas.map((f) => f.categoria_id)))
             )
           }
         />
@@ -441,8 +441,8 @@ function SeccionFilas({
   );
 }
 
-function FilasDeCategoria({
-  categoria,
+function FilasDeGrupo({
+  grupo,
   filas,
   total,
   mes,
@@ -451,7 +451,7 @@ function FilasDeCategoria({
   guardar,
   abrir,
 }: {
-  categoria: { id: string; nombre: string };
+  grupo: { id: string; nombre: string };
   filas: FilaPresupuesto[];
   total: ReturnType<typeof totalizar>;
   mes: number;
@@ -462,22 +462,22 @@ function FilasDeCategoria({
 }) {
   return (
     <>
-      <tr className={css.filaCategoria}>
-        <td className={clases(tabla.td, css.nombreCategoria)} colSpan={2}>
-          {categoria.nombre}
+      <tr className={css.filaGrupo}>
+        <td className={clases(tabla.td, css.nombreGrupo)} colSpan={2}>
+          {grupo.nombre}
         </td>
         <Numeros
           total={total}
-          abrir={() => abrir(categoria.nombre, new Set(filas.map((f) => f.subcategoria_id)))}
+          abrir={() => abrir(grupo.nombre, new Set(filas.map((f) => f.categoria_id)))}
         />
       </tr>
 
       {filas.map((f) => (
         <Fila
-          key={f.subcategoria_id}
+          key={f.categoria_id}
           fila={f}
           mes={mes}
-          mesesActuales={meses.get(f.subcategoria_id) ?? sinMeses()}
+          mesesActuales={meses.get(f.categoria_id) ?? sinMeses()}
           guardar={guardar}
           metadata={metadata}
           abrir={abrir}
@@ -502,7 +502,7 @@ function Fila({
   abrir: (titulo: string, subs: Set<string>) => void;
 }) {
   const { catalogo } = useTesoreria();
-  const nombre = catalogo.subcategoriaDe(fila.subcategoria_id).nombre;
+  const nombre = catalogo.categoriaDe(fila.categoria_id).nombre;
 
   // Dos avisos distintos, y la diferencia importa. "Sobre presupuesto" dice que va
   // más rápido de lo previsto para esta altura del año, y puede corregirse solo.
@@ -521,12 +521,12 @@ function Fila({
     if (Number.isNaN(nuevo) || nuevo === fila.anual) return;
     // Reescalar y no repartir parejo: si la línea tiene forma —un aguinaldo en
     // diciembre— subirle el total no debe aplanarla.
-    guardar(fila.subcategoria_id, nuevo === 0 ? sinMeses() : reescalar(mesesActuales, nuevo));
+    guardar(fila.categoria_id, nuevo === 0 ? sinMeses() : reescalar(mesesActuales, nuevo));
   };
 
   const cambiarMeta = (campo: "responsable" | "nota", valor: string) => {
-    const actual = metadata.get(fila.subcategoria_id) ?? LINEA_VACIA;
-    guardar(fila.subcategoria_id, mesesActuales, { ...actual, [campo]: valor } as never);
+    const actual = metadata.get(fila.categoria_id) ?? LINEA_VACIA;
+    guardar(fila.categoria_id, mesesActuales, { ...actual, [campo]: valor } as never);
   };
 
   return (
@@ -574,7 +574,7 @@ function Fila({
       <td className={clases(tabla.td, tabla.tdNum)}>
         <Gasto
           valor={fila.real}
-          abrir={() => abrir(nombre, new Set([fila.subcategoria_id]))}
+          abrir={() => abrir(nombre, new Set([fila.categoria_id]))}
         />
       </td>
       <td

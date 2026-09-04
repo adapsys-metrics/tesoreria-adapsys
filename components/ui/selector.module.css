@@ -13,7 +13,7 @@
   max-width: 200px;
 }
 
-/* Subcategoría que ya no existe en el catálogo, o línea sin clasificar: hay que
+/* Categoría que ya no existe en el catálogo, o línea sin clasificar: hay que
    verla para poder reasignarla. */
 .huerfana {
   border-color: var(--amber);
@@ -37,4 +37,9 @@
 .comoTexto:focus-visible {
   border-color: var(--rule);
   background: var(--paper);
+}
+
+/* Sin detalle es lo normal, no un pendiente: se muestra apagado y no marcado. */
+.sinDetalle {
+  color: var(--muted-claro);
 }

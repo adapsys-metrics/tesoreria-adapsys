@@ -39,12 +39,12 @@ Es la vía recomendada si no tienes Node ni Homebrew en la máquina.
    |---|---|---|
    | 1 | `supabase/migrations/0001_esquema.sql` | Tablas, vistas, triggers y constraints |
    | 2 | `supabase/migrations/0002_rls.sql` | Row Level Security por dominio corporativo |
-   | 3 | `supabase/seed.sql` | Empresas, cuentas, 284 subcategorías y parámetros |
+   | 3 | `supabase/seed.sql` | Empresas, cuentas, 290 categorías y parámetros. Se carga **antes** de `0003`, que inserta catálogo y necesita que exista; en ese punto de la cadena las tablas todavía se llaman `categorias` (los grupos) y `subcategorias` (las categorías) — el renombre a tres niveles llega en `0012` y arrastra las filas. |
 
    Cada uno debe decir *Success. No rows returned*. Si alguno falla, **detenerse ahí**:
    los siguientes dependen del anterior.
 
-4. Verificar en **Table Editor** que `subcategorias` tenga 284 filas y `cuentas` 11.
+4. Verificar en **Table Editor** que, con todas las migraciones aplicadas, `grupos` tenga 16 filas, `categorias` 290, `subcategorias` 3 y `cuentas` 13.
 
 ### Opción B — por la CLI (requiere Node o Homebrew)
 

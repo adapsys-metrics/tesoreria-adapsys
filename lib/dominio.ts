@@ -9,7 +9,7 @@ import { pct } from "@/lib/formato";
  *  con vigencia por año, no como constante. Estas son solo el arranque. */
 export const TASAS: Tasas = { iva: 0.19, bhe: 0.1525 };
 
-/** Subcategorías de impuestos a las que llegan las líneas de IVA y retención (§4.4). */
+/** Categorías de impuestos a las que llegan las líneas de IVA y retención (§4.4). */
 export const SUB_IVA_COMPRAS = "iva-compras";
 export const SUB_RETENCION_BHE = "retencion-bhe";
 
@@ -25,17 +25,15 @@ export type ResultadoDocumento = { monto: number; lineas: Linea[] };
  */
 export const conRetencion = (
   bruto: number,
-  subcategoriaBruto: string,
+  categoriaBruto: string,
   tasa: number = TASAS.bhe
 ): ResultadoDocumento => {
   const retencion = Math.round(-bruto * tasa);
   return {
     monto: bruto + retencion,
     lineas: [
-      { subcategoria_id: subcategoriaBruto, monto: bruto, glosa: "Bruto" },
-      {
-        subcategoria_id: SUB_RETENCION_BHE,
-        monto: retencion,
+      { categoria_id: categoriaBruto, subcategoria_id: null, monto: bruto, glosa: "Bruto" },
+      { categoria_id: SUB_RETENCION_BHE, subcategoria_id: null, monto: retencion,
         glosa: `Retención ${pct(tasa)}`,
       },
     ],
@@ -51,25 +49,25 @@ export const conRetencion = (
  */
 export const conIva = (
   neto: number,
-  subcategoriaNeto: string,
+  categoriaNeto: string,
   tasa: number = TASAS.iva
 ): ResultadoDocumento => {
   const iva = Math.round(neto * tasa);
   return {
     monto: neto + iva,
     lineas: [
-      { subcategoria_id: subcategoriaNeto, monto: neto, glosa: "Neto" },
-      { subcategoria_id: SUB_IVA_COMPRAS, monto: iva, glosa: `IVA ${pct(tasa)}` },
+      { categoria_id: categoriaNeto, subcategoria_id: null, monto: neto, glosa: "Neto" },
+      { categoria_id: SUB_IVA_COMPRAS, subcategoria_id: null, monto: iva, glosa: `IVA ${pct(tasa)}` },
     ],
   };
 };
 
 /**
  * Expande movimientos a una fila por línea — el equivalente de la vista
- * v_lineas_expandidas. Toda agregación por subcategoría debe partir de acá y nunca
+ * v_lineas_expandidas. Toda agregación por categoría debe partir de acá y nunca
  * del movimiento, o los splits se cuentan mal (§3).
  *
- * Un movimiento sin líneas produce una fila con subcategoria_id null: es el caso
+ * Un movimiento sin líneas produce una fila con categoria_id null: es el caso
  * "sin clasificar", que hay que poder listar para reasignar.
  */
 export const expandir = (movimientos: Movimiento[]): LineaExpandida[] =>
@@ -88,7 +86,7 @@ export const expandir = (movimientos: Movimiento[]): LineaExpandida[] =>
       return [
         {
           ...comun,
-          subcategoria_id: null,
+          categoria_id: null,
           monto: m.monto,
           glosa: m.glosa,
           indice_linea: null,
@@ -97,7 +95,7 @@ export const expandir = (movimientos: Movimiento[]): LineaExpandida[] =>
     }
     return m.lineas.map((l, i) => ({
       ...comun,
-      subcategoria_id: l.subcategoria_id,
+      categoria_id: l.categoria_id,
       monto: l.monto,
       glosa: l.glosa ?? m.glosa,
       indice_linea: i,

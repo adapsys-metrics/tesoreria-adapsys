@@ -35,7 +35,7 @@ create table carga_movimientos (
 
 create table carga_lineas (
   mov_ref         text not null,
-  subcategoria_id text not null,
+  categoria_id text not null,
   monto           numeric not null,
   glosa           text,
   orden           integer not null

@@ -7,13 +7,13 @@ export type TipoCuenta = "banco" | "cxc";
 export type Naturaleza = "ingreso" | "inversion" | "operativo";
 export type EstadoMovimiento = "proyectado" | "pagado" | "conciliado";
 export type DocTipo = "exento" | "afecta" | "honorario";
-export type Grupo = "Adapsys" | "Relacionadas";
+export type GrupoEmpresa = "Adapsys" | "Relacionadas";
 
 export type Empresa = {
   id: string;
   nombre: string;
   corto: string;
-  grupo: Grupo;
+  grupo: GrupoEmpresa;
 };
 
 /** La moneda es propiedad de la cuenta y no cambia nunca. Cada empresa tiene a lo
@@ -29,25 +29,45 @@ export type Cuenta = {
   principal: boolean;
 };
 
-export type Categoria = {
+/** Nivel 1: "2 GASTOS ADMINISTRACIÓN". Es donde se decide si entra o no al control
+ *  presupuestario (§4.6). No confundir con GrupoEmpresa, que agrupa sociedades. */
+export type Grupo = {
   id: string;
   nombre: string;
   orden: number;
   controlado: boolean;
 };
 
-export type Subcategoria = {
+/** Nivel 2: "Jornadas y eventos organización". Es el nivel al que se clasifica y
+ *  el que agrupan el flujo, el presupuesto y los reportes. La naturaleza vive acá
+ *  y no en el grupo, por eso un grupo puede ser mixto (§4.2). */
+export type Categoria = {
   id: string;
-  categoria_id: string;
+  grupo_id: string;
   nombre: string;
   naturaleza: Naturaleza;
   activa: boolean;
 };
 
-/** Una línea del split. Siempre tiene subcategoría: "sin clasificar" se
- *  representa con un movimiento sin líneas (§3), no con una línea sin sub. */
+/** Nivel 3, opcional: "Offsite internacional".
+ *
+ *  Es detalle de la línea, no nivel de reporte. Una línea siempre se clasifica en
+ *  una categoría; la subcategoría precisa dentro de cuál, cuando hace falta. Por eso
+ *  no lleva naturaleza —la hereda— y agregarle subcategorías a una categoría no
+ *  invalida nada de lo ya clasificado en ella. */
+export type Subcategoria = {
+  id: string;
+  categoria_id: string;
+  nombre: string;
+  activa: boolean;
+};
+
+/** Una línea del split. Siempre tiene categoría: "sin clasificar" se representa con
+ *  un movimiento sin líneas (§3), no con una línea sin categoría. La subcategoría es
+ *  opcional y tiene que pertenecer a la categoría de la misma línea. */
 export type Linea = {
-  subcategoria_id: string;
+  categoria_id: string;
+  subcategoria_id: string | null;
   monto: number;
   glosa: string | null;
 };
@@ -84,7 +104,7 @@ export type Movimiento = {
 };
 
 /** Fila resultante de expandir un movimiento a sus líneas. Equivale a la vista
- *  v_lineas_expandidas: toda agregación por subcategoría parte de acá (§3). */
+ *  v_lineas_expandidas: toda agregación por categoría parte de acá (§3). */
 export type LineaExpandida = {
   movimiento_id: string;
   fecha: string;
@@ -94,7 +114,7 @@ export type LineaExpandida = {
   moneda: Moneda;
   tipo_cambio: number | null;
   /** null cuando el movimiento no tiene líneas: sin clasificar. */
-  subcategoria_id: string | null;
+  categoria_id: string | null;
   monto: number;
   glosa: string | null;
   contraparte: string | null;

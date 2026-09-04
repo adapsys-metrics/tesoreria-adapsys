@@ -123,16 +123,16 @@ describe("leerArchivo", () => {
 describe("agruparMovimientos", () => {
   const fila = (p: Partial<Parameters<typeof agruparMovimientos>[0][number]>) => ({
     esSplit: false, fecha: "2026-08-14", tags: "", action: "", documento: "",
-    contraparte: "", memo: "", categoria: "", monto: 0, saldo: null, ...p,
+    contraparte: "", memo: "", grupo: "", monto: 0, saldo: null, ...p,
   });
 
   it("arma el split de la factura GTD (§4.3)", () => {
     // neto -306.745 + IVA -58.281 = -365.026 transferidos.
     const [m] = agruparMovimientos([
       fila({ esSplit: true, contraparte: "GTD", documento: "FA3109609", saldo: 156478642,
-             categoria: "2 GASTOS ADMINISTRACIÓN:Telefonía e internet", monto: -306745 }),
+             grupo: "2 GASTOS ADMINISTRACIÓN:Telefonía e internet", monto: -306745 }),
       fila({ esSplit: true, contraparte: "GTD", documento: "FA3109609", saldo: 156478642,
-             categoria: "4 IMPUESTOS:IVA compras", monto: -58281 }),
+             grupo: "4 IMPUESTOS:IVA compras", monto: -58281 }),
     ]);
     expect(m!.monto).toBe(-365026);
     expect(m!.lineas).toHaveLength(2);
@@ -142,9 +142,9 @@ describe("agruparMovimientos", () => {
     // bruto -1.253.118 + retención +191.100 = -1.062.018 líquidos.
     const [m] = agruparMovimientos([
       fila({ esSplit: true, contraparte: "Magdalena Toral", documento: "B405", saldo: 500,
-             categoria: "3 RECURSOS HUMANOS:Sueldos", monto: -1253118 }),
+             grupo: "3 RECURSOS HUMANOS:Sueldos", monto: -1253118 }),
       fila({ esSplit: true, contraparte: "Magdalena Toral", documento: "B405", saldo: 500,
-             categoria: "4 IMPUESTOS:Retención BHE", monto: 191100 }),
+             grupo: "4 IMPUESTOS:Retención BHE", monto: 191100 }),
     ]);
     expect(m!.monto).toBe(-1062018);
   });

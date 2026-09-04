@@ -21,7 +21,7 @@ export type FilaQuicken = {
   documento: string;
   contraparte: string;
   memo: string;
-  categoria: string;
+  grupo: string;
   monto: number;
   saldo: number | null;
 };
@@ -48,7 +48,7 @@ export type MovimientoQuicken = {
    *  fila "bolsa" que todavía no tiene empresa asignada. */
   empresa: string | null;
   monto: number;
-  lineas: { categoria: string; monto: number; glosa: string }[];
+  lineas: { grupo: string; monto: number; glosa: string }[];
 };
 
 /** CSV completo: comillas, comillas escapadas y saltos de línea dentro del campo. */
@@ -150,7 +150,7 @@ export function leerArchivo(texto: string): ArchivoQuicken {
       documento: campo(f, "Check #"),
       contraparte: campo(f, "Payee"),
       memo: campo(f, "Memo/Notes"),
-      categoria: campo(f, "Category"),
+      grupo: campo(f, "Category"),
       monto: parsearMonto(campo(f, "Amount")),
       saldo: saldoTxt === "" ? null : parsearMonto(saldoTxt),
     });
@@ -203,7 +203,7 @@ export function agruparMovimientos(filas: FilaQuicken[]): MovimientoQuicken[] {
       documento: primera.documento,
       empresa: empresaDe(primera.tags) ?? empresaDe(primera.action),
       monto: grupo.reduce((s, f) => s + f.monto, 0),
-      lineas: grupo.map((f) => ({ categoria: f.categoria, monto: f.monto, glosa: f.memo })),
+      lineas: grupo.map((f) => ({ grupo: f.grupo, monto: f.monto, glosa: f.memo })),
     });
     grupo = [];
   };

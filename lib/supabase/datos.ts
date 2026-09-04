@@ -1,7 +1,7 @@
 // Lectura de movimientos desde Supabase.
 //
-// Categorías y subcategorías se traen aparte, en lib/supabase/catalogo.ts, desde que
-// la vista de Categorías las volvió editables.
+// Grupos y categorías se traen aparte, en lib/supabase/catalogo.ts, desde que
+// la vista de Grupos las volvió editables.
 //
 // Empresas y cuentas siguen viviendo solo en lib/catalogo.ts: las cinco sociedades y
 // sus cuentas bancarias no se administran desde la app.
@@ -17,7 +17,7 @@ const TAMANO_PAGINA = 1000;
 
 const COLUMNAS =
   "id,fecha,empresa_id,cuenta_id,contraparte,glosa,documento,monto,moneda,tipo_cambio,estado,doc_tipo," +
-  "movimiento_lineas(subcategoria_id,monto,glosa,orden)";
+  "movimiento_lineas(categoria_id,subcategoria_id,monto,glosa,orden)";
 
 type FilaCruda = {
   id: number;
@@ -33,7 +33,8 @@ type FilaCruda = {
   estado: Movimiento["estado"];
   doc_tipo: Movimiento["doc_tipo"];
   movimiento_lineas: {
-    subcategoria_id: string;
+    categoria_id: string;
+    subcategoria_id: string | null;
     monto: number | string;
     glosa: string | null;
     orden: number;
@@ -51,6 +52,7 @@ function aMovimiento(fila: FilaCruda): Movimiento {
     // retención después del bruto. PostgREST no garantiza el orden de un embed.
     .sort((a, b) => a.orden - b.orden)
     .map((l) => ({
+      categoria_id: l.categoria_id,
       subcategoria_id: l.subcategoria_id,
       monto: aNumero(l.monto),
       glosa: l.glosa,

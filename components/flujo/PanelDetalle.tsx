@@ -1,7 +1,7 @@
 "use client";
 
 // Detalle de una celda del flujo: los movimientos que componen ese monto, con la
-// subcategoría editable ahí mismo. Es lo que convierte el reporte en algo con lo que
+// categoría editable ahí mismo. Es lo que convierte el reporte en algo con lo que
 // se trabaja en vez de sólo mirarlo (§6).
 
 import { useEffect } from "react";
@@ -11,7 +11,7 @@ import { clp } from "@/lib/formato";
 import { fechaCorta } from "@/lib/fechas";
 import type { LineaExpandida } from "@/lib/tipos";
 import { Insignia, Pill } from "@/components/ui/primitivas";
-import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
+import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import css from "./panel.module.css";
 
 export type Detalle = {
@@ -30,7 +30,7 @@ export function PanelDetalle({
   cerrar: () => void;
   tc: number;
   /** Enruta al movimiento o a la línea del split según de dónde venga la fila. */
-  reclasificar: (fila: LineaExpandida, subcategoria_id: string) => void;
+  reclasificar: (fila: LineaExpandida, categoria_id: string) => void;
 }) {
   const total = detalle.items.reduce((s, m) => s + enCLP(m, tc), 0);
 
@@ -98,8 +98,8 @@ export function PanelDetalle({
                       <div className={css.glosa}>{m.glosa}</div>
                       <div className={css.lineaControles}>
                         {m.indice_linea !== null && <Insignia>línea de split</Insignia>}
-                        <SelectorSubcategoria
-                          valor={m.subcategoria_id}
+                        <SelectorCategoria
+                          valor={m.categoria_id}
                           onChange={(id) => reclasificar(m, id)}
                         />
                       </div>

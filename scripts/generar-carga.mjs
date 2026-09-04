@@ -11,7 +11,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { agruparMovimientos, leerArchivo } from "../lib/quicken.ts";
-import { CATEGORIAS, CUENTAS, SUBCATEGORIAS } from "../lib/catalogo.ts";
+import { GRUPOS, CUENTAS, CATEGORIAS } from "../lib/catalogo.ts";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ENTRADA = join(RAIZ, "datos-quicken");
@@ -47,21 +47,21 @@ const cuentaDe = (id) => CUENTAS.find((c) => c.id === id);
 const cuentaPorEmpresa = (empresa, moneda) =>
   CUENTAS.find((c) => c.empresa_id === empresa && c.moneda === moneda && c.tipo === "banco");
 
-// ── Resolución de subcategoría ──────────────────────────────────────────────
+// ── Resolución de categoría ──────────────────────────────────────────────
 //
-// El tercer nivel de Quicken ya está aplanado en el catálogo: la subcategoría es
-// el último segmento y la categoría el primero. Se compara normalizado porque la
-// misma subcategoría aparece con y sin tilde según la época del movimiento.
+// El tercer nivel de Quicken ya está aplanado en el catálogo: la categoría es
+// el último segmento y la grupo el primero. Se compara normalizado porque la
+// misma categoría aparece con y sin tilde según la época del movimiento.
 const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
 const PORCLAVE = new Map(
-  SUBCATEGORIAS.map((s) => {
-    const cat = CATEGORIAS.find((c) => c.id === s.categoria_id);
+  CATEGORIAS.map((s) => {
+    const cat = GRUPOS.find((c) => c.id === s.grupo_id);
     return [norm(`${cat?.nombre ?? "?"}:${s.nombre}`), s.id];
   })
 );
 
-function subcategoriaDe(categoria) {
-  const c = categoria.trim();
+function categoriaDe(grupo) {
+  const c = grupo.trim();
   // "Uncategorized" y "Transfer" son marcadores de Quicken, no clasificación.
   if (!c || !c.includes(":") || /^(Uncategorized|Transfer)$/i.test(c)) return null;
   const p = c.split(":");
@@ -129,7 +129,7 @@ for (const [archivo, reg] of Object.entries(REGISTROS)) {
       archivo,
     ]);
 
-    const resueltas = m.lineas.map((l) => ({ ...l, sub: subcategoriaDe(l.categoria) }));
+    const resueltas = m.lineas.map((l) => ({ ...l, sub: categoriaDe(l.grupo) }));
     const conSub = resueltas.filter((l) => l.sub);
 
     if (conSub.length === 0) {
@@ -139,7 +139,7 @@ for (const [archivo, reg] of Object.entries(REGISTROS)) {
       continue;
     }
     if (conSub.length < resueltas.length) {
-      // Split donde unas líneas tienen categoría y otras no. No se pueden cargar
+      // Split donde unas líneas tienen grupo y otras no. No se pueden cargar
       // solo las clasificadas: la suma no cuadraría con el monto y la constraint
       // lo rechazaría, con razón. Entra entero sin líneas, para reclasificar.
       mixtosDegradados++;
@@ -161,7 +161,7 @@ writeFileSync(
 );
 writeFileSync(
   join(SALIDA, "carga_lineas.csv"),
-  csv([["mov_ref", "subcategoria_id", "monto", "glosa", "orden"], ...lineas])
+  csv([["mov_ref", "categoria_id", "monto", "glosa", "orden"], ...lineas])
 );
 
 // ── Informe ─────────────────────────────────────────────────────────────────

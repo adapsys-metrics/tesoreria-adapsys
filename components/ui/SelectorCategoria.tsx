@@ -1,0 +1,98 @@
+"use client";
+
+// Selector de categoría — 284 opciones (§5).
+//
+// Muestra el nombre como texto y recién al hacer click monta el <select> de verdad.
+// No es un detalle de estilo: renderizar las 284 <option> en cada fila de una tabla
+// de 200 movimientos son ~56.000 nodos, y eso cuelga la vista (lo detectó el test de
+// render de la lista completa). Con una sola lista abierta a la vez, el select
+// nativo alcanza y además se puede buscar escribiendo.
+
+import { useMemo, useState } from "react";
+import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
+import css from "./selector.module.css";
+import { clases } from "./primitivas";
+
+export function SelectorCategoria({
+  valor,
+  onChange,
+  compacto,
+}: {
+  valor: string | null;
+  onChange: (id: string) => void;
+  compacto?: boolean;
+}) {
+  const [editando, setEditando] = useState(false);
+  const { catalogo } = useTesoreria();
+  const { existeCategoria, categoriaDe } = catalogo;
+
+  // Las inactivas no se ofrecen: es lo que hace útil desactivar una en vez de
+  // borrarla — deja de aparecer al clasificar sin romper lo ya clasificado (§3).
+  // La que la línea ya tiene sí se muestra aunque esté inactiva, o cambiarle otra
+  // cosa a ese movimiento la reclasificaría sin querer.
+  const porGrupo = useMemo(
+    () =>
+      catalogo.grupos
+        .map((c) => ({
+          grupo: c,
+          subs: catalogo
+            .categoriasDe(c.id)
+            .filter((s) => s.activa || s.id === valor),
+        }))
+        .filter((g) => g.subs.length),
+    [catalogo, valor]
+  );
+
+  // Una línea puede apuntar a una categoría que ya no existe: pasa al reemplazar
+  // el catálogo en la migración. Se marca en vez de fallar en silencio (§11).
+  const huerfana = valor !== null && !existeCategoria(valor);
+  const clase = clases(
+    css.selector,
+    compacto && css.compacto,
+    (huerfana || valor === null) && css.huerfana
+  );
+
+  if (!editando) {
+    const nombre =
+      valor === null ? "⚠ sin clasificar" : huerfana ? `⚠ ${valor}` : categoriaDe(valor).nombre;
+    return (
+      <button
+        type="button"
+        aria-label="Categoría"
+        title={`${nombre} — click para cambiar`}
+        onClick={() => setEditando(true)}
+        className={clases(clase, css.comoTexto)}
+      >
+        {nombre}
+      </button>
+    );
+  }
+
+  return (
+    <select
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- reemplaza al botón que se
+      // acaba de accionar: el foco tiene que quedar donde estaba la mano.
+      autoFocus
+      value={valor ?? "__sin_clasificar"}
+      aria-label="Categoría"
+      onChange={(e) => {
+        onChange(e.target.value);
+        setEditando(false);
+      }}
+      onBlur={() => setEditando(false)}
+      className={clase}
+    >
+      {valor === null && <option value="__sin_clasificar">⚠ sin clasificar</option>}
+      {huerfana && <option value={valor}>⚠ {valor} (no existe)</option>}
+      {porGrupo.map(({ grupo, subs }) => (
+        <optgroup key={grupo.id} label={grupo.nombre}>
+          {subs.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nombre}
+            </option>
+          ))}
+        </optgroup>
+      ))}
+    </select>
+  );
+}

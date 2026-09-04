@@ -62,9 +62,12 @@ empresas        (id, nombre, corto, grupo)              -- grupo: 'Adapsys' | 'R
 cuentas         (id, empresa_id, nombre, moneda, tipo, saldo_inicial, principal)
                 -- moneda: 'CLP'|'USD'  tipo: 'banco'|'cxc'
 
-categorias      (id, nombre, orden, controlado)
-subcategorias   (id, categoria_id, nombre, naturaleza, activa)
+-- El catálogo tiene TRES niveles (§3.1)
+grupos          (id, nombre, orden, controlado)         -- "2 GASTOS ADMINISTRACIÓN"
+categorias      (id, grupo_id, nombre, naturaleza, activa)
+                -- "Jornadas y eventos organización"
                 -- naturaleza: 'ingreso'|'inversion'|'operativo'
+subcategorias   (id, categoria_id, nombre, activa)      -- "Offsite internacional"
 
 movimientos     (id, fecha, empresa_id, cuenta_id, contraparte, glosa,
                  monto, moneda, tipo_cambio, estado, doc_tipo,
@@ -73,10 +76,11 @@ movimientos     (id, fecha, empresa_id, cuenta_id, contraparte, glosa,
                 -- doc_tipo: 'exento'|'afecta'|'honorario'
                 -- monto = líquido que entra o sale del banco
 
-movimiento_lineas (id, movimiento_id, subcategoria_id, monto, glosa, orden)
+movimiento_lineas (id, movimiento_id, categoria_id, subcategoria_id, monto, glosa, orden)
                 -- suma de líneas DEBE igualar movimientos.monto
+                -- subcategoria_id es opcional y debe colgar de categoria_id
 
-presupuesto     (id, anio, subcategoria_id, monto, monto_anterior, responsable, nota)
+presupuesto     (id, anio, categoria_id, monto, monto_anterior, responsable, nota)
                 -- consolidado: NO lleva empresa_id
 
 parametros      (clave, valor, vigencia_desde)          -- tasa_iva, tasa_bhe, tc_presupuesto
@@ -84,14 +88,47 @@ reportes_guardados (id, usuario_id, nombre, config jsonb)
 auditoria       (id, tabla, registro_id, accion, antes jsonb, despues jsonb, usuario_id, cuando)
 ```
 
+### 3.1 Los tres niveles del catálogo
+
+Quicken los llama `Grupo:Categoría:Subcategoría` y así los piensa el equipo:
+
+```
+2 GASTOS ADMINISTRACIÓN            ← grupo      (16)
+  Jornadas y eventos organización  ← categoría  (290)
+    Offsite internacional          ← subcategoría (3, y creciendo)
+```
+
+**Se clasifica en la categoría.** Es el nivel al que apunta toda línea de movimiento
+y el que agrupan el flujo, el presupuesto y los reportes. La naturaleza vive ahí
+(§4.2) y por eso un grupo puede ser mixto.
+
+**La subcategoría es detalle, no nivel de reporte.** Es opcional, no lleva naturaleza
+—la hereda— y no abre una fila propia en el flujo ni en el presupuesto: se ve al
+abrir el detalle de un monto. Esto no es una simplificación provisoria sino cómo
+funcionan los datos: en seis años hay 15.649 clasificaciones de dos niveles y 21 de
+tres, y las dos conviven —"Jornadas y eventos organización" tiene 342 movimientos
+propios además de los 6 de su subcategoría—. Si la subcategoría fuera un nivel de
+reporte, esos 342 quedarían en una fila "sin subcategoría" que no significa nada.
+
+Consecuencia práctica: agregarle subcategorías a una categoría **no invalida nada de
+lo ya clasificado** en ella, y no hay que migrar nada al abrir una nueva.
+
+**El importador de Quicken aplastó las tres ramas que usaban el tercer nivel**, y las
+dejó como categorías hermanas colgando del grupo. La migración `0012` las devuelve a
+su lugar. Si aparece otra al recargar, hay que revisar `lib/quicken.ts`.
+
 ### Reglas de integridad
 
 - Si `movimiento_lineas` existe para un movimiento, la suma **debe** cuadrar con `movimientos.monto`.
   Validar en la base (trigger o constraint diferida), no solo en la UI.
-- Un movimiento sin líneas se trata como una línea única implícita. Toda agregación por subcategoría
+- Un movimiento sin líneas se trata como una línea única implícita. Toda agregación por categoría
   debe expandir líneas primero — nunca agregar por el movimiento.
-- Borrar una subcategoría con movimientos deja huérfanos. Marcar `activa=false` en vez de borrar,
+- `movimiento_lineas.subcategoria_id`, cuando viene, **debe colgar de** `categoria_id` de la misma
+  línea. Lo valida un trigger: si no, el detalle diría una cosa y el reporte otra.
+- Borrar una **categoría** con movimientos deja huérfanos. Marcar `activa=false` en vez de borrar,
   y exponer una vista de "sin clasificar" para reasignar.
+- Borrar una **subcategoría** sí se puede aunque esté en uso: la línea conserva categoría, monto
+  y glosa, y solo pierde el detalle (`on delete set null`). Se pierde precisión, no gasto.
 
 ---
 
@@ -127,13 +164,13 @@ ocurrió y falta registrarlo, o hay que mover la fecha — una factura que el cl
 reprograma al futuro. En Quicken eso se ve como un cambio de tono en el registro de proyecciones,
 y es el equivalente de lo que en otros sistemas sería la conciliación.
 
-### 4.2 La naturaleza vive en la subcategoría, no en la categoría
+### 4.2 La naturaleza vive en la categoría, no en el grupo
 
-`inversion` / `operativo` / `ingreso` es propiedad de **cada subcategoría**. Una misma categoría
+`inversion` / `operativo` / `ingreso` es propiedad de **cada categoría**. Un mismo grupo
 puede tener líneas de las dos naturalezas — p. ej. "2 GASTOS ADMINISTRACIÓN" tiene arriendo
-(operativo) y equipamiento de oficina (inversión). Al menos 6 de las 16 categorías reales son mixtas.
+(operativo) y equipamiento de oficina (inversión). Al menos 6 de los 16 grupos reales son mixtos.
 
-Consecuencia: en el presupuesto, una categoría mixta aparece en ambas secciones, cada vez con
+Consecuencia: en el presupuesto, un grupo mixto aparece en ambas secciones, cada vez con
 solo las líneas que le corresponden.
 
 ### 4.3 Los splits son la norma, no la excepción
@@ -160,9 +197,9 @@ con su propia glosa y categoría. Necesita carga masiva por pegado.
 
 ### 4.4 Los impuestos llegan a "4 IMPUESTOS"
 
-Las líneas de IVA y retención se clasifican en subcategorías de la categoría `4 IMPUESTOS`
-(`IVA compras`, `IVA mensual`, `Retención BHE`). En el flujo de caja aparecen como categoría
-propia, y `Retención BHE` suele salir en **positivo** porque resta de los egresos.
+Las líneas de IVA y retención se clasifican en categorías del grupo `4 IMPUESTOS`
+(`IVA compras`, `IVA mensual`, `Retención BHE`). En el flujo de caja aparecen como grupo
+propio, y `Retención BHE` suele salir en **positivo** porque resta de los egresos.
 
 ### 4.5 El flujo de caja se lleva solo en CLP
 
@@ -183,8 +220,8 @@ como vinieron.
 - **Uno solo para las 4 empresas Adapsys.** No hay presupuesto por sociedad. El filtro global de
   empresas no aplica a esta vista.
 - Se fija a fines del año anterior y se compara contra el real durante todo el año.
-- Estructura: Ingresos / Gastos de Inversión / Gastos Operativos → categoría → subcategoría.
-- Campos por línea: presupuesto del año, presupuesto del año anterior, **responsable**, **notas**.
+- Estructura: Ingresos / Gastos de Inversión / Gastos Operativos → grupo → categoría.
+- Campos por línea (una línea = una categoría): presupuesto del año, presupuesto del año anterior, **responsable**, **notas**.
   La variación nominal y porcentual se calculan.
 - Montos en magnitud (sin signo), como en la planilla.
 - **% utilizado se compara contra el avance del año, no contra el mes.** Una línea al 80% en
@@ -199,7 +236,7 @@ Si el TC flota, la desviación por gasto y la desviación por dólar se mezclan 
 ### 4.7 Otras
 
 - **Transferencias entre cuentas propias no son flujo.** Detectar el par y neutralizarlo, o el
-  consolidado queda inflado en ambos sentidos. Existe una subcategoría "Traspaso entre empresas".
+  consolidado queda inflado en ambos sentidos. Existe una categoría "Traspaso entre empresas".
 - **Deduplicación:** hash de (cuenta + fecha + monto + glosa normalizada) **más un secuencial**,
   porque puede haber dos cargos idénticos legítimos el mismo día.
 - **Horizonte:** las proyecciones pasan del año calendario (hay movimientos a enero 2027).
@@ -209,11 +246,12 @@ Si el TC flota, la desviación por gasto y la desviación por dólar se mezclan 
 
 ## 5. Catálogo de categorías
 
-**16 categorías, 284 subcategorías**, importadas de Quicken.
+**16 grupos, 290 categorías y 3 subcategorías**, importados de Quicken. Ver §3.1 para
+qué significa cada nivel.
 
 ```
 INGRESOS
-  A INGRESOS CLIENTES ............ 193 subcategorías (¡son clientes!)
+  A INGRESOS CLIENTES ............ 193 categorías (¡son clientes!)
   B OTROS INGRESOS ............... 5
 EGRESOS
   1 COSTO DE VENTA ............... 11    2.3 GASTOS SISTEMAS DIGITALES .. 5
@@ -231,8 +269,8 @@ Están así porque Quicken no tiene dimensión de cliente. **El equipo decidió 
 porque el reporte de flujo que revisan funciona bien con esa estructura y separarlos complicaría
 la migración. No re-litigar esto sin que lo pidan.
 
-Consecuencias prácticas: cualquier selector de subcategorías necesita **buscador y colapso por
-categoría**. Una lista plana de 284 ítems es inusable.
+Consecuencias prácticas: cualquier selector de categorías necesita **buscador y colapso por
+grupo**. Una lista plana de 290 ítems es inusable.
 
 ---
 
@@ -240,12 +278,12 @@ categoría**. Una lista plana de 284 ítems es inusable.
 
 | Vista | Qué hace |
 |---|---|
-| **Flujo de caja** | Réplica mejorada del reporte de Quicken. Rango de fechas libre, columnas semanales o mensuales, secciones por naturaleza → categoría → subcategoría. **Solo aparecen las líneas con movimiento en el rango.** Filtro por estado. Cada monto es clicable y abre el detalle con los movimientos que lo componen, reclasificables ahí mismo. |
-| **Movimientos** | Registro único de todas las empresas. Empresa y subcategoría editables inline. Editor de splits con líneas, glosa, botones de IVA/retención, pegado masivo, y detector de descuadre. |
+| **Flujo de caja** | Réplica mejorada del reporte de Quicken. Rango de fechas libre, columnas semanales o mensuales, secciones por naturaleza → grupo → categoría. **Solo aparecen las líneas con movimiento en el rango.** Filtro por estado. Cada monto es clicable y abre el detalle con los movimientos que lo componen, reclasificables ahí mismo. |
+| **Movimientos** | Registro único de todas las empresas. Empresa y categoría editables inline. Editor de splits con líneas, glosa, botones de IVA/retención, pegado masivo, y detector de descuadre. |
 | **Conciliación** | Lista de `pagado` sin cuadrar. El total es exactamente la diferencia contra la cartola. |
 | **Presupuesto anual** | Dos modos: *construcción* (responsable, ppto año anterior, ppto año, variación, notas) y *control* (ejecutado, % utilizado con marca de avance del año, disponible, proyección de cierre). |
-| **Reportes** | Armador configurable: filas (subcategoría / categoría / naturaleza / empresa / proveedor), columnas (mes / trimestre / empresa / categoría / naturaleza / total), rango de fechas con presets, filtro de estados y de subcategorías. Configuraciones guardables. Export CSV. |
-| **Categorías** | Mantenedor del catálogo, con importador que acepta pegar listados en varios formatos. |
+| **Reportes** | Armador configurable: filas (categoría / grupo / naturaleza / empresa / proveedor), columnas (mes / trimestre / empresa / grupo / naturaleza / total), rango de fechas con presets, filtro de estados y de categorías. Configuraciones guardables. Export CSV. |
+| **Categorías** | Mantenedor de los tres niveles, con importador que acepta pegar listados en varios formatos. Lo que está en uso no se borra: se desactiva. |
 
 ---
 
@@ -327,7 +365,7 @@ mensual") y generar la serie del año. **No sirve como mecanismo principal:** un
 cambiar, puede ser ocasional, o tener un único pago en el año. Modelar cada uno como regla
 obliga a mantener reglas que no se sostienen.
 
-El mecanismo es al revés: **la línea de presupuesto por subcategoría genera la proyección del
+El mecanismo es al revés: **la línea de presupuesto por categoría genera la proyección del
 año**, distribuida en el tiempo. El proveedor es el dato de la contraparte, no la unidad de
 proyección.
 
@@ -335,7 +373,7 @@ Consecuencias a resolver cuando se implemente:
 - **Doble conteo.** Si la línea "Telefonía" está proyectada por presupuesto y además existe un
   movimiento proyectado de GTD para septiembre, el mes queda contado dos veces. La proyección
   generada tiene que ser el presupuesto **menos lo ya comprometido con movimientos concretos**,
-  por subcategoría y por período.
+  por categoría y por período.
 - Un movimiento proyectado que viene del presupuesto y uno cargado a mano tienen que
   distinguirse, para no pisar lo que alguien escribió.
 - Depende de la distribución mensual del presupuesto (el punto de más arriba): sin ella la
@@ -358,7 +396,7 @@ Consecuencias a resolver cuando se implemente:
 Quicken Classic exporta a CSV/QIF. Traer el histórico completo y **validar que los saldos calzan**
 antes de dar el sistema por bueno.
 
-Al reemplazar el catálogo de categorías, los movimientos cuyas subcategorías desaparezcan quedan
+Al reemplazar el catálogo de categorías, los movimientos cuyas categorías desaparezcan quedan
 huérfanos. No fallar en silencio: contarlos, marcarlos visiblemente y ofrecer una pantalla de
 reclasificación. Esto va a pasar de verdad en la migración.
 
@@ -366,7 +404,7 @@ reclasificación. Esto va a pasar de verdad en la migración.
 
 ## 12. Archivo de referencia
 
-`tesoreria.jsx` — prototipo funcional de una sola pieza, con el catálogo real de 284 subcategorías,
+`tesoreria.jsx` — prototipo funcional de una sola pieza, con el catálogo de entonces (dos niveles),
 datos de ejemplo que reproducen movimientos reales del Quicken actual (incluidos los splits de GTD
 y las boletas de honorarios con retención), y las seis vistas implementadas.
 

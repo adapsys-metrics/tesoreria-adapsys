@@ -16,7 +16,7 @@ import type { Linea, Movimiento } from "@/lib/tipos";
 /** TC de referencia para los movimientos en dólares de ejemplo. */
 export const TC_USD = 970;
 
-/** Alias cortos → id real de subcategoría. Solo para escribir estos datos sin
+/** Alias cortos → id real de categoría. Solo para escribir estos datos sin
  *  repetir slugs largos; no es parte del modelo. */
 const ALIAS: Record<string, string> = {
   sueldos: "sueldos",
@@ -42,7 +42,7 @@ const ALIAS: Record<string, string> = {
   desorg1: "direccion-ejecutiva",
   recluta: "servicios-externos-rr-hh",
   infra: "equipos-computacionales",
-  // Los "clientes" son subcategorías bajo A INGRESOS CLIENTES (§5).
+  // Los "clientes" son categorías bajo A INGRESOS CLIENTES (§5).
   cobranza: "bhp-billiton",
   cobranza2: "consalud",
   cobranza3: "codelco",
@@ -105,7 +105,7 @@ const crear = (
   empresa_id: string,
   contraparte: string,
   glosa: string,
-  subcategoria: string,
+  categoria: string,
   monto: number,
   extra: Extra = {}
 ): Movimiento => {
@@ -133,15 +133,16 @@ const crear = (
     tipo_cambio: null,
     estado: extra.estado ?? "proyectado",
     doc_tipo: null,
-    lineas: [{ subcategoria_id: sub(subcategoria), monto, glosa: null }],
+    lineas: [{ categoria_id: sub(categoria), subcategoria_id: null, monto, glosa: null }],
   };
   return { ...base, ...extra };
 };
 
-/** Un movimiento repartido en varias subcategorías. */
+/** Un movimiento repartido en varias categorías. */
 const split = (...pares: [string, number, string][]): { lineas: Linea[] } => ({
   lineas: pares.map(([s, monto, glosa]) => ({
-    subcategoria_id: sub(s),
+    categoria_id: sub(s),
+    subcategoria_id: null,
     monto,
     glosa,
   })),
@@ -193,12 +194,12 @@ const HISTORICO: Movimiento[] = (() => {
           estado: "conciliado",
           ...usd(),
           lineas: [
-            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -67.5, glosa: "Mailchimp" },
-            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -23.75, glosa: "Chat GPT" },
-            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -23.75, glosa: "Microsoft Power BI" },
-            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -12.5, glosa: "Trello" },
-            { subcategoria_id: "sistemas-analitica-avanzada-ia-y-r", monto: -100, glosa: "Siteground" },
-            { subcategoria_id: "automatizacion-y-metrics", monto: -5.5, glosa: "Zapier" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -67.5, glosa: "Mailchimp" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -23.75, glosa: "Chat GPT" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -23.75, glosa: "Microsoft Power BI" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -12.5, glosa: "Trello" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -100, glosa: "Siteground" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -5.5, glosa: "Zapier" },
           ],
         }
       )
@@ -218,8 +219,8 @@ const PROYECTADO: Movimiento[] = [
   crear(fecha(ANIO, 8, 14), "adap", "GTD", "FA3109609 Internet oficina", "telefonia-e-internet", -365026, {
     doc_tipo: "afecta",
     lineas: [
-      { subcategoria_id: "telefonia-e-internet", monto: -306745, glosa: "Neto" },
-      { subcategoria_id: "iva-compras", monto: -58281, glosa: "IVA 19%" },
+      { categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -306745, glosa: "Neto" },
+      { categoria_id: "iva-compras", subcategoria_id: null, monto: -58281, glosa: "IVA 19%" },
     ],
   }),
   crear(fecha(ANIO, 8, 14), "adap", "Empresa Social de Ca...", "FA174272 Agua Purificada oficina", "gastos-comunes", 0, {

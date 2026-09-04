@@ -50,7 +50,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0001_esquema.sql"));
   await db.exec(leer("migrations/0002_rls.sql"));
   // El seed va antes que 0003 porque 0003 inserta catálogo y necesita las
-  // categorías. Sobre una base recién sembrada sus inserts no encuentran nada
+  // grupos. Sobre una base recién sembrada sus inserts no encuentran nada
   // que agregar, lo que de paso verifica que se puede correr dos veces.
   await db.exec(leer("seed.sql"));
   await db.exec(leer("migrations/0003_migracion_quicken.sql"));
@@ -62,6 +62,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0009_usuarios_autorizados.sql"));
   await db.exec(leer("migrations/0010_presupuesto_mensual.sql"));
   await db.exec(leer("migrations/0011_categorias_fuera_del_control.sql"));
+  await db.exec(leer("migrations/0012_tres_niveles.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -75,9 +76,12 @@ describe("migraciones y seed", () => {
     // 9 de banco + 4 auxiliares (facturas por cobrar y proyectos aprobados,
     // CLP y USD cada una).
     expect(await contar("cuentas")).toBe(13);
-    expect(await contar("categorias")).toBe(16);
-    // 284 del catálogo original + 9 que aparecieron en los movimientos reales.
-    expect(await contar("subcategorias")).toBe(293);
+    expect(await contar("grupos")).toBe(16);
+    // 284 del catálogo original + 9 que aparecieron en los movimientos reales,
+    // menos las 3 que 0012 devuelve a su lugar como subcategorías.
+    expect(await contar("categorias")).toBe(290);
+    // Las tres ramas que Quicken tenía en tres niveles (§5).
+    expect(await contar("subcategorias")).toBe(3);
     expect(await contar("parametros")).toBe(3);
   });
 
@@ -151,7 +155,7 @@ describe("las líneas del split tienen que cuadrar (§3)", () => {
   const conLineas = (id: number, lineas: string) =>
     `insert into movimientos (id, fecha, empresa_id, cuenta_id, monto, moneda)
        overriding system value values (${id}, '2026-08-14', 'adap', 'a1', -365026, 'CLP');
-     insert into movimiento_lineas (movimiento_id, subcategoria_id, monto) values ${lineas}`;
+     insert into movimiento_lineas (movimiento_id, categoria_id, monto) values ${lineas}`;
 
   it("acepta el split de GTD, que cuadra", async () => {
     expect(
@@ -172,7 +176,7 @@ describe("las líneas del split tienen que cuadrar (§3)", () => {
       await intentar(
         conLineas(9003, `(9003, 'telefonia-e-internet', -306745), (9003, 'iva-compras', -58281)`) +
           `; update movimiento_lineas set monto = -1
-             where movimiento_id = 9003 and subcategoria_id = 'iva-compras'`
+             where movimiento_id = 9003 and categoria_id = 'iva-compras'`
       )
     ).toMatch(/suman .* pero el movimiento es/);
   });
@@ -182,7 +186,7 @@ describe("las líneas del split tienen que cuadrar (§3)", () => {
       await intentar(
         conLineas(9004, `(9004, 'telefonia-e-internet', -306745), (9004, 'iva-compras', -58281)`) +
           `; delete from movimiento_lineas
-             where movimiento_id = 9004 and subcategoria_id = 'iva-compras'`
+             where movimiento_id = 9004 and categoria_id = 'iva-compras'`
       )
     ).toMatch(/suman .* pero el movimiento es/);
   });
@@ -217,7 +221,7 @@ describe("la carga del histórico de Quicken", () => {
         ('q1', '2026-08-14', 'adap', 'a1', 'GTD', 'Internet oficina', 'FA3109609', -365026, 'CLP', 'conciliado', 'a1.csv'),
         ('q2', '2026-08-13', 'adap', 'a1', 'Sin clasificar', '', '', -5000, 'CLP', 'conciliado', 'a1.csv'),
         ('q3', '2026-12-29', '', '', 'GAP IMA 2026', 'GAP IMA 2026', '', -100000000, 'CLP', 'proyectado', 'proy-egresos-clp.csv');
-      insert into carga_lineas (mov_ref, subcategoria_id, monto, glosa, orden) values
+      insert into carga_lineas (mov_ref, categoria_id, monto, glosa, orden) values
         ('q1', 'telefonia-e-internet', -306745, 'Internet oficina', 0),
         ('q1', 'iva-compras', -58281, 'Internet oficina', 1),
         ('q3', 'ingreso-minimo-asegurado', -100000000, 'GAP IMA 2026', 0);
@@ -277,7 +281,7 @@ describe("la carga del histórico de Quicken", () => {
         ref text, fecha text, empresa_id text, cuenta_id text, contraparte text,
         glosa text, documento text, monto text, moneda text, estado text, origen text);
       create table carga_lineas (
-        mov_ref text, subcategoria_id text, monto text, glosa text, orden text);
+        mov_ref text, categoria_id text, monto text, glosa text, orden text);
       insert into carga_movimientos values
         ('t1', '2026-08-14', 'adap', 'a1', 'GTD', 'Internet oficina', 'FA3109609', '-365026', 'CLP', 'conciliado', 'a1.csv');
       insert into carga_lineas values
@@ -345,8 +349,8 @@ describe("fn_guardar_movimiento", () => {
     moneda: "CLP",
     estado: "conciliado",
     lineas: [
-      { subcategoria_id: "telefonia-e-internet", monto: -306745, glosa: "Internet oficina" },
-      { subcategoria_id: "iva-compras", monto: -58281, glosa: "Internet oficina" },
+      { categoria_id: "telefonia-e-internet", monto: -306745, glosa: "Internet oficina" },
+      { categoria_id: "iva-compras", monto: -58281, glosa: "Internet oficina" },
     ],
   };
 
@@ -375,17 +379,17 @@ describe("fn_guardar_movimiento", () => {
         ...gtd,
         id,
         lineas: [
-          { subcategoria_id: "gastos-sistemas-digitales", monto: -306745, glosa: "reclasificado" },
-          { subcategoria_id: "iva-compras", monto: -58281, glosa: "reclasificado" },
+          { categoria_id: "gastos-sistemas-digitales", monto: -306745, glosa: "reclasificado" },
+          { categoria_id: "iva-compras", monto: -58281, glosa: "reclasificado" },
         ],
       })
     ).toBeNull();
 
-    const subs = await db.query<{ subcategoria_id: string }>(
-      `select subcategoria_id from movimiento_lineas
+    const subs = await db.query<{ categoria_id: string }>(
+      `select categoria_id from movimiento_lineas
        where movimiento_id = ${id} order by orden`
     );
-    expect(subs.rows.map((s) => s.subcategoria_id)).toEqual([
+    expect(subs.rows.map((s) => s.categoria_id)).toEqual([
       "gastos-sistemas-digitales",
       "iva-compras",
     ]);
@@ -409,13 +413,13 @@ describe("fn_guardar_movimiento", () => {
       await guardar({
         ...gtd,
         contraparte: "GTD descuadrado",
-        lineas: [{ subcategoria_id: "telefonia-e-internet", monto: -1, glosa: null }],
+        lineas: [{ categoria_id: "telefonia-e-internet", monto: -1, glosa: null }],
       })
     ).toMatch(/suman .* pero el movimiento es/);
   });
 
   it("deja el movimiento sin líneas cuando no se le pasa ninguna", async () => {
-    // Así se representa "sin clasificar" (§3): no hay línea sin subcategoría.
+    // Así se representa "sin clasificar" (§3): no hay línea sin categoría.
     expect(
       await guardar({ ...gtd, contraparte: "Sin clasificar", lineas: [] })
     ).toBeNull();
@@ -450,7 +454,7 @@ describe("fn_guardar_movimiento", () => {
         monto: -100000000,
         moneda: "CLP",
         estado: "proyectado",
-        lineas: [{ subcategoria_id: "ingreso-minimo-asegurado", monto: -100000000, glosa: null }],
+        lineas: [{ categoria_id: "ingreso-minimo-asegurado", monto: -100000000, glosa: null }],
       })
     ).toBeNull();
     await db.exec(`delete from movimientos where contraparte in
@@ -515,7 +519,7 @@ describe("quién puede entrar", () => {
 describe("qué entra al control presupuestario (§4.6)", () => {
   it("deja fuera lo que no es gasto que se decida presupuestar", async () => {
     const r = await db.query<{ id: string }>(
-      `select id from categorias where not controlado order by id`
+      `select id from grupos where not controlado order by id`
     );
     expect(r.rows.map((c) => c.id)).toEqual([
       "4-impuestos",
@@ -528,7 +532,7 @@ describe("qué entra al control presupuestario (§4.6)", () => {
 
   it("el resto sí se controla", async () => {
     const r = await db.query<{ n: number }>(
-      `select count(*)::int as n from categorias where controlado`
+      `select count(*)::int as n from grupos where controlado`
     );
     expect(r.rows[0]!.n).toBe(11);
   });
@@ -536,7 +540,7 @@ describe("qué entra al control presupuestario (§4.6)", () => {
 
 describe("presupuesto mensual", () => {
   const meses = (anio: number, sub: string, montos: number[]) =>
-    `insert into presupuesto_meses (anio, subcategoria_id, mes, monto) values ` +
+    `insert into presupuesto_meses (anio, categoria_id, mes, monto) values ` +
     montos.map((m, i) => `(${anio}, '${sub}', ${i + 1}, ${m})`).join(",");
 
   it("guarda un monto por mes y el anual es su suma", async () => {
@@ -544,13 +548,13 @@ describe("presupuesto mensual", () => {
     const r = await db.query<{ anual: string; ytd: string }>(
       `select sum(monto)::text as anual,
               sum(monto) filter (where mes <= 3)::text as ytd
-       from presupuesto_meses where anio = 2026 and subcategoria_id = 'arriendo-oficina'`
+       from presupuesto_meses where anio = 2026 and categoria_id = 'arriendo-oficina'`
     );
     expect(r.rows[0]).toEqual({ anual: "107892000", ytd: "26973000" });
   });
 
   it("no deja repetir el mismo mes de la misma línea", async () => {
-    // La clave primaria es (año, subcategoría, mes): sin ella una carga repetida
+    // La clave primaria es (año, categoría, mes): sin ella una carga repetida
     // duplicaría el presupuesto sin que nada avisara.
     expect(await intentar(meses(2026, "arriendo-oficina", [1]))).toMatch(/duplicate key/);
   });
@@ -558,16 +562,16 @@ describe("presupuesto mensual", () => {
   it("rechaza un mes fuera de rango", async () => {
     expect(
       await intentar(
-        `insert into presupuesto_meses (anio, subcategoria_id, mes, monto)
+        `insert into presupuesto_meses (anio, categoria_id, mes, monto)
          values (2026, 'sueldos', 13, 1)`
       )
     ).toMatch(/presupuesto_meses_mes_check/);
   });
 
-  it("rechaza una subcategoría que no existe", async () => {
+  it("rechaza una categoría que no existe", async () => {
     expect(
       await intentar(
-        `insert into presupuesto_meses (anio, subcategoria_id, mes, monto)
+        `insert into presupuesto_meses (anio, categoria_id, mes, monto)
          values (2026, 'no-existe', 1, 1)`
       )
     ).toMatch(/foreign key/);
@@ -579,7 +583,7 @@ describe("presupuesto mensual", () => {
     // mes, y el acumulado a enero daba cero.
     const p = {
       anio: 2027,
-      subcategoria_id: "sueldos",
+      categoria_id: "sueldos",
       responsable: "Finanzas",
       nota: "",
       monto_anterior: 0,
@@ -591,26 +595,26 @@ describe("presupuesto mensual", () => {
 
     const r = await db.query<{ mes: number; monto: string }>(
       `select mes, monto::text from presupuesto_meses
-       where anio = 2027 and subcategoria_id = 'sueldos' order by mes`
+       where anio = 2027 and categoria_id = 'sueldos' order by mes`
     );
     expect(r.rows).toHaveLength(12);
     expect(r.rows[0]).toEqual({ mes: 1, monto: "100" });
     expect(r.rows[11]).toEqual({ mes: 12, monto: "1200" });
 
     const meta = await db.query<{ responsable: string }>(
-      `select responsable from presupuesto where anio = 2027 and subcategoria_id = 'sueldos'`
+      `select responsable from presupuesto where anio = 2027 and categoria_id = 'sueldos'`
     );
     expect(meta.rows[0]).toEqual({ responsable: "Finanzas" });
   });
 
   it("guardar dos veces reemplaza, no acumula", async () => {
-    const p = { anio: 2027, subcategoria_id: "sueldos", meses: [7] };
+    const p = { anio: 2027, categoria_id: "sueldos", meses: [7] };
     expect(
       await intentar(`select fn_guardar_presupuesto('${JSON.stringify(p)}'::jsonb)`)
     ).toBeNull();
     const r = await db.query<{ n: number; total: string }>(
       `select count(*)::int as n, sum(monto)::text as total from presupuesto_meses
-       where anio = 2027 and subcategoria_id = 'sueldos'`
+       where anio = 2027 and categoria_id = 'sueldos'`
     );
     expect(r.rows[0]).toEqual({ n: 1, total: "7" });
     await db.exec(`delete from presupuesto_meses where anio = 2027;
@@ -647,7 +651,7 @@ describe("dominios cerrados", () => {
   it("rechaza una naturaleza que no existe", async () => {
     expect(
       await intentar(
-        `insert into subcategorias (id, categoria_id, nombre, naturaleza)
+        `insert into categorias (id, grupo_id, nombre, naturaleza)
          values ('z', '4-impuestos', 'Z', 'inventada')`
       )
     ).toMatch(/naturaleza_check/);

@@ -3,7 +3,7 @@
 // Vive fuera de la vista porque el importador es lo único del mantenedor que tiene
 // reglas de verdad, y esas reglas hay que poder probarlas sin montar React.
 
-import type { Categoria, Naturaleza, Subcategoria } from "@/lib/tipos";
+import type { Grupo, Naturaleza, Categoria } from "@/lib/tipos";
 
 /**
  * Identificador estable a partir de un nombre.
@@ -23,7 +23,7 @@ export const slug = (s: string): string =>
     .slice(0, 44) || "x";
 
 /** Un id que no choque con los que ya existen: si "arriendos" está tomado, prueba
- *  "arriendos-2". Sin esto, crear dos subcategorías con el mismo nombre en categorías
+ *  "arriendos-2". Sin esto, crear dos categorías con el mismo nombre en grupos
  *  distintas pisaría la primera. */
 export const idLibre = (base: string, tomados: Set<string>): string => {
   const raiz = slug(base);
@@ -35,46 +35,46 @@ export const idLibre = (base: string, tomados: Set<string>): string => {
 };
 
 export type CatalogoParseado = {
+  grupos: Grupo[];
   categorias: Categoria[];
-  subcategorias: Subcategoria[];
 };
 
 /**
  * Lee un listado pegado.
  *
- * Acepta las formas en que la gente tiene el catálogo a mano: `Categoría:Subcategoría`
- * por línea, o categorías al margen con las subcategorías indentadas. Una línea sola
+ * Acepta las formas en que la gente tiene el catálogo a mano: `Grupo:Categoría`
+ * por línea, o grupos al margen con las categorías indentadas. Una línea sola
  * que diga "Gastos de Inversión", "Gastos Operativos" o "Ingresos" cambia la
  * naturaleza de ahí en adelante, y un sufijo `(inversión)` la fija para esa línea.
  *
- * Una categoría sin subcategorías recibe una con su mismo nombre: el modelo clasifica
- * por subcategoría (§3) y una categoría vacía no podría usarse para nada.
+ * Una grupo sin categorías recibe una con su mismo nombre: el modelo clasifica
+ * por categoría (§3) y una grupo vacía no podría usarse para nada.
  */
 export function parsearCatalogo(texto: string, existentes = new Set<string>()): CatalogoParseado {
+  const grupos: Grupo[] = [];
   const categorias: Categoria[] = [];
-  const subcategorias: Subcategoria[] = [];
   const tomados = new Set(existentes);
   let naturaleza: Naturaleza = "operativo";
   let ultima: string | null = null;
 
-  const agregarCategoria = (nombre: string): string => {
+  const agregarGrupo = (nombre: string): string => {
     const limpio = nombre.trim();
-    const ya = categorias.find((c) => c.nombre === limpio);
+    const ya = grupos.find((c) => c.nombre === limpio);
     if (ya) return ya.id;
     const id = idLibre(limpio, tomados);
     tomados.add(id);
-    categorias.push({ id, nombre: limpio, orden: categorias.length + 1, controlado: true });
+    grupos.push({ id, nombre: limpio, orden: grupos.length + 1, controlado: true });
     return id;
   };
 
-  const agregarSub = (categoria_id: string, nombre: string, nat: Naturaleza | null) => {
+  const agregarSub = (grupo_id: string, nombre: string, nat: Naturaleza | null) => {
     const limpio = nombre.trim();
-    if (subcategorias.some((s) => s.categoria_id === categoria_id && s.nombre === limpio)) return;
+    if (categorias.some((s) => s.grupo_id === grupo_id && s.nombre === limpio)) return;
     const id = idLibre(limpio, tomados);
     tomados.add(id);
-    subcategorias.push({
+    categorias.push({
       id,
-      categoria_id,
+      grupo_id,
       nombre: limpio,
       naturaleza: nat ?? naturaleza,
       activa: true,
@@ -87,7 +87,7 @@ export function parsearCatalogo(texto: string, existentes = new Set<string>()): 
     const linea = cruda.trim().replace(/^[-•*#]\s*/, "");
 
     if (!indentado && !linea.includes(":")) {
-      // Los totales del reporte del que se copió no son categorías.
+      // Los totales del reporte del que se copió no son grupos.
       if (/^total/i.test(linea)) continue;
       if (/^(gastos?\s+de\s+inversi|inversi[oó]n)/i.test(linea)) {
         naturaleza = "inversion";
@@ -126,21 +126,21 @@ export function parsearCatalogo(texto: string, existentes = new Set<string>()): 
 
     if (limpio.includes(":")) {
       const [padre, ...resto] = limpio.split(":");
-      const id = agregarCategoria(padre!);
+      const id = agregarGrupo(padre!);
       const hijo = resto.join(":").trim();
       if (hijo) agregarSub(id, hijo, natLinea);
       ultima = id;
     } else if (indentado && ultima) {
       agregarSub(ultima, limpio, natLinea);
     } else {
-      ultima = agregarCategoria(limpio);
+      ultima = agregarGrupo(limpio);
       if (natLinea) naturaleza = natLinea;
     }
   }
 
-  for (const c of categorias) {
-    if (!subcategorias.some((s) => s.categoria_id === c.id)) agregarSub(c.id, c.nombre, null);
+  for (const c of grupos) {
+    if (!categorias.some((s) => s.grupo_id === c.id)) agregarSub(c.id, c.nombre, null);
   }
 
-  return { categorias, subcategorias };
+  return { grupos, categorias };
 }

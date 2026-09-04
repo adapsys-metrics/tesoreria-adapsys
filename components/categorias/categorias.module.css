@@ -43,7 +43,7 @@
   background: var(--paper);
 }
 
-/* Alto acotado y scroll propio: son 16 categorías que abiertas dan 293 filas, y el
+/* Alto acotado y scroll propio: son 16 grupos que abiertas dan 293 filas, y el
    importador tiene que seguir a la vista mientras se revisa el árbol. */
 .arbol {
   max-height: 68vh;
@@ -54,12 +54,12 @@
   border-bottom: 1px solid var(--rule-soft);
 }
 
-.filaCategoria {
+.filaGrupo {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  background: var(--fila-categoria);
+  background: var(--fila-grupo);
 }
 
 .filaSub {
@@ -73,7 +73,7 @@
   background: var(--fila-anidada);
 }
 
-/* Una subcategoría inactiva se sigue viendo —está en uso en el histórico— pero se
+/* Una categoría inactiva se sigue viendo —está en uso en el histórico— pero se
    apaga, para que se lea de un vistazo que ya no se ofrece al clasificar. */
 .filaInactiva .campo,
 .filaInactiva .uso {
@@ -117,7 +117,7 @@
   outline: none;
 }
 
-.campoCategoria {
+.campoGrupo {
   font-weight: 600;
   min-width: 80px;
 }
@@ -148,7 +148,7 @@
   white-space: nowrap;
 }
 
-/* Mixta no es un error, es lo normal: al menos 6 de las 16 categorías reales lo son
+/* Mixta no es un error, es lo normal: al menos 6 de las 16 grupos reales lo son
    (§4.2). Se marca para que se note al revisar, no para alarmar. */
 .insigniaMixta {
   background: var(--teal-soft);
@@ -277,7 +277,7 @@
   margin-top: 4px;
 }
 
-.previoCategoria {
+.previoGrupo {
   color: var(--ink);
 }
 
@@ -346,4 +346,56 @@
 .cancelar {
   background: var(--rule-soft);
   color: var(--muted);
+}
+
+/* Tercer nivel. Sangría mayor y tipografía más chica: se lee como detalle de la
+   categoría de arriba, que es exactamente lo que es. */
+.filaSubSub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 14px 2px 52px;
+  font-size: 11px;
+}
+
+.filaSubSub:hover {
+  background: var(--fila-split);
+}
+
+.filaSubSub .campo {
+  font-size: 11px;
+}
+
+/* El "+ subcategoría" aparece al pasar por encima. Ponerlo fijo en cada una de las
+   290 categorías llenaría la lista de botones que casi nunca se usan. */
+.filaAgregarSub {
+  padding: 0 14px 0 52px;
+  height: 0;
+  overflow: hidden;
+}
+
+.bloque:hover .filaAgregarSub,
+.filaAgregarSub:focus-within {
+  height: auto;
+  padding-bottom: 3px;
+}
+
+.agregarSub {
+  background: none;
+  border: 0;
+  padding: 1px 0;
+  font-family: var(--font-cifras);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--muted-claro);
+  cursor: pointer;
+}
+
+.agregarSub:hover {
+  color: var(--teal);
+}
+
+.filaNuevaAnidadaDoble {
+  padding-left: 52px;
+  background: var(--fila-split);
 }

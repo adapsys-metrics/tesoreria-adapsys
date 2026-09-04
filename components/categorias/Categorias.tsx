@@ -25,19 +25,24 @@ const NOMBRE_NATURALEZA: Record<Naturaleza, string> = {
 export function Categorias() {
   const {
     catalogo,
-    usoDeSubcategoria,
+    usoDeCategoria,
     movimientos,
+    renombrarGrupo,
     renombrarCategoria,
-    renombrarSubcategoria,
     cambiarNaturaleza,
-    cambiarNaturalezaDeCategoria,
+    cambiarNaturalezaDeGrupo,
     alternarControlado,
     alternarActiva,
+    crearGrupo,
     crearCategoria,
-    crearSubcategoria,
-    borrarSubcategoria,
     borrarCategoria,
+    borrarGrupo,
     importarCatalogo,
+    usoDeSubcategoria,
+    crearSubcategoria,
+    renombrarSubcategoria,
+    alternarActivaSubcategoria,
+    borrarSubcategoria,
   } = useTesoreria();
 
   const [busqueda, setBusqueda] = useState("");
@@ -46,7 +51,7 @@ export function Categorias() {
   // navegador: el aspa se convierte en "borrar / cancelar" y se ve exactamente sobre
   // qué línea se está actuando, que es lo que un confirm() no muestra.
   const [porBorrar, setPorBorrar] = useState<string | null>(null);
-  // Qué se está creando: "__categoria" o el id de la categoría que recibe la sub.
+  // Qué se está creando: "__grupo" o el id de la grupo que recibe la sub.
   const [creando, setCreando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const buscando = busqueda.trim().length > 0;
@@ -54,22 +59,26 @@ export function Categorias() {
   const coincide = (texto: string) =>
     texto.toLowerCase().includes(busqueda.trim().toLowerCase());
 
-  const visiblesDe = (categoria_id: string) => {
-    const subs = catalogo.subcategoriasDe(categoria_id);
+  const visiblesDe = (grupo_id: string) => {
+    const subs = catalogo.categoriasDe(grupo_id);
     if (!buscando) return subs;
-    // Si el nombre de la categoría coincide, se muestran todas sus subcategorías:
+    // Si el nombre de la grupo coincide, se muestran todas sus categorías:
     // buscar "impuestos" tiene que traer el bloque entero, no cero resultados.
-    if (coincide(catalogo.categoriaDe(categoria_id).nombre)) return subs;
-    return subs.filter((s) => coincide(s.nombre));
+    if (coincide(catalogo.grupoDe(grupo_id).nombre)) return subs;
+    // Una categoría también entra si la coincidencia está en una subcategoría suya:
+    // buscar "Offsite" tiene que llevar hasta ella, y vive un nivel más abajo.
+    return subs.filter(
+      (s) => coincide(s.nombre) || catalogo.subcategoriasDe(s.id).some((h) => coincide(h.nombre))
+    );
   };
 
-  // Líneas que apuntan a una subcategoría que ya no está en el catálogo. Pasa al
+  // Líneas que apuntan a una categoría que ya no está en el catálogo. Pasa al
   // reemplazar el catálogo en una migración, y no puede fallar en silencio (§11).
   const huerfanas = useMemo(() => {
     let n = 0;
     for (const m of movimientos) {
       for (const l of m.lineas) {
-        if (!catalogo.existeSubcategoria(l.subcategoria_id)) n++;
+        if (!catalogo.existeCategoria(l.categoria_id)) n++;
       }
     }
     return n;
@@ -78,7 +87,7 @@ export function Categorias() {
   /** Pedir borrar. Lo que está en uso no se borra: se explica por qué y cuál es la
    *  salida, porque un botón que no hace nada deja al usuario trabado sin saberlo. */
   const pedirBorrarSub = (id: string, nombre: string) => {
-    const uso = usoDeSubcategoria.get(id) ?? 0;
+    const uso = usoDeCategoria.get(id) ?? 0;
     if (uso > 0) {
       setAviso(
         `"${nombre}" tiene ${uso} línea${uso === 1 ? "" : "s"} de movimiento clasificada${
@@ -91,13 +100,13 @@ export function Categorias() {
     setPorBorrar(id);
   };
 
-  const pedirBorrarCategoria = (id: string, nombre: string) => {
+  const pedirBorrarGrupo = (id: string, nombre: string) => {
     const enUso = catalogo
-      .subcategoriasDe(id)
-      .filter((s) => (usoDeSubcategoria.get(s.id) ?? 0) > 0);
+      .categoriasDe(id)
+      .filter((s) => (usoDeCategoria.get(s.id) ?? 0) > 0);
     if (enUso.length) {
       setAviso(
-        `"${nombre}" no se puede borrar: ${enUso.length} de sus subcategorías tienen movimientos clasificados. Desactiva las que ya no se usen.`
+        `"${nombre}" no se puede borrar: ${enUso.length} de sus categorías tienen movimientos clasificados. Desactiva las que ya no se usen.`
       );
       return;
     }
@@ -107,27 +116,27 @@ export function Categorias() {
 
   const abrirCreacion = (donde: string) => {
     setCreando(donde);
-    if (donde !== "__categoria") {
+    if (donde !== "__grupo") {
       setAbiertas((p) => (p.includes(donde) ? p : [...p, donde]));
     }
   };
 
-  const categoriasVisibles = catalogo.categorias.filter(
+  const gruposVisibles = catalogo.grupos.filter(
     (c) => !buscando || visiblesDe(c.id).length
   );
 
   return (
     <>
       <Cabecera
-        titulo="Categorías y subcategorías"
-        bajada="El catálogo que ordena todo: flujo, presupuesto y reportes. La naturaleza —ingreso, inversión u operativo— vive en cada subcategoría, así que una categoría puede ser mixta y aparecer en dos secciones (§4.2)."
+        titulo="Grupos y categorías"
+        bajada="El catálogo que ordena todo: flujo, presupuesto y reportes. La naturaleza —ingreso, inversión u operativo— vive en cada categoría, así que una grupo puede ser mixta y aparecer en dos secciones (§4.2)."
       />
 
       {aviso && <Aviso tono="amber">{aviso}</Aviso>}
 
       {huerfanas > 0 && (
         <Aviso tono="amber">
-          Hay <strong>{huerfanas} líneas</strong> apuntando a subcategorías que ya no
+          Hay <strong>{huerfanas} líneas</strong> apuntando a categorías que ya no
           existen en el catálogo. Se ven marcadas en Movimientos y hay que reclasificarlas.
         </Aviso>
       )}
@@ -136,7 +145,7 @@ export function Categorias() {
         <section className={css.panel}>
           <div className={css.barra}>
             <Rotulo
-              texto={`${catalogo.categorias.length} categorías · ${catalogo.subcategorias.length} subcategorías`}
+              texto={`${catalogo.grupos.length} grupos · ${catalogo.categorias.length} categorías · ${catalogo.subcategorias.length} subcategorías`}
             />
             <input
               value={busqueda}
@@ -147,37 +156,37 @@ export function Categorias() {
             />
             <BotonFantasma
               onClick={() =>
-                setAbiertas(abiertas.length ? [] : catalogo.categorias.map((c) => c.id))
+                setAbiertas(abiertas.length ? [] : catalogo.grupos.map((c) => c.id))
               }
             >
               {abiertas.length ? "Colapsar" : "Expandir"}
             </BotonFantasma>
-            <BotonFantasma onClick={() => abrirCreacion("__categoria")}>
-              + Categoría
+            <BotonFantasma onClick={() => abrirCreacion("__grupo")}>
+              + Grupo
             </BotonFantasma>
           </div>
 
           <div className={css.arbol}>
-            {creando === "__categoria" && (
+            {creando === "__grupo" && (
               <CampoNuevo
-                etiqueta="Nombre de la categoría nueva"
+                etiqueta="Nombre de la grupo nueva"
                 cerrar={() => setCreando(null)}
                 crear={(nombre) => {
-                  crearCategoria(nombre);
+                  crearGrupo(nombre);
                   setBusqueda("");
                 }}
               />
             )}
 
-            {categoriasVisibles.map((c) => {
+            {gruposVisibles.map((c) => {
               const subs = visiblesDe(c.id);
               const desplegada = buscando || abiertas.includes(c.id);
-              const naturalezas = [...new Set(catalogo.subcategoriasDe(c.id).map((s) => s.naturaleza))];
+              const naturalezas = [...new Set(catalogo.categoriasDe(c.id).map((s) => s.naturaleza))];
               const mixta = naturalezas.length > 1;
 
               return (
                 <div key={c.id} className={css.bloque}>
-                  <div className={css.filaCategoria}>
+                  <div className={css.filaGrupo}>
                     <button
                       type="button"
                       onClick={() =>
@@ -195,16 +204,16 @@ export function Categorias() {
 
                     <input
                       value={c.nombre}
-                      onChange={(e) => renombrarCategoria(c.id, e.target.value)}
+                      onChange={(e) => renombrarGrupo(c.id, e.target.value)}
                       aria-label={`Nombre de ${c.nombre}`}
-                      className={clases(css.campo, css.campoCategoria)}
+                      className={clases(css.campo, css.campoGrupo)}
                     />
 
                     <span className={css.conteo}>{subs.length}</span>
 
                     <span
                       className={clases(css.insignia, mixta && css.insigniaMixta)}
-                      title="Naturaleza de sus subcategorías"
+                      title="Naturaleza de sus categorías"
                     >
                       {mixta ? "mixta" : NOMBRE_NATURALEZA[naturalezas[0] ?? "operativo"]}
                     </span>
@@ -213,11 +222,11 @@ export function Categorias() {
                       value=""
                       onChange={(e) => {
                         if (e.target.value) {
-                          cambiarNaturalezaDeCategoria(c.id, e.target.value as Naturaleza);
+                          cambiarNaturalezaDeGrupo(c.id, e.target.value as Naturaleza);
                         }
                       }}
                       aria-label={`Aplicar naturaleza a todo ${c.nombre}`}
-                      title="Aplicar una naturaleza a todas sus subcategorías"
+                      title="Aplicar una naturaleza a todas sus categorías"
                       className={css.selectMini}
                     >
                       <option value="">aplicar…</option>
@@ -246,7 +255,7 @@ export function Categorias() {
                       <Confirmacion
                         que={c.nombre}
                         borrar={() => {
-                          borrarCategoria(c.id);
+                          borrarGrupo(c.id);
                           setPorBorrar(null);
                         }}
                         cancelar={() => setPorBorrar(null)}
@@ -254,7 +263,7 @@ export function Categorias() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => pedirBorrarCategoria(c.id, c.nombre)}
+                        onClick={() => pedirBorrarGrupo(c.id, c.nombre)}
                         aria-label={`Borrar ${c.nombre}`}
                         className={css.borrar}
                       >
@@ -265,11 +274,11 @@ export function Categorias() {
 
                   {creando === c.id && (
                     <CampoNuevo
-                      etiqueta={`Nombre de la subcategoría nueva en ${c.nombre}`}
+                      etiqueta={`Nombre de la categoría nueva en ${c.nombre}`}
                       anidado
                       cerrar={() => setCreando(null)}
                       crear={(nombre) => {
-                        crearSubcategoria(c.id, nombre);
+                        crearCategoria(c.id, nombre);
                         setBusqueda("");
                       }}
                     />
@@ -277,15 +286,16 @@ export function Categorias() {
 
                   {desplegada &&
                     subs.map((s) => {
-                      const uso = usoDeSubcategoria.get(s.id) ?? 0;
+                      const uso = usoDeCategoria.get(s.id) ?? 0;
+                      const hijas = catalogo.subcategoriasDe(s.id);
                       return (
+                        <div key={s.id}>
                         <div
-                          key={s.id}
                           className={clases(css.filaSub, !s.activa && css.filaInactiva)}
                         >
                           <input
                             value={s.nombre}
-                            onChange={(e) => renombrarSubcategoria(s.id, e.target.value)}
+                            onChange={(e) => renombrarCategoria(s.id, e.target.value)}
                             aria-label={`Nombre de ${s.nombre}`}
                             className={css.campo}
                           />
@@ -326,7 +336,7 @@ export function Categorias() {
                             <Confirmacion
                               que={s.nombre}
                               borrar={() => {
-                                borrarSubcategoria(s.id);
+                                borrarCategoria(s.id);
                                 setPorBorrar(null);
                               }}
                               cancelar={() => setPorBorrar(null)}
@@ -342,13 +352,92 @@ export function Categorias() {
                             </button>
                           )}
                         </div>
+
+                        {/* Tercer nivel. No se ofrece un "+ sub" en cada una de las
+                            290 categorías: llenaría la fila de botones que casi nunca
+                            se usan. Aparece al pasar por encima, y siempre si ya tiene. */}
+                        {hijas.map((h) => (
+                          <div
+                            key={h.id}
+                            className={clases(css.filaSubSub, !h.activa && css.filaInactiva)}
+                          >
+                            <input
+                              value={h.nombre}
+                              onChange={(e) => renombrarSubcategoria(h.id, e.target.value)}
+                              aria-label={`Nombre de ${h.nombre}`}
+                              className={css.campo}
+                            />
+                            <span className={css.uso} title="Líneas con este detalle">
+                              {(usoDeSubcategoria.get(h.id) ?? 0) || "—"}
+                              {usoDeSubcategoria.get(h.id) ? " movs" : ""}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => alternarActivaSubcategoria(h.id)}
+                              title={
+                                h.activa
+                                  ? "Dejar de ofrecerla al clasificar"
+                                  : "Volver a ofrecerla al clasificar"
+                              }
+                              className={clases(css.insignia, css.toggle, !h.activa && css.insigniaFuera)}
+                            >
+                              {h.activa ? "activa" : "inactiva"}
+                            </button>
+                            {porBorrar === h.id ? (
+                              <Confirmacion
+                                que={h.nombre}
+                                borrar={() => {
+                                  borrarSubcategoria(h.id);
+                                  setPorBorrar(null);
+                                }}
+                                cancelar={() => setPorBorrar(null)}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAviso(null);
+                                  setPorBorrar(h.id);
+                                }}
+                                aria-label={`Borrar ${h.nombre}`}
+                                className={css.borrar}
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        ))}
+
+                        {creando === s.id ? (
+                          <CampoNuevo
+                            etiqueta={`Nombre de la subcategoría nueva en ${s.nombre}`}
+                            doblementeAnidado
+                            cerrar={() => setCreando(null)}
+                            crear={(nombre) => {
+                              crearSubcategoria(s.id, nombre);
+                              setBusqueda("");
+                            }}
+                          />
+                        ) : (
+                          <div className={css.filaAgregarSub}>
+                            <button
+                              type="button"
+                              onClick={() => setCreando(s.id)}
+                              aria-label={`Agregar subcategoría en ${s.nombre}`}
+                              className={css.agregarSub}
+                            >
+                              + subcategoría
+                            </button>
+                          </div>
+                        )}
+                        </div>
                       );
                     })}
                 </div>
               );
             })}
 
-            {!categoriasVisibles.length && (
+            {!gruposVisibles.length && (
               <div className={css.vacio}>Nada coincide con “{busqueda}”.</div>
             )}
           </div>
@@ -367,11 +456,13 @@ function CampoNuevo({
   crear,
   cerrar,
   anidado,
+  doblementeAnidado,
 }: {
   etiqueta: string;
   crear: (nombre: string) => void;
   cerrar: () => void;
   anidado?: boolean;
+  doblementeAnidado?: boolean;
 }) {
   const [nombre, setNombre] = useState("");
   const confirmar = () => {
@@ -380,7 +471,13 @@ function CampoNuevo({
     cerrar();
   };
   return (
-    <div className={clases(css.filaNueva, anidado && css.filaNuevaAnidada)}>
+    <div
+      className={clases(
+        css.filaNueva,
+        anidado && css.filaNuevaAnidada,
+        doblementeAnidado && css.filaNuevaAnidadaDoble
+      )}
+    >
       <input
         // eslint-disable-next-line jsx-a11y/no-autofocus -- la fila aparece por una
         // acción del usuario y lo único que se puede hacer en ella es escribir.
@@ -429,17 +526,17 @@ function Confirmacion({
 function Importador({
   importar,
 }: {
-  importar: (texto: string) => { categorias: number; subcategorias: number };
+  importar: (texto: string) => { grupos: number; categorias: number };
 }) {
   const [texto, setTexto] = useState("");
   const [previo, setPrevio] = useState<ReturnType<typeof parsearCatalogo> | null>(null);
   const [resultado, setResultado] = useState<string | null>(null);
 
   const aplicar = () => {
-    const { categorias, subcategorias } = importar(texto);
+    const { grupos, categorias } = importar(texto);
     setResultado(
-      categorias || subcategorias
-        ? `Entraron ${categorias} categorías y ${subcategorias} subcategorías.`
+      grupos || categorias
+        ? `Entraron ${grupos} grupos y ${categorias} categorías.`
         : "Ya estaba todo en el catálogo: no se agregó nada."
     );
     setTexto("");
@@ -450,8 +547,8 @@ function Importador({
     <section className={clases(css.panel, css.panelImportador)}>
       <Rotulo texto="Cargar listado" />
       <p className={css.ayuda}>
-        Pega el listado. Acepta <code className={css.code}>Categoría:Subcategoría</code> o
-        categorías al margen con las subcategorías indentadas. Una línea sola que diga{" "}
+        Pega el listado. Acepta <code className={css.code}>Grupo:Categoría</code> o
+        grupos al margen con las categorías indentadas. Una línea sola que diga{" "}
         <code className={css.code}>Gastos de Inversión</code>,{" "}
         <code className={css.code}>Gastos Operativos</code> o{" "}
         <code className={css.code}>Ingresos</code> cambia la sección de ahí en adelante, y
@@ -484,26 +581,26 @@ function Importador({
       {previo && (
         <div className={css.previo}>
           <div className={css.previoResumen}>
-            <strong>{previo.categorias.length}</strong> categorías y{" "}
-            <strong>{previo.subcategorias.length}</strong> subcategorías detectadas.
+            <strong>{previo.grupos.length}</strong> grupos y{" "}
+            <strong>{previo.categorias.length}</strong> categorías detectadas.
           </div>
           <div className={css.previoLista}>
             {NATURALEZAS.map(
               (n) =>
-                previo.subcategorias.some((s) => s.naturaleza === n.id) && (
+                previo.categorias.some((s) => s.naturaleza === n.id) && (
                   <div key={n.id}>
                     <div className={css.previoSeccion}>{n.nombre.toUpperCase()}</div>
-                    {previo.categorias
+                    {previo.grupos
                       .filter((c) =>
-                        previo.subcategorias.some(
-                          (s) => s.categoria_id === c.id && s.naturaleza === n.id
+                        previo.categorias.some(
+                          (s) => s.grupo_id === c.id && s.naturaleza === n.id
                         )
                       )
                       .map((c) => (
                         <div key={c.id}>
-                          <span className={css.previoCategoria}>{c.nombre}</span>
-                          {previo.subcategorias
-                            .filter((s) => s.categoria_id === c.id && s.naturaleza === n.id)
+                          <span className={css.previoGrupo}>{c.nombre}</span>
+                          {previo.categorias
+                            .filter((s) => s.grupo_id === c.id && s.naturaleza === n.id)
                             .map((s) => (
                               <div key={s.id} className={css.previoSub}>
                                 {s.nombre}
@@ -524,7 +621,7 @@ function Importador({
       <p className={css.ayuda}>
         Solo agrega. Lo que ya existe con el mismo nombre no se duplica, y no hay
         “reemplazar todo”: reemplazar el catálogo dejaría sin clasificar los movimientos
-        cuyas subcategorías no estén en el listado nuevo, y son más de 15.000 líneas.
+        cuyas categorías no estén en el listado nuevo, y son más de 15.000 líneas.
         Para sacar algo de circulación, márcalo inactivo.
       </p>
     </section>

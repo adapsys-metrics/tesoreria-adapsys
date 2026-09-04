@@ -59,8 +59,8 @@ select
   ref::text
 from carga_movimientos;
 
-insert into movimiento_lineas (movimiento_id, subcategoria_id, monto, glosa, orden)
-select m.id, l.subcategoria_id::text, l.monto::numeric, nullif(l.glosa::text, ''), l.orden::integer
+insert into movimiento_lineas (movimiento_id, categoria_id, monto, glosa, orden)
+select m.id, l.categoria_id::text, l.monto::numeric, nullif(l.glosa::text, ''), l.orden::integer
 from carga_lineas l
 join movimientos m on m.carga_ref = l.mov_ref::text;
 

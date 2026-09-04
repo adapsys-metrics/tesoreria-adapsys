@@ -92,7 +92,7 @@ describe("cargarMovimientos", () => {
           monto: "-365026.00",
           tipo_cambio: "970.5",
           movimiento_lineas: [
-            { subcategoria_id: "iva-compras", monto: "-58281.00", glosa: null, orden: 1 },
+            { categoria_id: "iva-compras", subcategoria_id: null, monto: "-58281.00", glosa: null, orden: 1 },
           ],
         }),
       ],
@@ -110,14 +110,14 @@ describe("cargarMovimientos", () => {
       [
         filaCruda(1, {
           movimiento_lineas: [
-            { subcategoria_id: "iva-compras", monto: -58281, glosa: null, orden: 1 },
-            { subcategoria_id: "telefonia-e-internet", monto: -306745, glosa: null, orden: 0 },
+            { categoria_id: "iva-compras", subcategoria_id: null, monto: -58281, glosa: null, orden: 1 },
+            { categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -306745, glosa: null, orden: 0 },
           ],
         }),
       ],
     ]);
     const [m] = await cargarMovimientos(cliente);
-    expect(m!.lineas.map((l) => l.subcategoria_id)).toEqual([
+    expect(m!.lineas.map((l) => l.categoria_id)).toEqual([
       "telefonia-e-internet",
       "iva-compras",
     ]);
@@ -146,7 +146,7 @@ describe("guardarMovimiento", () => {
     tipo_cambio: null,
     estado: "conciliado",
     doc_tipo: null,
-    lineas: [{ subcategoria_id: "telefonia-e-internet", monto: -365026, glosa: null }],
+    lineas: [{ categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -365026, glosa: null }],
   };
 
   const conRpc = (respuesta: { data?: unknown; error?: { message: string } }) => {

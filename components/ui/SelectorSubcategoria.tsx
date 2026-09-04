@@ -1,97 +1,48 @@
 "use client";
 
-// Selector de subcategoría — 284 opciones (§5).
+// Selector del tercer nivel — el detalle dentro de una categoría (§5).
 //
-// Muestra el nombre como texto y recién al hacer click monta el <select> de verdad.
-// No es un detalle de estilo: renderizar las 284 <option> en cada fila de una tabla
-// de 200 movimientos son ~56.000 nodos, y eso cuelga la vista (lo detectó el test de
-// render de la lista completa). Con una sola lista abierta a la vez, el select
-// nativo alcanza y además se puede buscar escribiendo.
+// Solo aparece cuando la categoría de la línea tiene subcategorías, que hoy son 3 de
+// 290. Mostrarlo siempre, vacío, pondría un control muerto en cada línea de una tabla
+// de 10.530 movimientos y haría parecer obligatorio un nivel que es opcional.
 
-import { useMemo, useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import css from "./selector.module.css";
 import { clases } from "./primitivas";
 
 export function SelectorSubcategoria({
+  categoria_id,
   valor,
   onChange,
   compacto,
 }: {
+  /** La categoría de la línea: de ella cuelgan las opciones. */
+  categoria_id: string | null;
   valor: string | null;
-  onChange: (id: string) => void;
+  onChange: (id: string | null) => void;
   compacto?: boolean;
 }) {
-  const [editando, setEditando] = useState(false);
   const { catalogo } = useTesoreria();
-  const { existeSubcategoria, subcategoriaDe } = catalogo;
+  const opciones = categoria_id ? catalogo.subcategoriasDe(categoria_id) : [];
 
-  // Las inactivas no se ofrecen: es lo que hace útil desactivar una en vez de
-  // borrarla — deja de aparecer al clasificar sin romper lo ya clasificado (§3).
-  // La que la línea ya tiene sí se muestra aunque esté inactiva, o cambiarle otra
-  // cosa a ese movimiento la reclasificaría sin querer.
-  const porCategoria = useMemo(
-    () =>
-      catalogo.categorias
-        .map((c) => ({
-          categoria: c,
-          subs: catalogo
-            .subcategoriasDe(c.id)
-            .filter((s) => s.activa || s.id === valor),
-        }))
-        .filter((g) => g.subs.length),
-    [catalogo, valor]
-  );
-
-  // Una línea puede apuntar a una subcategoría que ya no existe: pasa al reemplazar
-  // el catálogo en la migración. Se marca en vez de fallar en silencio (§11).
-  const huerfana = valor !== null && !existeSubcategoria(valor);
-  const clase = clases(
-    css.selector,
-    compacto && css.compacto,
-    (huerfana || valor === null) && css.huerfana
-  );
-
-  if (!editando) {
-    const nombre =
-      valor === null ? "⚠ sin clasificar" : huerfana ? `⚠ ${valor}` : subcategoriaDe(valor).nombre;
-    return (
-      <button
-        type="button"
-        aria-label="Subcategoría"
-        title={`${nombre} — click para cambiar`}
-        onClick={() => setEditando(true)}
-        className={clases(clase, css.comoTexto)}
-      >
-        {nombre}
-      </button>
-    );
-  }
+  // La que ya está puesta se ofrece aunque esté inactiva: si no, cambiar cualquier
+  // otra cosa de la línea la borraría sin que nadie lo pidiera.
+  const visibles = opciones.filter((s) => s.activa || s.id === valor);
+  if (!visibles.length) return null;
 
   return (
     <select
-      // eslint-disable-next-line jsx-a11y/no-autofocus -- reemplaza al botón que se
-      // acaba de accionar: el foco tiene que quedar donde estaba la mano.
-      autoFocus
-      value={valor ?? "__sin_clasificar"}
+      value={valor ?? ""}
       aria-label="Subcategoría"
-      onChange={(e) => {
-        onChange(e.target.value);
-        setEditando(false);
-      }}
-      onBlur={() => setEditando(false)}
-      className={clase}
+      title="Detalle dentro de la categoría — opcional"
+      onChange={(e) => onChange(e.target.value || null)}
+      className={clases(css.selector, compacto && css.compacto, !valor && css.sinDetalle)}
     >
-      {valor === null && <option value="__sin_clasificar">⚠ sin clasificar</option>}
-      {huerfana && <option value={valor}>⚠ {valor} (no existe)</option>}
-      {porCategoria.map(({ categoria, subs }) => (
-        <optgroup key={categoria.id} label={categoria.nombre}>
-          {subs.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
-          ))}
-        </optgroup>
+      <option value="">— sin detalle —</option>
+      {visibles.map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.nombre}
+        </option>
       ))}
     </select>
   );

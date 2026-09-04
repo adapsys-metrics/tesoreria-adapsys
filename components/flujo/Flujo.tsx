@@ -115,7 +115,7 @@ export function Flujo() {
   const fueraDelFlujo = useMemo(() => enRango.filter((m) => m.moneda !== "CLP"), [enRango]);
 
   /**
-   * Índice subcategoría → monto por período. El prototipo recorría todos los
+   * Índice categoría → monto por período. El prototipo recorría todos los
    * movimientos por cada celda (40 columnas × cientos de filas); acá se recorre una
    * sola vez y cada celda es una lectura. Mismo resultado, mucho menos trabajo.
    */
@@ -124,7 +124,7 @@ export function Flujo() {
     for (const fila of datos) {
       const i = periodos.findIndex((p) => fila.fecha >= p.desde && fila.fecha <= p.hasta);
       if (i < 0) continue;
-      const clave = fila.subcategoria_id ?? SIN_CLASIFICAR;
+      const clave = fila.categoria_id ?? SIN_CLASIFICAR;
       let acumulado = m.get(clave);
       if (!acumulado) {
         acumulado = new Array<number>(periodos.length).fill(0);
@@ -149,7 +149,7 @@ export function Flujo() {
       items: datos
         .filter(
           (m) =>
-            ids.includes(m.subcategoria_id ?? SIN_CLASIFICAR) &&
+            ids.includes(m.categoria_id ?? SIN_CLASIFICAR) &&
             (!p || (m.fecha >= p.desde && m.fecha <= p.hasta))
         )
         .sort((a, b) => a.fecha.localeCompare(b.fecha) || enCLP(a, tc) - enCLP(b, tc)),
@@ -158,21 +158,21 @@ export function Flujo() {
 
   const conMovimiento = useMemo(() => new Set(indice.keys()), [indice]);
 
-  // Naturaleza → categoría → subcategorías, descartando todo lo que no tiene
-  // movimiento. Una categoría mixta aparece en dos naturalezas, cada vez con solo
+  // Naturaleza → grupo → categorías, descartando todo lo que no tiene
+  // movimiento. Una grupo mixta aparece en dos naturalezas, cada vez con solo
   // las líneas que le corresponden (§4.2).
   const secciones = NATURALEZAS.map((n) => ({
     naturaleza: n,
-    grupos: catalogo.categorias
+    grupos: catalogo.grupos
       .map((c) => ({
-        categoria: c,
-        subs: catalogo.subcategoriasDe(c.id, n.id).filter((s) => conMovimiento.has(s.id)),
+        grupo: c,
+        subs: catalogo.categoriasDe(c.id, n.id).filter((s) => conMovimiento.has(s.id)),
       }))
       .filter((g) => g.subs.length),
   })).filter((x) => x.grupos.length);
 
   const idsPorNaturaleza = (nat: string) =>
-    catalogo.subcategorias.filter((s) => s.naturaleza === nat).map((s) => s.id);
+    catalogo.categorias.filter((s) => s.naturaleza === nat).map((s) => s.id);
 
   const ingresos = porPeriodo(idsPorNaturaleza("ingreso"));
   const egresos = periodos.map(
@@ -188,13 +188,13 @@ export function Flujo() {
 
   const sinClasificar = indice.get(SIN_CLASIFICAR);
 
-  const reclasificar = (fila: LineaExpandida, subcategoria_id: string) => {
+  const reclasificar = (fila: LineaExpandida, categoria_id: string) => {
     if (fila.indice_linea !== null) {
-      editarLinea(fila.movimiento_id, fila.indice_linea, "subcategoria_id", subcategoria_id);
+      editarLinea(fila.movimiento_id, fila.indice_linea, "categoria_id", categoria_id);
     } else {
       // Sin líneas: clasificarlo crea la primera.
       editarMovimiento(fila.movimiento_id, "lineas", [
-        { subcategoria_id, monto: fila.monto, glosa: fila.glosa },
+        { categoria_id, subcategoria_id: null, monto: fila.monto, glosa: fila.glosa },
       ]);
     }
   };
@@ -259,7 +259,7 @@ export function Flujo() {
     <>
       <Cabecera
         titulo="Flujo de caja"
-        bajada="Sólo aparecen las categorías y subcategorías con movimiento en el rango elegido. Despliega una categoría para ver su detalle."
+        bajada="Sólo aparecen las grupos y categorías con movimiento en el rango elegido. Despliega una grupo para ver su detalle."
       />
 
       <div className={css.filtros}>
@@ -318,7 +318,7 @@ export function Flujo() {
         </Chip>
         <span className={css.empuje} />
         <BotonFantasma
-          onClick={() => setAbiertas(abiertas.length ? [] : catalogo.categorias.map((c) => c.id))}
+          onClick={() => setAbiertas(abiertas.length ? [] : catalogo.grupos.map((c) => c.id))}
         >
           {abiertas.length ? "Colapsar todo" : "Expandir todo"}
         </BotonFantasma>
@@ -336,8 +336,8 @@ export function Flujo() {
       {sinClasificar && (
         <Aviso tono="amber">
           <strong className={css.rotuloAviso}>Sin clasificar</strong> Hay movimientos sin
-          subcategoría por{" "}
-          {clp(sinClasificar.reduce((a, b) => a + b, 0))}. No entran en ninguna categoría del
+          categoría por{" "}
+          {clp(sinClasificar.reduce((a, b) => a + b, 0))}. No entran en ninguna grupo del
           reporte: hay que asignarlos.
         </Aviso>
       )}
@@ -353,7 +353,7 @@ export function Flujo() {
         <table className={clases(tabla.tabla, tabla.tablaAncha)}>
           <thead>
             <tr>
-              <th className={tabla.thFijo}>Categoría</th>
+              <th className={tabla.thFijo}>Grupo</th>
               {periodos.map((p, i) => (
                 <th
                   key={i}
@@ -381,13 +381,13 @@ export function Flujo() {
                     <td colSpan={periodos.length + 2}>{naturaleza.nombre}</td>
                   </tr>
 
-                  {grupos.map(({ categoria, subs }) => {
+                  {grupos.map(({ grupo, subs }) => {
                     const ids = subs.map((s) => s.id);
                     const valores = porPeriodo(ids);
-                    const desplegada = abiertas.includes(categoria.id);
+                    const desplegada = abiertas.includes(grupo.id);
                     return (
-                      <Fragment key={`${naturaleza.id}-${categoria.id}`}>
-                        <tr className={clases("fila", tabla.filaCategoria)}>
+                      <Fragment key={`${naturaleza.id}-${grupo.id}`}>
+                        <tr className={clases("fila", tabla.filaGrupo)}>
                           <td className={tabla.tdFijo}>
                             <button
                               type="button"
@@ -396,26 +396,26 @@ export function Flujo() {
                               onClick={() =>
                                 setAbiertas(
                                   desplegada
-                                    ? abiertas.filter((x) => x !== categoria.id)
-                                    : [...abiertas, categoria.id]
+                                    ? abiertas.filter((x) => x !== grupo.id)
+                                    : [...abiertas, grupo.id]
                                 )
                               }
                             >
                               <span className={css.flecha}>{desplegada ? "▾" : "▸"}</span>
-                              {categoria.nombre}
+                              {grupo.nombre}
                               <span className={tabla.conteo}>{subs.length}</span>
                             </button>
                           </td>
                           {valores.map((v, i) =>
                             celda(v, i, {
                               fuerte: true,
-                              abrir: () => abrir(categoria.nombre, ids, i),
+                              abrir: () => abrir(grupo.nombre, ids, i),
                             })
                           )}
                           {celda(sumaTotal(ids), "t", {
                             fuerte: true,
                             borde: true,
-                            abrir: () => abrir(categoria.nombre, ids, null),
+                            abrir: () => abrir(grupo.nombre, ids, null),
                           })}
                         </tr>
 
@@ -425,7 +425,7 @@ export function Flujo() {
                             return (
                               <tr
                                 key={`${naturaleza.id}-${s.id}`}
-                                className={clases("fila", tabla.filaSubcategoria)}
+                                className={clases("fila", tabla.filaCategoria)}
                               >
                                 <td className={clases(tabla.tdFijo, tabla.sangria, css.nombreSub)}>
                                   {s.nombre}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Migración de una sola vez: extrae el catálogo real (empresas, cuentas, categorías y
-las 284 subcategorías) del prototipo tesoreria.jsx y lo escribe como
+Migración de una sola vez: extrae el catálogo real (empresas, cuentas, grupos y
+las 284 categorías) del prototipo tesoreria.jsx y lo escribe como
 lib/catalogo.ts, que a partir de ahí es la ÚNICA fuente de verdad.
 
 scripts/gen_seed.py lee lib/catalogo.ts (no este prototipo) para generar el SQL.
@@ -61,16 +61,16 @@ def main():
     texto = FUENTE.read_text(encoding="utf-8")
     empresas = extraer_objetos(extraer_bloque(texto, "EMPRESAS"))
     cuentas = extraer_objetos(extraer_bloque(texto, "CUENTAS"))
-    categorias = extraer_objetos(extraer_bloque(texto, "CATS_INI"))
-    subcategorias = extraer_objetos(extraer_bloque(texto, "SUBS_INI"))
+    grupos = extraer_objetos(extraer_bloque(texto, "CATS_INI"))
+    categorias = extraer_objetos(extraer_bloque(texto, "SUBS_INI"))
 
     o = []
-    o.append("// Catálogo real de Adapsys — 16 categorías, 284 subcategorías (CLAUDE.md §5).")
+    o.append("// Catálogo real de Adapsys — 16 grupos, 284 categorías (CLAUDE.md §5).")
     o.append("// Generado una vez desde tesoreria.jsx con scripts/gen_catalogo.py.")
     o.append("// ESTA es la fuente de verdad: scripts/gen_seed.py lee este archivo para")
     o.append("// producir supabase/seed.sql. Editar acá, nunca el SQL.")
     o.append("")
-    o.append('import type { Categoria, Cuenta, Empresa, Naturaleza, Subcategoria } from "@/lib/tipos";')
+    o.append('import type { Grupo, Cuenta, Empresa, Naturaleza, Categoria } from "@/lib/tipos";')
     o.append("")
     o.append("/** Etiqueta larga de cada grupo, para la UI. */")
     o.append("export const GRUPOS = [")
@@ -115,18 +115,18 @@ def main():
     o.append('  "", "I+D", "Analítica avanzada", "Finanzas", "Personas", "Comercial", "Gerencia",')
     o.append("];")
     o.append("")
-    o.append("export const CATEGORIAS: Categoria[] = [")
-    for i, c in enumerate(categorias):
+    o.append("export const GRUPOS: Grupo[] = [")
+    for i, c in enumerate(grupos):
         o.append(
             f'  {{ id: {ts(c["id"])}, nombre: {ts(c["nombre"])}, '
             f'orden: {i}, controlado: {ts(c.get("controlado", True))} }},'
         )
     o.append("];")
     o.append("")
-    o.append("export const SUBCATEGORIAS: Subcategoria[] = [")
-    for s in subcategorias:
+    o.append("export const CATEGORIAS: Categoria[] = [")
+    for s in categorias:
         o.append(
-            f'  {{ id: {ts(s["id"])}, categoria_id: {ts(s["cat"])}, nombre: {ts(s["nombre"])}, '
+            f'  {{ id: {ts(s["id"])}, grupo_id: {ts(s["cat"])}, nombre: {ts(s["nombre"])}, '
             f'naturaleza: {ts(s["nat"])}, activa: true }},'
         )
     o.append("];")
@@ -135,7 +135,7 @@ def main():
     SALIDA.write_text("\n".join(o), encoding="utf-8")
     print(
         f"Escribí {SALIDA} — {len(empresas)} empresas, {len(cuentas)} cuentas, "
-        f"{len(categorias)} categorías, {len(subcategorias)} subcategorías."
+        f"{len(grupos)} grupos, {len(categorias)} categorías."
     )
 
 

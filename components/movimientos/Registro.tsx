@@ -1,6 +1,6 @@
 "use client";
 
-// Movimientos — registro único de todas las empresas (§6). Empresa y subcategoría
+// Movimientos — registro único de todas las empresas (§6). Empresa y categoría
 // editables inline, editor de splits desplegable, y separador visual donde la lista
 // pasa del pasado al futuro.
 
@@ -21,7 +21,7 @@ import {
 import { clp } from "@/lib/formato";
 import { HOY, fechaCorta } from "@/lib/fechas";
 import { Cabecera, Nota, Pill, Vacio, clases } from "@/components/ui/primitivas";
-import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
+import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { EditorMovimiento } from "./EditorMovimiento";
 import { FormaNuevo } from "./FormaNuevo";
 import css from "./movimientos.module.css";
@@ -36,7 +36,7 @@ const columnas = (conSaldo: boolean): Columna[] => [
   { titulo: "Empresa", orden: "cuenta" },
   { titulo: "Proveedor / Cliente", orden: "contraparte" },
   { titulo: "Glosa", orden: "glosa" },
-  { titulo: "Subcategoría", orden: "subcategoria" },
+  { titulo: "Categoría", orden: "categoria" },
   { titulo: "Monto", orden: "monto", num: true },
   // El saldo no se ordena: es el saldo DESPUÉS de ese movimiento, un dato del
   // punto en el tiempo. Ordenarlo por su valor no significaría nada.
@@ -136,10 +136,10 @@ export function Registro() {
       // Vacío para los sin clasificar, no "Sin clasificar": así caen al final de
       // la columna en los dos sentidos, agrupados y fáciles de encontrar, en vez
       // de quedar sueltos entre la S y la T del catálogo.
-      subcategoria: (m) => {
+      categoria: (m) => {
         if (m.lineas.length > 1) return `Split · ${m.lineas.length} líneas`;
         const linea = m.lineas[0];
-        return linea ? catalogo.subcategoriaDe(linea.subcategoria_id).nombre : "";
+        return linea ? catalogo.categoriaDe(linea.categoria_id).nombre : "";
       },
     });
   }, [movimientosFiltrados, busqueda, soloPendiente, soloVencidos, orden, tc, cuentasBanco, catalogo]);
@@ -151,7 +151,7 @@ export function Registro() {
     <>
       <Cabecera
         titulo="Movimientos"
-        bajada="Registro único de todas las empresas. La empresa y la subcategoría se editan en la misma fila; los splits se abren para ver y ajustar sus líneas."
+        bajada="Registro único de todas las empresas. La empresa y la categoría se editan en la misma fila; los splits se abren para ver y ajustar sus líneas."
       />
 
       <div className={css.barra}>
@@ -359,13 +359,13 @@ export function Registro() {
                           </button>
                         ) : (
                           <>
-                            <SelectorSubcategoria
-                              valor={m.lineas[0]?.subcategoria_id ?? null}
+                            <SelectorCategoria
+                              valor={m.lineas[0]?.categoria_id ?? null}
                               onChange={(id) =>
                                 m.lineas.length
-                                  ? editarLinea(m.id, 0, "subcategoria_id", id)
+                                  ? editarLinea(m.id, 0, "categoria_id", id)
                                   : editarMovimiento(m.id, "lineas", [
-                                      { subcategoria_id: id, monto: m.monto, glosa: null },
+                                      { categoria_id: id, subcategoria_id: null, monto: m.monto, glosa: null },
                                     ])
                               }
                             />

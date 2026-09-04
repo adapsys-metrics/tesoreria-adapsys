@@ -12,7 +12,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 // Los tipos del dominio viven en lib/tipos.ts (son los mismos valores); se
 // re-exportan acá para que este archivo siga siendo autocontenido cuando se
 // reemplace por el output de `npm run db:types`.
-export type Grupo = "Adapsys" | "Relacionadas";
+export type GrupoEmpresa = "Adapsys" | "Relacionadas";
 export type Moneda = "CLP" | "USD";
 export type TipoCuenta = "banco" | "cxc";
 export type Naturaleza = "ingreso" | "inversion" | "operativo";
@@ -24,9 +24,9 @@ export type Database = {
   public: {
     Tables: {
       empresas: {
-        Row: { id: string; nombre: string; corto: string; grupo: Grupo };
-        Insert: { id: string; nombre: string; corto: string; grupo: Grupo };
-        Update: Partial<{ id: string; nombre: string; corto: string; grupo: Grupo }>;
+        Row: { id: string; nombre: string; corto: string; grupo: GrupoEmpresa };
+        Insert: { id: string; nombre: string; corto: string; grupo: GrupoEmpresa };
+        Update: Partial<{ id: string; nombre: string; corto: string; grupo: GrupoEmpresa }>;
         Relationships: [];
       };
       cuentas: {
@@ -59,27 +59,44 @@ export type Database = {
           },
         ];
       };
-      categorias: {
+      /** Nivel 1: "2 GASTOS ADMINISTRACIÓN" (0012). */
+      grupos: {
         Row: { id: string; nombre: string; orden: number; controlado: boolean };
         Insert: { id: string; nombre: string; orden: number; controlado?: boolean };
-        Update: Partial<Database["public"]["Tables"]["categorias"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["grupos"]["Insert"]>;
         Relationships: [];
       };
-      subcategorias: {
+      /** Nivel 2: "Jornadas y eventos organización". Es a donde apunta toda línea. */
+      categorias: {
         Row: {
           id: string;
-          categoria_id: string;
+          grupo_id: string;
           nombre: string;
           naturaleza: Naturaleza;
           activa: boolean;
         };
         Insert: {
           id: string;
-          categoria_id: string;
+          grupo_id: string;
           nombre: string;
           naturaleza: Naturaleza;
           activa?: boolean;
         };
+        Update: Partial<Database["public"]["Tables"]["categorias"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "categorias_grupo_id_fkey";
+            columns: ["grupo_id"];
+            isOneToOne: false;
+            referencedRelation: "grupos";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      /** Nivel 3, opcional: "Offsite internacional". Detalle, no nivel de reporte. */
+      subcategorias: {
+        Row: { id: string; categoria_id: string; nombre: string; activa: boolean };
+        Insert: { id: string; categoria_id: string; nombre: string; activa?: boolean };
         Update: Partial<Database["public"]["Tables"]["subcategorias"]["Insert"]>;
         Relationships: [
           {
@@ -161,7 +178,10 @@ export type Database = {
         Row: {
           id: number;
           movimiento_id: number;
-          subcategoria_id: string;
+          categoria_id: string;
+          /** Opcional (0012): la enorme mayoría de las líneas se clasifica a nivel
+           *  de categoría. Si viene, pertenece a esa categoría — lo valida un trigger. */
+          subcategoria_id: string | null;
           monto: number;
           glosa: string | null;
           orden: number;
@@ -169,7 +189,8 @@ export type Database = {
         Insert: {
           id?: number;
           movimiento_id: number;
-          subcategoria_id: string;
+          categoria_id: string;
+          subcategoria_id?: string | null;
           monto: number;
           glosa?: string | null;
           orden?: number;
@@ -184,24 +205,24 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "movimiento_lineas_subcategoria_id_fkey";
-            columns: ["subcategoria_id"];
+            foreignKeyName: "movimiento_lineas_categoria_id_fkey";
+            columns: ["categoria_id"];
             isOneToOne: false;
-            referencedRelation: "subcategorias";
+            referencedRelation: "categorias";
             referencedColumns: ["id"];
           },
         ];
       };
       presupuesto_meses: {
-        Row: { anio: number; subcategoria_id: string; mes: number; monto: number };
-        Insert: { anio: number; subcategoria_id: string; mes: number; monto?: number };
+        Row: { anio: number; categoria_id: string; mes: number; monto: number };
+        Insert: { anio: number; categoria_id: string; mes: number; monto?: number };
         Update: Partial<Database["public"]["Tables"]["presupuesto_meses"]["Insert"]>;
         Relationships: [
           {
-            foreignKeyName: "presupuesto_meses_subcategoria_id_fkey";
-            columns: ["subcategoria_id"];
+            foreignKeyName: "presupuesto_meses_categoria_id_fkey";
+            columns: ["categoria_id"];
             isOneToOne: false;
-            referencedRelation: "subcategorias";
+            referencedRelation: "categorias";
             referencedColumns: ["id"];
           },
         ];
@@ -210,7 +231,7 @@ export type Database = {
         Row: {
           id: number;
           anio: number;
-          subcategoria_id: string;
+          categoria_id: string;
           monto_anterior: number;
           responsable: string | null;
           nota: string | null;
@@ -218,7 +239,7 @@ export type Database = {
         Insert: {
           id?: number;
           anio: number;
-          subcategoria_id: string;
+          categoria_id: string;
           monto_anterior?: number;
           responsable?: string | null;
           nota?: string | null;
@@ -226,10 +247,10 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["presupuesto"]["Insert"]>;
         Relationships: [
           {
-            foreignKeyName: "presupuesto_subcategoria_id_fkey";
-            columns: ["subcategoria_id"];
+            foreignKeyName: "presupuesto_categoria_id_fkey";
+            columns: ["categoria_id"];
             isOneToOne: false;
-            referencedRelation: "subcategorias";
+            referencedRelation: "categorias";
             referencedColumns: ["id"];
           },
         ];
@@ -291,6 +312,7 @@ export type Database = {
           estado: EstadoMovimiento;
           moneda: Moneda;
           tipo_cambio: number | null;
+          categoria_id: string | null;
           subcategoria_id: string | null;
           monto: number;
           glosa: string | null;
@@ -301,7 +323,7 @@ export type Database = {
         Row: Database["public"]["Tables"]["movimientos"]["Row"];
         Relationships: [];
       };
-      v_lineas_categoria_inactiva: {
+      v_lineas_grupo_inactiva: {
         Row: Database["public"]["Tables"]["movimiento_lineas"]["Row"];
         Relationships: [];
       };
@@ -312,7 +334,8 @@ export type Database = {
         Args: { p: Json };
         Returns: number;
       };
-      /** Guarda los doce meses de una línea del presupuesto y su metadata (0010). */
+      /** Guarda los doce meses de una línea del presupuesto y su metadata (0010,
+       *  redefinida en 0012 sobre categoria_id). */
       fn_guardar_presupuesto: {
         Args: { p: Json };
         Returns: undefined;

@@ -4,7 +4,7 @@ import {
   reescalar,
   distribucionOperativa,
   distribuirLineal,
-  ejecutadoPorSubcategoria,
+  ejecutadoPorCategoria,
   entraAlPresupuesto,
   filaDe,
   finDeMes,
@@ -34,7 +34,7 @@ const mov = (p: Partial<Movimiento>): Movimiento => ({
 
 /** Un movimiento de una línea, que es el caso corriente. */
 const gasto = (id: string, fecha: string, sub: string, monto: number, extra: Partial<Movimiento> = {}) =>
-  mov({ id, fecha, monto, lineas: [{ subcategoria_id: sub, monto, glosa: null }], ...extra });
+  mov({ id, fecha, monto, lineas: [{ categoria_id: sub, subcategoria_id: null, monto, glosa: null }], ...extra });
 
 // El TC no cambia nada mientras todo esté en pesos; se nombra para que se lea
 // por qué el parámetro está ahí.
@@ -103,7 +103,7 @@ describe("el control presupuestario, de punta a punta", () => {
   // porque el error que importa es olvidar el filtro, no equivocarse en la suma.
   const ADAPSYS = ["adap", "cons", "clting", "ctria"];
   const ejecutadoDelGrupo = (ms: Movimiento[], mes: number) =>
-    ejecutadoPorSubcategoria(
+    ejecutadoPorCategoria(
       ms.filter((m) => entraAlPresupuesto(m, ADAPSYS)),
       2026,
       mes
@@ -182,7 +182,7 @@ describe("distribucionOperativa", () => {
     expect(d.get("sistop")![1]).toBe(97_000);
   });
 
-  it("deja fuera las subcategorías de inversión, que van a mano", () => {
+  it("deja fuera las categorías de inversión, que van a mano", () => {
     const d = distribucionOperativa(
       [gasto("1", "2026-02-01", "equipos-computacionales", -900)],
       2026,
@@ -191,15 +191,15 @@ describe("distribucionOperativa", () => {
     expect(d.size).toBe(0);
   });
 
-  it("reparte los splits entre sus subcategorías", () => {
+  it("reparte los splits entre sus categorías", () => {
     const d = distribucionOperativa(
       [
         mov({
           fecha: "2026-08-14",
           monto: -365026,
           lineas: [
-            { subcategoria_id: "telefonia-e-internet", monto: -306745, glosa: null },
-            { subcategoria_id: "iva-compras", monto: -58281, glosa: null },
+            { categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -306745, glosa: null },
+            { categoria_id: "iva-compras", subcategoria_id: null, monto: -58281, glosa: null },
           ],
         }),
       ],
@@ -247,20 +247,20 @@ describe("reescalar", () => {
   });
 });
 
-describe("ejecutadoPorSubcategoria", () => {
+describe("ejecutadoPorCategoria", () => {
   it("suma en magnitud: el presupuesto se muestra sin signo (§4.6)", () => {
-    const e = ejecutadoPorSubcategoria([gasto("1", "2026-01-05", "arriendo-oficina", -8_814_748)], 2026, 3, TC);
+    const e = ejecutadoPorCategoria([gasto("1", "2026-01-05", "arriendo-oficina", -8_814_748)], 2026, 3, TC);
     expect(e.get("arriendo-oficina")).toBe(8_814_748);
   });
 
-  it("reparte los splits entre sus subcategorías, no al movimiento entero", () => {
-    const e = ejecutadoPorSubcategoria(
+  it("reparte los splits entre sus categorías, no al movimiento entero", () => {
+    const e = ejecutadoPorCategoria(
       [
         mov({
           monto: -365026,
           lineas: [
-            { subcategoria_id: "telefonia-e-internet", monto: -306745, glosa: null },
-            { subcategoria_id: "iva-compras", monto: -58281, glosa: null },
+            { categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -306745, glosa: null },
+            { categoria_id: "iva-compras", subcategoria_id: null, monto: -58281, glosa: null },
           ],
         }),
       ],
@@ -275,7 +275,7 @@ describe("ejecutadoPorSubcategoria", () => {
     // Caso real: la tarjeta en dólares paga casi todas las suscripciones. Sin
     // convertir, un cargo de US$67,5 entraba al presupuesto como 68 pesos y el
     // gasto en sistemas digitales desaparecía de la vista.
-    const e = ejecutadoPorSubcategoria(
+    const e = ejecutadoPorCategoria(
       [gasto("1", "2026-01-16", "sistop", -67.5, { moneda: "USD" })],
       2026,
       3,
@@ -285,7 +285,7 @@ describe("ejecutadoPorSubcategoria", () => {
   });
 
   it("usa el TC del propio movimiento cuando la operación lo tuvo", () => {
-    const e = ejecutadoPorSubcategoria(
+    const e = ejecutadoPorCategoria(
       [gasto("1", "2026-01-16", "sistop", -100, { moneda: "USD", tipo_cambio: 900 })],
       2026,
       3,
@@ -297,7 +297,7 @@ describe("ejecutadoPorSubcategoria", () => {
   it("una devolución baja el gasto de la línea, no lo sube", () => {
     // Tomando magnitud línea por línea, que un proveedor devuelva plata gastaba
     // más. La magnitud va al final, con las devoluciones ya descontadas.
-    const e = ejecutadoPorSubcategoria(
+    const e = ejecutadoPorCategoria(
       [
         gasto("1", "2026-02-10", "sistop", -1_000_000),
         gasto("2", "2026-02-20", "sistop", 300_000),
@@ -310,7 +310,7 @@ describe("ejecutadoPorSubcategoria", () => {
   });
 
   it("no cuenta lo proyectado: el real es lo que ocurrió", () => {
-    const e = ejecutadoPorSubcategoria(
+    const e = ejecutadoPorCategoria(
       [gasto("1", "2026-02-01", "sueldos", -900, { estado: "proyectado" })],
       2026,
       3
@@ -320,12 +320,12 @@ describe("ejecutadoPorSubcategoria", () => {
 
   it("corta en el último día del mes elegido", () => {
     const movs = [gasto("1", "2026-03-31", "sueldos", -100), gasto("2", "2026-04-01", "sueldos", -100)];
-    expect(ejecutadoPorSubcategoria(movs, 2026, 3, TC).get("sueldos")).toBe(100);
-    expect(ejecutadoPorSubcategoria(movs, 2026, 4, TC).get("sueldos")).toBe(200);
+    expect(ejecutadoPorCategoria(movs, 2026, 3, TC).get("sueldos")).toBe(100);
+    expect(ejecutadoPorCategoria(movs, 2026, 4, TC).get("sueldos")).toBe(200);
   });
 
   it("ignora lo que no está clasificado", () => {
-    expect(ejecutadoPorSubcategoria([mov({ monto: -5000 })], 2026, 12, TC).size).toBe(0);
+    expect(ejecutadoPorCategoria([mov({ monto: -5000 })], 2026, 12, TC).size).toBe(0);
   });
 });
 
