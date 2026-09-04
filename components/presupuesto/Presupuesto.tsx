@@ -127,6 +127,13 @@ export function Presupuesto() {
     setDetalle({ titulo, periodo: `Enero a ${NOMBRES_MES[mes - 1]} de ${anio}`, items });
   };
 
+  /** Fija el detalle de la línea. Solo se puede sobre una línea que ya existe: sin
+   *  categoría no hay subcategoría de la cual colgar. */
+  const detallar = (fila: LineaExpandida, subcategoria_id: string | null) => {
+    if (fila.indice_linea === null) return;
+    editarLinea(fila.movimiento_id, fila.indice_linea, "subcategoria_id", subcategoria_id);
+  };
+
   const reclasificar = (fila: LineaExpandida, categoria_id: string) => {
     if (fila.indice_linea !== null) {
       editarLinea(fila.movimiento_id, fila.indice_linea, "categoria_id", categoria_id);
@@ -324,6 +331,7 @@ export function Presupuesto() {
           cerrar={() => setDetalle(null)}
           tc={tc}
           reclasificar={reclasificar}
+          detallar={detallar}
         />
       )}
 

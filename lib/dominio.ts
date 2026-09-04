@@ -87,6 +87,7 @@ export const expandir = (movimientos: Movimiento[]): LineaExpandida[] =>
         {
           ...comun,
           categoria_id: null,
+          subcategoria_id: null,
           monto: m.monto,
           glosa: m.glosa,
           indice_linea: null,
@@ -96,6 +97,7 @@ export const expandir = (movimientos: Movimiento[]): LineaExpandida[] =>
     return m.lineas.map((l, i) => ({
       ...comun,
       categoria_id: l.categoria_id,
+      subcategoria_id: l.subcategoria_id,
       monto: l.monto,
       glosa: l.glosa ?? m.glosa,
       indice_linea: i,

@@ -824,7 +824,7 @@ describe("Entrar a una cuenta desde el sidebar", () => {
   });
 });
 
-describe("Grupos", () => {
+describe("Catálogo", () => {
   it("monta y lista el catálogo completo", () => {
     montar(<Categorias />);
     expect(screen.getByRole("heading", { name: "Grupos y categorías" })).toBeDefined();
@@ -895,7 +895,7 @@ describe("Grupos", () => {
       target: { value: "Arriendo oficina" },
     });
     fireEvent.click(screen.getByLabelText("Borrar Arriendo oficina"));
-    expect(screen.getByText(/inactiva/)).toBeDefined();
+    expect(screen.getByText(/Márcala inactiva/)).toBeDefined();
     expect(screen.getByLabelText("Nombre de Arriendo oficina")).toBeDefined();
   });
 
@@ -1074,6 +1074,36 @@ describe("El tercer nivel", () => {
       screen.getByLabelText("Nombre de Sistemas Analítica avanzada, IA y Relac.")
     ).toBeDefined();
     expect(screen.getByLabelText("Nombre de Automatización y metrics")).toBeDefined();
+  });
+
+  it("el uso abre los movimientos que hay dentro", () => {
+    // Es el link azul de la columna USES de Quicken: lo que se necesita mirar justo
+    // antes de desactivar algo, para saber si estorba.
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Arriendo oficina" },
+    });
+    fireEvent.click(screen.getByTitle("Ver los movimientos clasificados acá"));
+    const panel = screen.getByRole("dialog");
+    expect(within(panel).getAllByLabelText("Categoría").length).toBeGreaterThan(0);
+  });
+
+  it("ocultar inactivas las saca de la vista sin desclasificar nada", () => {
+    // El "Show All Categories" de Quicken. Con 290 categorías las desactivadas
+    // estorban salvo cuando se está limpiando el catálogo.
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Arriendo oficina" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "activa" })[0]!);
+    expect(screen.getByLabelText("Nombre de Arriendo oficina")).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ocultar inactivas" }));
+    expect(screen.queryByLabelText("Nombre de Arriendo oficina")).toBeNull();
+
+    // Sigue existiendo: volver a mostrarlas la trae de vuelta, inactiva.
+    fireEvent.click(screen.getByRole("button", { name: "Ocultar inactivas" }));
+    expect(screen.getAllByRole("button", { name: "inactiva" }).length).toBeGreaterThan(0);
   });
 
   it("el selector de detalle solo aparece donde hay subcategorías", () => {

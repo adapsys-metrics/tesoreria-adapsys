@@ -399,3 +399,19 @@
   padding-left: 52px;
   background: var(--fila-split);
 }
+
+/* El uso abre los movimientos, como el link azul de Quicken. Subrayado punteado y
+   no botón: son cientos de filas y llenarlas de bordes taparía la lectura. */
+.usoClicable {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: var(--font-cifras);
+  border-bottom: 1px dotted var(--borde-control);
+  cursor: pointer;
+}
+
+.usoClicable:hover {
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+}

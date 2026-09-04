@@ -115,6 +115,8 @@ export type LineaExpandida = {
   tipo_cambio: number | null;
   /** null cuando el movimiento no tiene líneas: sin clasificar. */
   categoria_id: string | null;
+  /** El detalle de la línea, cuando lo tiene. Casi siempre null (§3.1). */
+  subcategoria_id: string | null;
   monto: number;
   glosa: string | null;
   contraparte: string | null;

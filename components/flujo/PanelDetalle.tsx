@@ -12,6 +12,7 @@ import { fechaCorta } from "@/lib/fechas";
 import type { LineaExpandida } from "@/lib/tipos";
 import { Insignia, Pill } from "@/components/ui/primitivas";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
+import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
 import css from "./panel.module.css";
 
 export type Detalle = {
@@ -25,12 +26,16 @@ export function PanelDetalle({
   cerrar,
   tc,
   reclasificar,
+  detallar,
 }: {
   detalle: Detalle;
   cerrar: () => void;
   tc: number;
   /** Enruta al movimiento o a la línea del split según de dónde venga la fila. */
   reclasificar: (fila: LineaExpandida, categoria_id: string) => void;
+  /** Fija el detalle dentro de la categoría. Opcional: quien no lo pase deja el panel
+   *  como estaba, sin selector de tercer nivel. */
+  detallar?: (fila: LineaExpandida, subcategoria_id: string | null) => void;
 }) {
   const total = detalle.items.reduce((s, m) => s + enCLP(m, tc), 0);
 
@@ -102,6 +107,16 @@ export function PanelDetalle({
                           valor={m.categoria_id}
                           onChange={(id) => reclasificar(m, id)}
                         />
+                        {/* Solo aparece si la categoría tiene subcategorías. Acá es
+                            donde más sirve: se está mirando el detalle de un monto y
+                            es el momento en que uno se da cuenta de que falta precisar. */}
+                        {detallar && (
+                          <SelectorSubcategoria
+                            categoria_id={m.categoria_id}
+                            valor={m.subcategoria_id}
+                            onChange={(id) => detallar(m, id)}
+                          />
+                        )}
                       </div>
                     </td>
                     <td

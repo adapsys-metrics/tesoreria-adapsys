@@ -10,9 +10,12 @@
 
 import { useMemo, useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
+import { PanelDetalle, type Detalle } from "@/components/flujo/PanelDetalle";
+import { expandir } from "@/lib/dominio";
+import type { LineaExpandida } from "@/lib/tipos";
 import { NATURALEZAS } from "@/lib/catalogo";
 import { parsearCatalogo } from "@/lib/catalogo-edicion";
-import { Aviso, BotonFantasma, Cabecera, Rotulo, clases } from "@/components/ui/primitivas";
+import { Aviso, BotonFantasma, Cabecera, Chip, Rotulo, clases } from "@/components/ui/primitivas";
 import type { Naturaleza } from "@/lib/tipos";
 import css from "./categorias.module.css";
 
@@ -43,6 +46,9 @@ export function Categorias() {
     renombrarSubcategoria,
     alternarActivaSubcategoria,
     borrarSubcategoria,
+    tc,
+    editarLinea,
+    editarMovimiento,
   } = useTesoreria();
 
   const [busqueda, setBusqueda] = useState("");
@@ -54,13 +60,21 @@ export function Categorias() {
   // Qué se está creando: "__grupo" o el id de la grupo que recibe la sub.
   const [creando, setCreando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Quicken muestra el uso como un link y se abre la lista. Es lo que se necesita
+  // justo antes de desactivar algo: ver qué hay dentro para saber si estorba.
+  const [detalle, setDetalle] = useState<Detalle | null>(null);
+  // Con 290 categorías, las desactivadas estorban la lectura salvo cuando se está
+  // limpiando el catálogo. Es el "Show All Categories" de Quicken.
+  const [verInactivas, setVerInactivas] = useState(true);
   const buscando = busqueda.trim().length > 0;
 
   const coincide = (texto: string) =>
     texto.toLowerCase().includes(busqueda.trim().toLowerCase());
 
   const visiblesDe = (grupo_id: string) => {
-    const subs = catalogo.categoriasDe(grupo_id);
+    const subs = catalogo
+      .categoriasDe(grupo_id)
+      .filter((s) => verInactivas || s.activa);
     if (!buscando) return subs;
     // Si el nombre de la grupo coincide, se muestran todas sus categorías:
     // buscar "impuestos" tiene que traer el bloque entero, no cero resultados.
@@ -114,6 +128,31 @@ export function Categorias() {
     setPorBorrar(id);
   };
 
+  /** Igual que en el flujo: si algo está mal clasificado se corrige donde se detecta
+   *  el problema, sin ir a buscarlo a Movimientos. */
+  const reclasificar = (fila: LineaExpandida, categoria_id: string) => {
+    if (fila.indice_linea !== null) {
+      editarLinea(fila.movimiento_id, fila.indice_linea, "categoria_id", categoria_id);
+    } else {
+      editarMovimiento(fila.movimiento_id, "lineas", [
+        { categoria_id, subcategoria_id: null, monto: fila.monto, glosa: fila.glosa },
+      ]);
+    }
+  };
+
+  /** Fija el detalle de la línea. Solo se puede sobre una línea que ya existe: sin
+   *  categoría no hay subcategoría de la cual colgar. */
+  const detallar = (fila: LineaExpandida, subcategoria_id: string | null) => {
+    if (fila.indice_linea === null) return;
+    editarLinea(fila.movimiento_id, fila.indice_linea, "subcategoria_id", subcategoria_id);
+  };
+
+  const abrirUso = (titulo: string, cumple: (l: LineaExpandida) => boolean) => {
+    const items = expandir(movimientos).filter(cumple);
+    if (!items.length) return;
+    setDetalle({ titulo, periodo: `${items.length} líneas, todo el histórico`, items });
+  };
+
   const abrirCreacion = (donde: string) => {
     setCreando(donde);
     if (donde !== "__grupo") {
@@ -154,6 +193,14 @@ export function Categorias() {
               aria-label="Buscar en el catálogo"
               className={css.buscador}
             />
+            <Chip
+              chico
+              activo={!verInactivas}
+              onClick={() => setVerInactivas((v) => !v)}
+              titulo="Las inactivas siguen existiendo y siguen clasificando lo antiguo; esto solo las saca de la vista"
+            >
+              Ocultar inactivas
+            </Chip>
             <BotonFantasma
               onClick={() =>
                 setAbiertas(abiertas.length ? [] : catalogo.grupos.map((c) => c.id))
@@ -315,9 +362,18 @@ export function Categorias() {
                             ))}
                           </select>
 
-                          <span className={css.uso} title="Líneas de movimiento clasificadas acá">
-                            {uso ? `${uso} movs` : "—"}
-                          </span>
+                          {uso ? (
+                            <button
+                              type="button"
+                              onClick={() => abrirUso(s.nombre, (l) => l.categoria_id === s.id)}
+                              title="Ver los movimientos clasificados acá"
+                              className={clases(css.uso, css.usoClicable)}
+                            >
+                              {uso} movs
+                            </button>
+                          ) : (
+                            <span className={css.uso}>—</span>
+                          )}
 
                           <button
                             type="button"
@@ -367,10 +423,18 @@ export function Categorias() {
                               aria-label={`Nombre de ${h.nombre}`}
                               className={css.campo}
                             />
-                            <span className={css.uso} title="Líneas con este detalle">
-                              {(usoDeSubcategoria.get(h.id) ?? 0) || "—"}
-                              {usoDeSubcategoria.get(h.id) ? " movs" : ""}
-                            </span>
+                            {usoDeSubcategoria.get(h.id) ? (
+                              <button
+                                type="button"
+                                onClick={() => abrirUso(h.nombre, (l) => l.subcategoria_id === h.id)}
+                                title="Ver los movimientos con este detalle"
+                                className={clases(css.uso, css.usoClicable)}
+                              >
+                                {usoDeSubcategoria.get(h.id)} movs
+                              </button>
+                            ) : (
+                              <span className={css.uso}>—</span>
+                            )}
                             <button
                               type="button"
                               onClick={() => alternarActivaSubcategoria(h.id)}
@@ -445,6 +509,16 @@ export function Categorias() {
 
         <Importador importar={importarCatalogo} />
       </div>
+
+      {detalle && (
+        <PanelDetalle
+          detalle={detalle}
+          cerrar={() => setDetalle(null)}
+          tc={tc}
+          reclasificar={reclasificar}
+          detallar={detallar}
+        />
+      )}
     </>
   );
 }
