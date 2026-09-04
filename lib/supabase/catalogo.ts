@@ -54,7 +54,7 @@ export async function guardarGrupo(
   c: Grupo
 ): Promise<void> {
   const { error } = await supabase.from("grupos").upsert(c);
-  if (error) throw new Error(`No se pudo guardar la grupo "${c.nombre}": ${error.message}`);
+  if (error) throw new Error(`No se pudo guardar el grupo "${c.nombre}": ${error.message}`);
 }
 
 export async function guardarCategoria(
@@ -86,7 +86,7 @@ export async function borrarGrupo(
   id: string
 ): Promise<void> {
   const { error } = await supabase.from("grupos").delete().eq("id", id);
-  if (error) throw new Error(`No se pudo borrar la grupo: ${error.message}`);
+  if (error) throw new Error(`No se pudo borrar el grupo: ${error.message}`);
 }
 
 export async function guardarSubcategoria(

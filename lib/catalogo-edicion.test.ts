@@ -57,7 +57,7 @@ describe("parsearCatalogo", () => {
     expect(categorias.find((s) => s.nombre === "Aseo")!.naturaleza).toBe("operativo");
   });
 
-  it("el sufijo manda sobre la sección, para las grupos mixtas (§4.2)", () => {
+  it("el sufijo manda sobre la sección, para los grupos mixtos (§4.2)", () => {
     const { categorias } = parsearCatalogo(
       ["Gastos Operativos", "Administración", "  Arriendo", "  Equipamiento (inversión)"].join("\n")
     );
@@ -65,8 +65,8 @@ describe("parsearCatalogo", () => {
     expect(categorias.find((s) => s.nombre === "Equipamiento")!.naturaleza).toBe("inversion");
   });
 
-  it("una grupo sin categorías recibe una con su nombre", () => {
-    // Se clasifica por categoría (§3): una grupo vacía no se podría usar.
+  it("un grupo sin categorías recibe una con su nombre", () => {
+    // Se clasifica por categoría (§3): un grupo vacío no se podría usar.
     const { categorias } = parsearCatalogo("Impuestos");
     expect(categorias).toHaveLength(1);
     expect(categorias[0]!.nombre).toBe("Impuestos");

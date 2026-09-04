@@ -151,7 +151,7 @@ export function Presupuesto() {
   const secciones = useMemo(
     () =>
       SECCIONES.map(({ naturaleza, titulo }) => {
-        // Solo las grupos controladas (§4.6). Impuestos, bancos, inversiones,
+        // Solo los grupos controlados (§4.6). Impuestos, bancos, inversiones,
         // préstamos y socios no son gasto que se decida presupuestar: salen de lo
         // que se factura, de lo que se mueve o de una decisión de los dueños.
         const grupos = catalogo.grupos.filter((c) => c.controlado).map((grupo) => {

@@ -50,7 +50,7 @@ const cuentaPorEmpresa = (empresa, moneda) =>
 // ── Resolución de categoría ──────────────────────────────────────────────
 //
 // El tercer nivel de Quicken ya está aplanado en el catálogo: la categoría es
-// el último segmento y la grupo el primero. Se compara normalizado porque la
+// el último segmento y el grupo el primero. Se compara normalizado porque la
 // misma categoría aparece con y sin tilde según la época del movimiento.
 const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
 const PORCLAVE = new Map(

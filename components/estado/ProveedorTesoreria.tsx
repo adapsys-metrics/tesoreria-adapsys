@@ -139,7 +139,7 @@ type Contexto = Estado & {
   renombrarGrupo: (id: string, nombre: string) => void;
   renombrarCategoria: (id: string, nombre: string) => void;
   cambiarNaturaleza: (id: string, naturaleza: Naturaleza) => void;
-  /** Aplica una naturaleza a todas las categorías de una grupo, de una vez. */
+  /** Aplica una naturaleza a todas las categorías de un grupo, de una vez. */
   cambiarNaturalezaDeGrupo: (grupo_id: string, naturaleza: Naturaleza) => void;
   /** Dentro o fuera del control presupuestario (§4.6). */
   alternarControlado: (grupo_id: string) => void;
@@ -842,7 +842,7 @@ export function ProveedorTesoreria({
             ...p.grupos,
             { id, nombre, orden: p.grupos.length + 1, controlado: true },
           ],
-          // Sin categoría la grupo no sirve para clasificar (§3), así que
+          // Sin categoría el grupo no sirve para clasificar (§3), así que
           // nace con una que se puede renombrar en el acto.
           categorias: [
             ...p.categorias,
@@ -866,7 +866,7 @@ export function ProveedorTesoreria({
             grupo_id,
             nombre,
             // Hereda la naturaleza de sus hermanas: lo más probable es que sea la
-            // misma, y si la grupo es mixta se corrige en el selector de al lado.
+            // misma, y si el grupo es mixta se corrige en el selector de al lado.
             naturaleza:
               p.categorias.find((x) => x.grupo_id === grupo_id)?.naturaleza ??
               "operativo",
@@ -912,7 +912,7 @@ export function ProveedorTesoreria({
       })),
     importarCatalogo: (texto) => {
       const nuevo = parsearCatalogo(texto, idsDelCatalogo(estado));
-      // Una grupo que ya existe con ese nombre recibe las categorías nuevas
+      // Un grupo que ya existe con ese nombre recibe las categorías nuevas
       // en vez de duplicarse: pegar el listado dos veces no debe crear "Administración"
       // y "Administración-2".
       const porNombre = new Map(estado.grupos.map((c) => [c.nombre, c.id]));

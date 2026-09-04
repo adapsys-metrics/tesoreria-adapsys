@@ -159,7 +159,7 @@ export function Flujo() {
   const conMovimiento = useMemo(() => new Set(indice.keys()), [indice]);
 
   // Naturaleza → grupo → categorías, descartando todo lo que no tiene
-  // movimiento. Una grupo mixta aparece en dos naturalezas, cada vez con solo
+  // movimiento. Un grupo mixto aparece en dos naturalezas, cada vez con solo
   // las líneas que le corresponden (§4.2).
   const secciones = NATURALEZAS.map((n) => ({
     naturaleza: n,
@@ -266,7 +266,7 @@ export function Flujo() {
     <>
       <Cabecera
         titulo="Flujo de caja"
-        bajada="Sólo aparecen las grupos y categorías con movimiento en el rango elegido. Despliega una grupo para ver su detalle."
+        bajada="Sólo aparecen los grupos y categorías con movimiento en el rango elegido. Despliega un grupo para ver su detalle."
       />
 
       <div className={css.filtros}>
@@ -344,7 +344,7 @@ export function Flujo() {
         <Aviso tono="amber">
           <strong className={css.rotuloAviso}>Sin clasificar</strong> Hay movimientos sin
           categoría por{" "}
-          {clp(sinClasificar.reduce((a, b) => a + b, 0))}. No entran en ninguna grupo del
+          {clp(sinClasificar.reduce((a, b) => a + b, 0))}. No entran en ningún grupo del
           reporte: hay que asignarlos.
         </Aviso>
       )}

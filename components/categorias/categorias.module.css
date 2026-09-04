@@ -415,3 +415,17 @@
   color: var(--teal);
   border-bottom-color: var(--teal);
 }
+
+/* Aplicar una naturaleza a todo un grupo no es un cambio de estado más: toca hasta
+   193 categorías. Se confirma diciendo cuántas, con el peso visual de una acción. */
+.confirmarAplicar {
+  font-family: var(--font-cifras);
+  font-size: 9.5px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  border: 0;
+  background: var(--teal);
+  color: var(--surface);
+  cursor: pointer;
+  white-space: nowrap;
+}

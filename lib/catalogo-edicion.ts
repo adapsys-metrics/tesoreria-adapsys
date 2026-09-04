@@ -47,8 +47,8 @@ export type CatalogoParseado = {
  * que diga "Gastos de Inversión", "Gastos Operativos" o "Ingresos" cambia la
  * naturaleza de ahí en adelante, y un sufijo `(inversión)` la fija para esa línea.
  *
- * Una grupo sin categorías recibe una con su mismo nombre: el modelo clasifica
- * por categoría (§3) y una grupo vacía no podría usarse para nada.
+ * Un grupo sin categorías recibe una con su mismo nombre: el modelo clasifica
+ * por categoría (§3) y un grupo vacío no podría usarse para nada.
  */
 export function parsearCatalogo(texto: string, existentes = new Set<string>()): CatalogoParseado {
   const grupos: Grupo[] = [];

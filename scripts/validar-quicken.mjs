@@ -66,7 +66,7 @@ for (const nombre of readdirSync(DIR).filter((f) => f.endsWith(".csv")).sort()) 
     if (!c) continue;
     const partes = c.split(":");
     // El tercer nivel de Quicken ya está aplanado en el catálogo: la
-    // categoría es el último segmento, la grupo el primero.
+    // categoría es el último segmento, el grupo el primero.
     const clave = norm(`${partes[0]}:${partes[partes.length - 1]}`);
     if (!catalogo.has(clave)) huerfanas.set(c, (huerfanas.get(c) ?? 0) + 1);
   }

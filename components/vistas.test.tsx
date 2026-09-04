@@ -4,7 +4,7 @@
 // líneas antes de su declaración, que reventaba al cargar el módulo).
 //
 // Por eso cada vista se monta de verdad, con los paneles expandidos: expandir todas
-// las grupos, abrir el detalle de una celda y abrir un editor de splits.
+// los grupos, abrir el detalle de una celda y abrir un editor de splits.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -42,7 +42,7 @@ describe("Flujo de caja", () => {
     expect(screen.getByText("Flujo acumulado")).toBeDefined();
   });
 
-  it("expande todas las grupos sin romperse", () => {
+  it("expande todas los grupos sin romperse", () => {
     montar(<Flujo />);
     const antes = document.querySelectorAll("tbody tr").length;
     fireEvent.click(screen.getByText("Expandir todo"));
@@ -601,7 +601,7 @@ describe("Presupuesto anual", () => {
     const nombreDe = new Map(CATEGORIAS.map((s) => [s.nombre, s.grupo_id]));
     const grupoDe = new Map(GRUPOS.map((c) => [c.id, c.nombre]));
 
-    // Ninguna línea presupuestada pertenece a una grupo fuera de control.
+    // Ninguna línea presupuestada pertenece a un grupo fuera de control.
     const presupuestadas = screen
       .getAllByLabelText(/^Presupuesto de /)
       .map((i) => (i.getAttribute("aria-label") ?? "").replace("Presupuesto de ", ""));
@@ -827,18 +827,18 @@ describe("Entrar a una cuenta desde el sidebar", () => {
 describe("Catálogo", () => {
   it("monta y lista el catálogo completo", () => {
     montar(<Categorias />);
-    expect(screen.getByRole("heading", { name: "Grupos y categorías" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Catálogo" })).toBeDefined();
     expect(
       screen.getByText(`${GRUPOS.length} grupos · ${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)
     ).toBeDefined();
   });
 
-  it("expande todas las grupos sin romperse", () => {
+  it("expande todas los grupos sin romperse", () => {
     // El caso que revienta: 293 categorías con sus selectores, todas a la vez.
     montar(<Categorias />);
-    fireEvent.click(screen.getByRole("button", { name: /^Expandir$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Expandir todo$/ }));
     expect(screen.getAllByLabelText(/^Naturaleza de /).length).toBe(CATEGORIAS.length);
-    fireEvent.click(screen.getByRole("button", { name: /^Colapsar$/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Colapsar todo$/ }));
     expect(screen.queryAllByLabelText(/^Naturaleza de /).length).toBe(0);
   });
 
@@ -866,16 +866,34 @@ describe("Catálogo", () => {
     fireEvent.change(screen.getByLabelText("Nombre de Arriendo oficina"), {
       target: { value: "Arriendo casa matriz" },
     });
-    fireEvent.click(screen.getByText("Expandir todo"));
+    // Los dos montados a la vez tienen "Expandir todo"; el del flujo es el segundo.
+    fireEvent.click(screen.getAllByText("Expandir todo")[1]!);
     expect(screen.getAllByText("Arriendo casa matriz").length).toBeGreaterThan(0);
   });
 
-  it("una grupo con dos naturalezas se marca mixta (§4.2)", () => {
+  it("un grupo con dos naturalezas se marca mixto (§4.2)", () => {
     montar(<Categorias />);
     expect(screen.getAllByText("mixta").length).toBeGreaterThan(0);
   });
 
-  it("sacar una grupo del control la mueve fuera del presupuesto", () => {
+  it("marcar todas las categorías de un grupo confirma y dice cuántas toca", () => {
+    // Sin confirmación, un clic en A INGRESOS CLIENTES reescribe 193 categorías y no
+    // hay deshacer. El texto tiene que decir el número: es lo que frena el error.
+    montar(<Categorias />);
+    fireEvent.change(
+      screen.getByLabelText("Marcar todas las categorías de A INGRESOS CLIENTES con una naturaleza"),
+      { target: { value: "inversion" } }
+    );
+    const confirmar = screen.getByRole("button", { name: /marcar \d+ como inversión/ });
+    expect(confirmar).toBeDefined();
+
+    // Cancelar no cambia nada.
+    fireEvent.click(screen.getByRole("button", { name: "cancelar" }));
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), { target: { value: "AASA" } });
+    expect((screen.getByLabelText("Naturaleza de AASA") as HTMLSelectElement).value).toBe("ingreso");
+  });
+
+  it("sacar un grupo del control lo mueve fuera del presupuesto", () => {
     render(
       <ProveedorTesoreria registroInicial={null}>
         <Categorias />
@@ -938,12 +956,12 @@ describe("Catálogo", () => {
     expect(screen.getByRole("combobox", { name: "Categoría" })).toBeDefined();
   });
 
-  it("crear una grupo la deja usable de inmediato", () => {
+  it("crear un grupo lo deja usable de inmediato", () => {
     // Nace con una categoría propia: se clasifica por categoría (§3), así que
-    // una grupo vacía no serviría para nada.
+    // un grupo vacío no serviría para nada.
     montar(<Categorias />);
     fireEvent.click(screen.getByRole("button", { name: "+ Grupo" }));
-    fireEvent.change(screen.getByLabelText("Nombre de la grupo nueva"), {
+    fireEvent.change(screen.getByLabelText("Nombre de el grupo nuevo"), {
       target: { value: "Gastos de mudanza" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Crear" }));
@@ -951,17 +969,17 @@ describe("Catálogo", () => {
     fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
       target: { value: "mudanza" },
     });
-    // La grupo y su categoría inicial, ambas con el mismo nombre.
+    // El grupo y su categoría inicial, ambos con el mismo nombre.
     expect(screen.getAllByLabelText("Nombre de Gastos de mudanza").length).toBe(2);
   });
 
   it("Escape cancela la creación sin dejar nada a medias", () => {
     montar(<Categorias />);
     fireEvent.click(screen.getByRole("button", { name: "+ Grupo" }));
-    const campo = screen.getByLabelText("Nombre de la grupo nueva");
+    const campo = screen.getByLabelText("Nombre de el grupo nuevo");
     fireEvent.change(campo, { target: { value: "Se me ocurrió otra cosa" } });
     fireEvent.keyDown(campo, { key: "Escape" });
-    expect(screen.queryByLabelText("Nombre de la grupo nueva")).toBeNull();
+    expect(screen.queryByLabelText("Nombre de el grupo nuevo")).toBeNull();
     expect(
       screen.getByText(`${GRUPOS.length} grupos · ${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)
     ).toBeDefined();

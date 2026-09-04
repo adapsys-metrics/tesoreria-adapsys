@@ -57,7 +57,12 @@ export function Categorias() {
   // navegador: el aspa se convierte en "borrar / cancelar" y se ve exactamente sobre
   // qué línea se está actuando, que es lo que un confirm() no muestra.
   const [porBorrar, setPorBorrar] = useState<string | null>(null);
-  // Qué se está creando: "__grupo" o el id de la grupo que recibe la sub.
+  // Aplicar una naturaleza a todo un grupo toca hasta 193 categorías de una vez
+  // (A INGRESOS CLIENTES) y no hay deshacer: se confirma diciendo cuántas.
+  const [porAplicar, setPorAplicar] = useState<{ grupo: string; naturaleza: Naturaleza } | null>(
+    null
+  );
+  // Qué se está creando: "__grupo" o el id de el grupo que recibe la sub.
   const [creando, setCreando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   // Quicken muestra el uso como un link y se abre la lista. Es lo que se necesita
@@ -76,7 +81,7 @@ export function Categorias() {
       .categoriasDe(grupo_id)
       .filter((s) => verInactivas || s.activa);
     if (!buscando) return subs;
-    // Si el nombre de la grupo coincide, se muestran todas sus categorías:
+    // Si el nombre de el grupo coincide, se muestran todas sus categorías:
     // buscar "impuestos" tiene que traer el bloque entero, no cero resultados.
     if (coincide(catalogo.grupoDe(grupo_id).nombre)) return subs;
     // Una categoría también entra si la coincidencia está en una subcategoría suya:
@@ -167,8 +172,8 @@ export function Categorias() {
   return (
     <>
       <Cabecera
-        titulo="Grupos y categorías"
-        bajada="El catálogo que ordena todo: flujo, presupuesto y reportes. La naturaleza —ingreso, inversión u operativo— vive en cada categoría, así que una grupo puede ser mixta y aparecer en dos secciones (§4.2)."
+        titulo="Catálogo"
+        bajada="Tres niveles: grupo → categoría → subcategoría. Se clasifica en la categoría, que es lo que agrupan el flujo, el presupuesto y los reportes; la subcategoría es opcional y precisa dentro de cuál. La naturaleza —ingreso, inversión u operativo— vive en la categoría, así que un grupo puede ser mixto y aparecer en dos secciones (§4.2)."
       />
 
       {aviso && <Aviso tono="amber">{aviso}</Aviso>}
@@ -202,11 +207,12 @@ export function Categorias() {
               Ocultar inactivas
             </Chip>
             <BotonFantasma
+              titulo="Abre o cierra todos los grupos para ver sus categorías"
               onClick={() =>
                 setAbiertas(abiertas.length ? [] : catalogo.grupos.map((c) => c.id))
               }
             >
-              {abiertas.length ? "Colapsar" : "Expandir"}
+              {abiertas.length ? "Colapsar todo" : "Expandir todo"}
             </BotonFantasma>
             <BotonFantasma onClick={() => abrirCreacion("__grupo")}>
               + Grupo
@@ -216,7 +222,7 @@ export function Categorias() {
           <div className={css.arbol}>
             {creando === "__grupo" && (
               <CampoNuevo
-                etiqueta="Nombre de la grupo nueva"
+                etiqueta="Nombre de el grupo nuevo"
                 cerrar={() => setCreando(null)}
                 crear={(nombre) => {
                   crearGrupo(nombre);
@@ -265,24 +271,46 @@ export function Categorias() {
                       {mixta ? "mixta" : NOMBRE_NATURALEZA[naturalezas[0] ?? "operativo"]}
                     </span>
 
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          cambiarNaturalezaDeGrupo(c.id, e.target.value as Naturaleza);
-                        }
-                      }}
-                      aria-label={`Aplicar naturaleza a todo ${c.nombre}`}
-                      title="Aplicar una naturaleza a todas sus categorías"
-                      className={css.selectMini}
-                    >
-                      <option value="">aplicar…</option>
-                      {NATURALEZAS.map((n) => (
-                        <option key={n.id} value={n.id}>
-                          {NOMBRE_NATURALEZA[n.id]}
-                        </option>
-                      ))}
-                    </select>
+                    {porAplicar?.grupo === c.id ? (
+                      <span className={css.confirmacion}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            cambiarNaturalezaDeGrupo(c.id, porAplicar.naturaleza);
+                            setPorAplicar(null);
+                          }}
+                          className={css.confirmarAplicar}
+                        >
+                          {`marcar ${subs.length} como ${NOMBRE_NATURALEZA[porAplicar.naturaleza]}`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPorAplicar(null)}
+                          className={css.cancelar}
+                        >
+                          cancelar
+                        </button>
+                      </span>
+                    ) : (
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setPorAplicar({ grupo: c.id, naturaleza: e.target.value as Naturaleza });
+                          }
+                        }}
+                        aria-label={`Marcar todas las categorías de ${c.nombre} con una naturaleza`}
+                        title="Marca de una vez todas las categorías de este grupo con la misma naturaleza. Sirve para un grupo que quedó mixto por error; los que son mixtos de verdad se corrigen uno a uno."
+                        className={css.selectMini}
+                      >
+                        <option value="">marcar todas…</option>
+                        {NATURALEZAS.map((n) => (
+                          <option key={n.id} value={n.id}>
+                            {NOMBRE_NATURALEZA[n.id]}
+                          </option>
+                        ))}
+                      </select>
+                    )}
 
                     <button
                       type="button"

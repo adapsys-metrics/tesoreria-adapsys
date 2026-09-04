@@ -52,7 +52,7 @@ describe("conIva — factura afecta (§4.3)", () => {
     expect(descuadre(gtd!)).toBe(0);
   });
 
-  it("manda la línea de IVA a la grupo de impuestos (§4.4)", () => {
+  it("manda la línea de IVA a el grupo de impuestos (§4.4)", () => {
     expect(conIva(-100000, "insumos-oficina").lineas[1]!.categoria_id).toBe("iva-compras");
   });
 
@@ -81,7 +81,7 @@ describe("conRetencion — boleta de honorarios (§4.3)", () => {
     expect(Math.abs(r.monto)).toBeLessThan(1000000);
   });
 
-  it("manda la retención a la grupo de impuestos (§4.4)", () => {
+  it("manda la retención a el grupo de impuestos (§4.4)", () => {
     expect(conRetencion(-100000, "horas").lineas[1]!.categoria_id).toBe("retencion-bhe");
   });
 });
@@ -212,7 +212,7 @@ describe("integridad del catálogo (§5)", () => {
     expect(new Set(GRUPOS.map((c) => c.id)).size).toBe(GRUPOS.length);
   });
 
-  it("toda categoría apunta a una grupo existente", () => {
+  it("toda categoría apunta a un grupo existente", () => {
     const ids = new Set(GRUPOS.map((c) => c.id));
     const huerfanas = CATEGORIAS.filter((s) => !ids.has(s.grupo_id));
     expect(huerfanas).toEqual([]);
