@@ -1,11 +1,10 @@
 // Lectura de movimientos desde Supabase.
 //
-// El catálogo (empresas, cuentas, categorías, subcategorías) NO se trae de la base:
-// vive en lib/catalogo.ts, que es de donde se genera el seed. Son ~300 filas que
-// cambian dos veces al año; traerlas en cada carga agrega latencia sin ganar nada,
-// y tenerlas en el bundle hace que los selectores respondan al instante.
+// Categorías y subcategorías se traen aparte, en lib/supabase/catalogo.ts, desde que
+// la vista de Categorías las volvió editables.
 //
-// Los movimientos sí, obviamente: son 10.530 y cambian todos los días.
+// Empresas y cuentas siguen viviendo solo en lib/catalogo.ts: las cinco sociedades y
+// sus cuentas bancarias no se administran desde la app.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";

@@ -14,6 +14,7 @@ import { Registro } from "@/components/movimientos/Registro";
 import { Encabezado } from "@/components/chrome/Encabezado";
 import { Cuentas } from "@/components/chrome/Cuentas";
 import { Presupuesto } from "@/components/presupuesto/Presupuesto";
+import { Categorias } from "@/components/categorias/Categorias";
 import { CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
 
 vi.mock("next/navigation", () => ({
@@ -820,5 +821,194 @@ describe("Entrar a una cuenta desde el sidebar", () => {
     // Queda una sola empresa en el sidebar.
     expect(screen.queryByText("CLA ADAPTACIÓN")).toBeNull();
     expect(screen.getByText("CLA CONSULTORES")).toBeDefined();
+  });
+});
+
+describe("Categorías", () => {
+  it("monta y lista el catálogo completo", () => {
+    montar(<Categorias />);
+    expect(screen.getByRole("heading", { name: "Categorías y subcategorías" })).toBeDefined();
+    expect(
+      screen.getByText(`${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)
+    ).toBeDefined();
+  });
+
+  it("expande todas las categorías sin romperse", () => {
+    // El caso que revienta: 293 subcategorías con sus selectores, todas a la vez.
+    montar(<Categorias />);
+    fireEvent.click(screen.getByRole("button", { name: /^Expandir$/ }));
+    expect(screen.getAllByLabelText(/^Naturaleza de /).length).toBe(SUBCATEGORIAS.length);
+    fireEvent.click(screen.getByRole("button", { name: /^Colapsar$/ }));
+    expect(screen.queryAllByLabelText(/^Naturaleza de /).length).toBe(0);
+  });
+
+  it("buscar deja ver las coincidencias sin tener que expandir", () => {
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "arriendo oficina" },
+    });
+    expect(screen.getByLabelText("Nombre de Arriendo oficina")).toBeDefined();
+    expect(screen.queryByLabelText("Nombre de Sueldos")).toBeNull();
+  });
+
+  it("renombrar una subcategoría se ve en el flujo de caja", () => {
+    // La prueba de que el catálogo dejó de ser una constante del bundle: si las
+    // vistas siguieran leyendo de lib/catalogo.ts, el nombre viejo se quedaría ahí.
+    render(
+      <ProveedorTesoreria registroInicial={null}>
+        <Categorias />
+        <Flujo />
+      </ProveedorTesoreria>
+    );
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Arriendo oficina" },
+    });
+    fireEvent.change(screen.getByLabelText("Nombre de Arriendo oficina"), {
+      target: { value: "Arriendo casa matriz" },
+    });
+    fireEvent.click(screen.getByText("Expandir todo"));
+    expect(screen.getAllByText("Arriendo casa matriz").length).toBeGreaterThan(0);
+  });
+
+  it("una categoría con dos naturalezas se marca mixta (§4.2)", () => {
+    montar(<Categorias />);
+    expect(screen.getAllByText("mixta").length).toBeGreaterThan(0);
+  });
+
+  it("sacar una categoría del control la mueve fuera del presupuesto", () => {
+    render(
+      <ProveedorTesoreria registroInicial={null}>
+        <Categorias />
+        <Presupuesto />
+      </ProveedorTesoreria>
+    );
+    const antes = screen.getAllByRole("button", { name: "fuera" }).length;
+    fireEvent.click(screen.getAllByRole("button", { name: "en control" })[0]!);
+    expect(screen.getAllByRole("button", { name: "fuera" }).length).toBe(antes + 1);
+  });
+
+  it("no deja borrar una subcategoría con movimientos, y explica qué hacer", () => {
+    // Borrarla dejaría huérfanas sus líneas (§3). El aviso tiene que nombrar la
+    // salida —desactivarla— o el usuario queda trabado sin saber por qué.
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Arriendo oficina" },
+    });
+    fireEvent.click(screen.getByLabelText("Borrar Arriendo oficina"));
+    expect(screen.getByText(/inactiva/)).toBeDefined();
+    expect(screen.getByLabelText("Nombre de Arriendo oficina")).toBeDefined();
+  });
+
+  it("borrar una subcategoría sin uso pide confirmación en la propia fila", () => {
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Listado a importar"), {
+      target: { value: "Logística:Fletes" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
+    fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Fletes" },
+    });
+
+    fireEvent.click(screen.getByLabelText("Borrar Fletes"));
+    // Cancelar no borra nada.
+    fireEvent.click(screen.getByRole("button", { name: "cancelar" }));
+    expect(screen.getByLabelText("Nombre de Fletes")).toBeDefined();
+
+    fireEvent.click(screen.getByLabelText("Borrar Fletes"));
+    fireEvent.click(screen.getByLabelText("Confirmar borrar Fletes"));
+    expect(screen.queryByLabelText("Nombre de Fletes")).toBeNull();
+  });
+
+  it("desactivar una subcategoría la saca de los selectores, sin tocar lo clasificado", () => {
+    render(
+      <ProveedorTesoreria registroInicial={null}>
+        <Categorias />
+        <Registro />
+      </ProveedorTesoreria>
+    );
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Arriendo oficina" },
+    });
+    fireEvent.click(screen.getAllByRole("button", { name: "activa" })[0]!);
+    expect(screen.getAllByRole("button", { name: "inactiva" }).length).toBeGreaterThan(0);
+
+    // El movimiento que la usaba sigue mostrándola: desactivar no reclasifica.
+    fireEvent.click(screen.getAllByLabelText("Subcategoría")[0]!);
+    expect(screen.getByRole("combobox", { name: "Subcategoría" })).toBeDefined();
+  });
+
+  it("crear una categoría la deja usable de inmediato", () => {
+    // Nace con una subcategoría propia: se clasifica por subcategoría (§3), así que
+    // una categoría vacía no serviría para nada.
+    montar(<Categorias />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Categoría" }));
+    fireEvent.change(screen.getByLabelText("Nombre de la categoría nueva"), {
+      target: { value: "Gastos de mudanza" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Crear" }));
+
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "mudanza" },
+    });
+    // La categoría y su subcategoría inicial, ambas con el mismo nombre.
+    expect(screen.getAllByLabelText("Nombre de Gastos de mudanza").length).toBe(2);
+  });
+
+  it("Escape cancela la creación sin dejar nada a medias", () => {
+    montar(<Categorias />);
+    fireEvent.click(screen.getByRole("button", { name: "+ Categoría" }));
+    const campo = screen.getByLabelText("Nombre de la categoría nueva");
+    fireEvent.change(campo, { target: { value: "Se me ocurrió otra cosa" } });
+    fireEvent.keyDown(campo, { key: "Escape" });
+    expect(screen.queryByLabelText("Nombre de la categoría nueva")).toBeNull();
+    expect(
+      screen.getByText(`${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)
+    ).toBeDefined();
+  });
+
+  it("agregar una subcategoría la deja bajo su categoría", () => {
+    montar(<Categorias />);
+    fireEvent.click(screen.getAllByRole("button", { name: "+ sub" })[0]!);
+    const campo = screen.getByLabelText(/^Nombre de la subcategoría nueva en /);
+    fireEvent.change(campo, { target: { value: "Cliente nuevo SpA" } });
+    fireEvent.keyDown(campo, { key: "Enter" });
+    expect(
+      screen.getByText(`${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length + 1} subcategorías`)
+    ).toBeDefined();
+    expect(screen.getByLabelText("Nombre de Cliente nuevo SpA")).toBeDefined();
+  });
+
+  it("el importador previsualiza antes de tocar nada, y agrega al aceptar", () => {
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Listado a importar"), {
+      target: { value: "Logística\n  Fletes\n  Bodegaje" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
+    expect(screen.getByText(/subcategorías detectadas/)).toBeDefined();
+    // Todavía no entró nada.
+    expect(screen.getByText(`${CATEGORIAS.length} categorías · ${SUBCATEGORIAS.length} subcategorías`)).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
+    expect(
+      screen.getByText(`${CATEGORIAS.length + 1} categorías · ${SUBCATEGORIAS.length + 2} subcategorías`)
+    ).toBeDefined();
+  });
+
+  it("importar dos veces el mismo listado no duplica", () => {
+    montar(<Categorias />);
+    const pegar = () => {
+      fireEvent.change(screen.getByLabelText("Listado a importar"), {
+        target: { value: "Logística:Fletes" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Previsualizar" }));
+      fireEvent.click(screen.getByRole("button", { name: "AGREGAR AL CATÁLOGO" }));
+    };
+    pegar();
+    pegar();
+    expect(screen.getByText(/no se agregó nada/)).toBeDefined();
+    expect(
+      screen.getByText(`${CATEGORIAS.length + 1} categorías · ${SUBCATEGORIAS.length + 1} subcategorías`)
+    ).toBeDefined();
   });
 });

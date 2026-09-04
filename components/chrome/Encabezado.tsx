@@ -11,15 +11,19 @@ import { SelectorEmpresas } from "./SelectorEmpresas";
 import { Sesion } from "./Sesion";
 import css from "./chrome.module.css";
 
-// Las cuatro vistas sin ruta todavía se muestran deshabilitadas en vez de omitirse,
-// para que se vea que el sistema son seis vistas y no dos.
+// Las vistas sin ruta todavía se muestran deshabilitadas en vez de omitirse, para
+// que se vea qué falta y no parezca que el sistema son solo las que están.
+//
+// Conciliación no está y no va a estar: el banco se revisa todos los días y un
+// movimiento se marca pagado justamente porque ya está en la cartola, así que el
+// estado `pagado` no se usa y esa lista sería siempre vacía (§4.1). Lo que sí se
+// mira a diario son los vencidos, y eso vive en el flujo y en la barra lateral.
 const VISTAS = [
   { href: "/flujo", texto: "Flujo de caja" },
   { href: "/movimientos", texto: "Movimientos" },
-  { href: null, texto: "Conciliación" },
   { href: "/presupuesto", texto: "Presupuesto anual" },
   { href: null, texto: "Reportes" },
-  { href: null, texto: "Categorías" },
+  { href: "/categorias", texto: "Categorías" },
 ];
 
 export function Encabezado() {

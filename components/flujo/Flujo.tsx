@@ -5,8 +5,7 @@
 // el detalle, donde se puede reclasificar sin salir de la vista.
 
 import { Fragment, useMemo, useState } from "react";
-import { CATEGORIAS, NATURALEZAS, SUBCATEGORIAS } from "@/lib/catalogo";
-import { subcategoriasDe } from "@/lib/catalogo-indices";
+import { NATURALEZAS } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { enCLP, expandir } from "@/lib/dominio";
 import { clp } from "@/lib/formato";
@@ -42,6 +41,7 @@ export function Flujo() {
     tc,
     editarMovimiento,
     editarLinea,
+    catalogo,
   } = useTesoreria();
 
   const [granularidad, setGranularidad] = useState<"semana" | "mes">("semana");
@@ -163,14 +163,16 @@ export function Flujo() {
   // las líneas que le corresponden (§4.2).
   const secciones = NATURALEZAS.map((n) => ({
     naturaleza: n,
-    grupos: CATEGORIAS.map((c) => ({
-      categoria: c,
-      subs: subcategoriasDe(c.id, n.id).filter((s) => conMovimiento.has(s.id)),
-    })).filter((g) => g.subs.length),
+    grupos: catalogo.categorias
+      .map((c) => ({
+        categoria: c,
+        subs: catalogo.subcategoriasDe(c.id, n.id).filter((s) => conMovimiento.has(s.id)),
+      }))
+      .filter((g) => g.subs.length),
   })).filter((x) => x.grupos.length);
 
   const idsPorNaturaleza = (nat: string) =>
-    SUBCATEGORIAS.filter((s) => s.naturaleza === nat).map((s) => s.id);
+    catalogo.subcategorias.filter((s) => s.naturaleza === nat).map((s) => s.id);
 
   const ingresos = porPeriodo(idsPorNaturaleza("ingreso"));
   const egresos = periodos.map(
@@ -316,7 +318,7 @@ export function Flujo() {
         </Chip>
         <span className={css.empuje} />
         <BotonFantasma
-          onClick={() => setAbiertas(abiertas.length ? [] : CATEGORIAS.map((c) => c.id))}
+          onClick={() => setAbiertas(abiertas.length ? [] : catalogo.categorias.map((c) => c.id))}
         >
           {abiertas.length ? "Colapsar todo" : "Expandir todo"}
         </BotonFantasma>

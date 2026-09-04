@@ -5,7 +5,7 @@
 // pasa del pasado al futuro.
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { empresaDe, subcategoriaDe } from "@/lib/catalogo-indices";
+import { empresaDe } from "@/lib/catalogo-indices";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { descuadre, enCLP } from "@/lib/dominio";
 import { claveDeCuenta, esRegistroDeBanco } from "@/lib/registros";
@@ -60,6 +60,7 @@ export function Registro() {
     avanzarCobranza,
     registroSeleccionado,
     movimientos,
+    catalogo,
   } = useTesoreria();
 
   const cuentasBanco = useMemo(() => cuentas.filter((c) => c.tipo === "banco"), [cuentas]);
@@ -138,10 +139,10 @@ export function Registro() {
       subcategoria: (m) => {
         if (m.lineas.length > 1) return `Split · ${m.lineas.length} líneas`;
         const linea = m.lineas[0];
-        return linea ? subcategoriaDe(linea.subcategoria_id).nombre : "";
+        return linea ? catalogo.subcategoriaDe(linea.subcategoria_id).nombre : "";
       },
     });
-  }, [movimientosFiltrados, busqueda, soloPendiente, soloVencidos, orden, tc, cuentasBanco]);
+  }, [movimientosFiltrados, busqueda, soloPendiente, soloVencidos, orden, tc, cuentasBanco, catalogo]);
 
   const alternar = (id: string) =>
     setAbiertos(abiertos.includes(id) ? abiertos.filter((x) => x !== id) : [...abiertos, id]);

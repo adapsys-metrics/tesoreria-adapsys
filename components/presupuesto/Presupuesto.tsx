@@ -8,7 +8,7 @@
 // empresas — por eso lee `movimientos` y no `movimientosFiltrados`.
 
 import { useEffect, useMemo, useState } from "react";
-import { CATEGORIAS, IDS_ADAPSYS, RESPONSABLES, SUBCATEGORIAS } from "@/lib/catalogo";
+import { IDS_ADAPSYS, RESPONSABLES } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { supabaseConfigurado } from "@/lib/supabase/estado";
@@ -50,11 +50,10 @@ const NOMBRES_MES = [
 const LINEA_VACIA = { monto: 0, monto_anterior: 0, responsable: "", nota: "" };
 const sinMeses = (): Meses => Array<number>(MESES_DEL_ANIO).fill(0);
 
-const NATURALEZA_DE = new Map(SUBCATEGORIAS.map((s) => [s.id, s.naturaleza]));
-const esOperativa = (id: string) => NATURALEZA_DE.get(id) === "operativo";
 
 export function Presupuesto() {
-  const { movimientos, tc, editarLinea, editarMovimiento } = useTesoreria();
+  const { movimientos, tc, editarLinea, editarMovimiento, catalogo } = useTesoreria();
+  const esOperativa = (id: string) => catalogo.subcategoriaDe(id).naturaleza === "operativo";
   const [detalle, setDetalle] = useState<Detalle | null>(null);
 
   const [anio, setAnio] = useState(() => Number(HOY.slice(0, 4)));
@@ -148,10 +147,9 @@ export function Presupuesto() {
         // Solo las categorías controladas (§4.6). Impuestos, bancos, inversiones,
         // préstamos y socios no son gasto que se decida presupuestar: salen de lo
         // que se factura, de lo que se mueve o de una decisión de los dueños.
-        const categorias = CATEGORIAS.filter((c) => c.controlado).map((categoria) => {
-          const filas = SUBCATEGORIAS.filter(
-            (s) => s.categoria_id === categoria.id && s.naturaleza === naturaleza
-          )
+        const categorias = catalogo.categorias.filter((c) => c.controlado).map((categoria) => {
+          const filas = catalogo
+            .subcategoriasDe(categoria.id, naturaleza)
             .map((s) =>
               filaDe(
                 s.id,
@@ -172,7 +170,7 @@ export function Presupuesto() {
           total: totalizar(categorias.flatMap((c) => c.filas)),
         };
       }),
-    [datos, ejecutado, mes]
+    [datos, ejecutado, mes, catalogo]
   );
 
   const generarOperativo = () => {
@@ -185,17 +183,17 @@ export function Presupuesto() {
   /** Lo que queda fuera del control, con su gasto. Se muestra igual para que nadie
    *  olvide que existe: son millones que salen de la caja aunque no se presupuesten. */
   const fueraDeControl = useMemo(() => {
-    const categorias = CATEGORIAS.filter((c) => !c.controlado)
+    const categorias = catalogo.categorias
+      .filter((c) => !c.controlado)
       .map((categoria) => ({
         categoria,
-        real: SUBCATEGORIAS.filter((s) => s.categoria_id === categoria.id).reduce(
-          (t, s) => t + (ejecutado.get(s.id) ?? 0),
-          0
-        ),
+        real: catalogo
+          .subcategoriasDe(categoria.id)
+          .reduce((t, s) => t + (ejecutado.get(s.id) ?? 0), 0),
       }))
       .filter((c) => c.real > 0);
     return { categorias, total: categorias.reduce((t, c) => t + c.real, 0) };
-  }, [ejecutado]);
+  }, [ejecutado, catalogo]);
 
   return (
     <div>
@@ -503,7 +501,8 @@ function Fila({
   metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
   abrir: (titulo: string, subs: Set<string>) => void;
 }) {
-  const nombre = SUBCATEGORIAS.find((s) => s.id === fila.subcategoria_id)?.nombre ?? fila.subcategoria_id;
+  const { catalogo } = useTesoreria();
+  const nombre = catalogo.subcategoriaDe(fila.subcategoria_id).nombre;
 
   // Dos avisos distintos, y la diferencia importa. "Sobre presupuesto" dice que va
   // más rápido de lo previsto para esta altura del año, y puede corregirse solo.

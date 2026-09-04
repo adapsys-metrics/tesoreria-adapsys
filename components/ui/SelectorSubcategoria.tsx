@@ -8,16 +8,10 @@
 // render de la lista completa). Con una sola lista abierta a la vez, el select
 // nativo alcanza y además se puede buscar escribiendo.
 
-import { useState } from "react";
-import { CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
-import { existeSubcategoria, subcategoriaDe } from "@/lib/catalogo-indices";
+import { useMemo, useState } from "react";
+import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import css from "./selector.module.css";
 import { clases } from "./primitivas";
-
-const POR_CATEGORIA = CATEGORIAS.map((c) => ({
-  categoria: c,
-  subs: SUBCATEGORIAS.filter((s) => s.categoria_id === c.id),
-})).filter((g) => g.subs.length);
 
 export function SelectorSubcategoria({
   valor,
@@ -29,6 +23,25 @@ export function SelectorSubcategoria({
   compacto?: boolean;
 }) {
   const [editando, setEditando] = useState(false);
+  const { catalogo } = useTesoreria();
+  const { existeSubcategoria, subcategoriaDe } = catalogo;
+
+  // Las inactivas no se ofrecen: es lo que hace útil desactivar una en vez de
+  // borrarla — deja de aparecer al clasificar sin romper lo ya clasificado (§3).
+  // La que la línea ya tiene sí se muestra aunque esté inactiva, o cambiarle otra
+  // cosa a ese movimiento la reclasificaría sin querer.
+  const porCategoria = useMemo(
+    () =>
+      catalogo.categorias
+        .map((c) => ({
+          categoria: c,
+          subs: catalogo
+            .subcategoriasDe(c.id)
+            .filter((s) => s.activa || s.id === valor),
+        }))
+        .filter((g) => g.subs.length),
+    [catalogo, valor]
+  );
 
   // Una línea puede apuntar a una subcategoría que ya no existe: pasa al reemplazar
   // el catálogo en la migración. Se marca en vez de fallar en silencio (§11).
@@ -71,7 +84,7 @@ export function SelectorSubcategoria({
     >
       {valor === null && <option value="__sin_clasificar">⚠ sin clasificar</option>}
       {huerfana && <option value={valor}>⚠ {valor} (no existe)</option>}
-      {POR_CATEGORIA.map(({ categoria, subs }) => (
+      {porCategoria.map(({ categoria, subs }) => (
         <optgroup key={categoria.id} label={categoria.nombre}>
           {subs.map((s) => (
             <option key={s.id} value={s.id}>

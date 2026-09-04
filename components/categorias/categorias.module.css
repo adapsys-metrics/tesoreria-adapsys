@@ -1,0 +1,349 @@
+/* Mantenedor del catálogo. Dos columnas: el árbol, que es donde se trabaja, y el
+   importador, que se usa dos veces al año pero cuando se usa es lo único que importa. */
+
+.columnas {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(360px, 1fr) minmax(280px, 380px);
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .columnas {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.panelImportador {
+  padding: 14px;
+}
+
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.buscador {
+  margin-left: auto;
+  width: 150px;
+  padding: 5px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 11.5px;
+  background: var(--paper);
+}
+
+/* Alto acotado y scroll propio: son 16 categorías que abiertas dan 293 filas, y el
+   importador tiene que seguir a la vista mientras se revisa el árbol. */
+.arbol {
+  max-height: 68vh;
+  overflow-y: auto;
+}
+
+.bloque {
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.filaCategoria {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--fila-categoria);
+}
+
+.filaSub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 14px 3px 32px;
+}
+
+.filaSub:hover {
+  background: var(--fila-anidada);
+}
+
+/* Una subcategoría inactiva se sigue viendo —está en uso en el histórico— pero se
+   apaga, para que se lea de un vistazo que ya no se ofrece al clasificar. */
+.filaInactiva .campo,
+.filaInactiva .uso {
+  color: var(--tenue);
+  text-decoration: line-through;
+  text-decoration-color: var(--rule-medio);
+}
+
+.chevron {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-size: 9px;
+  padding: 0;
+  width: 12px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* El nombre se edita en el sitio: sin bordes hasta que se apunta, para que el árbol
+   se lea como una lista y no como un formulario de 293 campos. */
+.campo {
+  flex: 1;
+  min-width: 90px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--ink);
+}
+
+.campo:hover {
+  border-color: var(--rule);
+}
+
+.campo:focus {
+  border-color: var(--teal-claro);
+  background: var(--surface);
+  outline: none;
+}
+
+.campoCategoria {
+  font-weight: 600;
+  min-width: 80px;
+}
+
+.conteo {
+  font-family: var(--font-cifras);
+  font-size: 9px;
+  color: var(--tenue);
+}
+
+.uso {
+  font-family: var(--font-cifras);
+  font-size: 9.5px;
+  color: var(--muted);
+  min-width: 52px;
+  text-align: right;
+}
+
+.insignia {
+  font-family: var(--font-cifras);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
+  border-radius: 2px;
+  border: 0;
+  background: var(--rule-soft);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Mixta no es un error, es lo normal: al menos 6 de las 16 categorías reales lo son
+   (§4.2). Se marca para que se note al revisar, no para alarmar. */
+.insigniaMixta {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.insigniaFuera {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.toggle {
+  cursor: pointer;
+}
+
+.selectMini {
+  font-family: inherit;
+  font-size: 10px;
+  padding: 2px 4px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.nat_ingreso {
+  color: var(--teal);
+}
+
+.nat_inversion {
+  color: var(--ink);
+}
+
+.nat_operativo {
+  color: var(--muted);
+}
+
+.borrar {
+  background: none;
+  border: 0;
+  color: var(--muted-claro);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 3px;
+  cursor: pointer;
+}
+
+.borrar:hover {
+  color: var(--brick);
+}
+
+/* En uso no se puede borrar; el aspa se atenúa para que se vea antes de intentarlo,
+   pero el botón sigue accionable porque al pulsarlo explica por qué y qué hacer. */
+.borrarBloqueado {
+  color: var(--rule-medio);
+}
+
+.borrarBloqueado:hover {
+  color: var(--muted);
+}
+
+.vacio {
+  padding: 20px 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ayuda {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 6px 0 8px;
+}
+
+.code {
+  font-family: var(--font-cifras);
+  font-size: 10px;
+  background: var(--paper);
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.textarea {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-family: var(--font-cifras);
+  font-size: 10.5px;
+  line-height: 1.5;
+  resize: vertical;
+  background: var(--paper);
+}
+
+.accionesImportador {
+  display: flex;
+  gap: 5px;
+  margin: 8px 0;
+  justify-content: flex-end;
+}
+
+.previo {
+  border: 1px solid var(--teal);
+  border-radius: 3px;
+  padding: 10px;
+  background: var(--paper);
+}
+
+.previoResumen {
+  font-size: 11.5px;
+  margin-bottom: 7px;
+}
+
+.previoLista {
+  max-height: 150px;
+  overflow-y: auto;
+  font-family: var(--font-cifras);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.previoSeccion {
+  color: var(--teal);
+  margin-top: 4px;
+}
+
+.previoCategoria {
+  color: var(--ink);
+}
+
+.previoSub {
+  padding-left: 12px;
+}
+
+.botonAplicar {
+  width: 100%;
+  padding: 7px;
+  background: var(--teal);
+  color: var(--surface);
+  border: 0;
+  border-radius: 3px;
+  font-family: var(--font-cifras);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.botonAplicar:hover {
+  background: var(--teal-medio);
+}
+
+.filaNueva {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--seccion);
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.filaNuevaAnidada {
+  padding-left: 32px;
+  background: var(--fila-split);
+}
+
+.campoNuevo {
+  border-color: var(--teal-claro);
+  background: var(--surface);
+}
+
+.confirmacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.confirmarBorrar,
+.cancelar {
+  font-family: var(--font-cifras);
+  font-size: 9.5px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  border: 0;
+  cursor: pointer;
+}
+
+.confirmarBorrar {
+  background: var(--brick);
+  color: var(--surface);
+}
+
+.cancelar {
+  background: var(--rule-soft);
+  color: var(--muted);
+}

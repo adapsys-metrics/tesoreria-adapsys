@@ -20,7 +20,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { CUENTAS, IDS_ADAPSYS } from "@/lib/catalogo";
+import { CATEGORIAS, CUENTAS, IDS_ADAPSYS, SUBCATEGORIAS } from "@/lib/catalogo";
+import { crearIndices, type Indices } from "@/lib/catalogo-indices";
+import { idLibre, parsearCatalogo } from "@/lib/catalogo-edicion";
 import { MOVIMIENTOS_EJEMPLO, TC_USD } from "@/lib/datos-ejemplo";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import {
@@ -29,6 +31,13 @@ import {
   esNuevo,
   guardarMovimiento,
 } from "@/lib/supabase/datos";
+import {
+  borrarCategoria as borrarCategoriaEnBase,
+  borrarSubcategoria as borrarSubcategoriaEnBase,
+  cargarCatalogo,
+  guardarCategoria,
+  guardarSubcategoria,
+} from "@/lib/supabase/catalogo";
 import { supabaseConfigurado } from "@/lib/supabase/estado";
 import {
   SUB_IVA_COMPRAS,
@@ -40,7 +49,15 @@ import {
 import { perteneceAlRegistro, saldoDeCuenta } from "@/lib/registros";
 import { pasoDe } from "@/lib/cobranza";
 import { pct } from "@/lib/formato";
-import type { Cuenta, Linea, Movimiento, Tasas } from "@/lib/tipos";
+import type {
+  Categoria,
+  Cuenta,
+  Linea,
+  Movimiento,
+  Naturaleza,
+  Subcategoria,
+  Tasas,
+} from "@/lib/tipos";
 
 const CLAVE_STORAGE = "tesoreria:v5";
 
@@ -53,6 +70,8 @@ export type CuentaConSaldo = Cuenta & { saldo: number };
 
 type Estado = {
   movimientos: Movimiento[];
+  categorias: Categoria[];
+  subcategorias: Subcategoria[];
   empresasSeleccionadas: string[];
   /** Registro abierto en la barra lateral, o null para ver todo. Puede ser una
    *  cuenta ("cuenta:a1") o un registro de proyección ("proy:egresos-clp"). */
@@ -105,6 +124,30 @@ type Contexto = Estado & {
   /** Borra un movimiento registrado por error. Las líneas se van con él. */
   borrarMovimiento: (id: string) => void;
   reiniciar: () => void;
+
+  // ── Catálogo ──────────────────────────────────────────────────────────────
+  /** Índices sobre el catálogo vigente. Las vistas leen de acá y no de la constante
+   *  del bundle, para que una edición se refleje sin recargar. */
+  catalogo: Indices;
+  /** Cuántas líneas de movimiento apuntan a cada subcategoría. Es lo que decide si
+   *  una se puede borrar o solo desactivar (§3). */
+  usoDeSubcategoria: Map<string, number>;
+  renombrarCategoria: (id: string, nombre: string) => void;
+  renombrarSubcategoria: (id: string, nombre: string) => void;
+  cambiarNaturaleza: (id: string, naturaleza: Naturaleza) => void;
+  /** Aplica una naturaleza a todas las subcategorías de una categoría, de una vez. */
+  cambiarNaturalezaDeCategoria: (categoria_id: string, naturaleza: Naturaleza) => void;
+  /** Dentro o fuera del control presupuestario (§4.6). */
+  alternarControlado: (categoria_id: string) => void;
+  /** Una subcategoría inactiva no se ofrece al clasificar, pero no rompe lo ya
+   *  clasificado con ella. Es el reemplazo de borrar cuando está en uso. */
+  alternarActiva: (id: string) => void;
+  crearCategoria: (nombre: string) => void;
+  crearSubcategoria: (categoria_id: string, nombre: string) => void;
+  borrarSubcategoria: (id: string) => void;
+  borrarCategoria: (id: string) => void;
+  /** Agrega lo que traiga el listado pegado. Devuelve cuánto entró. */
+  importarCatalogo: (texto: string) => { categorias: number; subcategorias: number };
 };
 
 const Ctx = createContext<Contexto | null>(null);
@@ -125,6 +168,11 @@ const estadoInicial = (registro: string | null): Estado => ({
   // ejemplo mientras carga sería peor que mostrar nada: son cifras plausibles y
   // reales de otra época, imposibles de distinguir de las de verdad a simple vista.
   movimientos: supabaseConfigurado ? [] : MOVIMIENTOS_EJEMPLO,
+  // El catálogo sí arranca con el del bundle aunque haya base: es la estructura, no
+  // las cifras. Mostrarlo mientras carga deja los selectores usables desde el primer
+  // instante y, si la base tuviera otro, lo pisa al llegar.
+  categorias: CATEGORIAS,
+  subcategorias: SUBCATEGORIAS,
   empresasSeleccionadas: IDS_ADAPSYS,
   registroSeleccionado: registro,
   tc: TC_USD,
@@ -165,10 +213,11 @@ export function ProveedorTesoreria({
     }
 
     let vigente = true;
-    cargarMovimientos(crearClienteNavegador())
-      .then((movimientos) => {
+    const supabase = crearClienteNavegador();
+    Promise.all([cargarMovimientos(supabase), cargarCatalogo(supabase)])
+      .then(([movimientos, catalogo]) => {
         if (!vigente) return;
-        setEstado((prev) => ({ ...prev, movimientos }));
+        setEstado((prev) => ({ ...prev, movimientos, ...catalogo }));
       })
       .catch((e: Error) => {
         if (!vigente) return;
@@ -231,6 +280,88 @@ export function ProveedorTesoreria({
     }
   }, [estado.movimientos, cargando]);
 
+  // Mismo mecanismo para el catálogo: se compara contra lo último guardado y se
+  // manda solo lo que cambió. Un rename dispara una escritura, no 293.
+  const catalogoGuardado = useRef<{
+    categorias: Map<string, Categoria>;
+    subcategorias: Map<string, Subcategoria>;
+  } | null>(null);
+
+  const persistirCatalogo = useCallback(
+    (previo: {
+      categorias: Map<string, Categoria>;
+      subcategorias: Map<string, Subcategoria>;
+    }) => {
+      const supabase = crearClienteNavegador();
+      const fallo = (e: Error) => setErrorGuardado(e.message);
+
+      for (const c of estado.categorias) {
+        if (previo.categorias.get(c.id) !== c) guardarCategoria(supabase, c).catch(fallo);
+      }
+      for (const s of estado.subcategorias) {
+        if (previo.subcategorias.get(s.id) !== s) guardarSubcategoria(supabase, s).catch(fallo);
+      }
+
+      // Los borrados van al final: una subcategoría se borra antes que su categoría,
+      // o la foreign key rechaza la segunda.
+      const vivas = new Set(estado.subcategorias.map((s) => s.id));
+      const catsVivas = new Set(estado.categorias.map((c) => c.id));
+      const borradas = [...previo.subcategorias.keys()].filter((id) => !vivas.has(id));
+      const catsBorradas = [...previo.categorias.keys()].filter((id) => !catsVivas.has(id));
+
+      Promise.all(borradas.map((id) => borrarSubcategoriaEnBase(supabase, id)))
+        .then(() => Promise.all(catsBorradas.map((id) => borrarCategoriaEnBase(supabase, id))))
+        .catch(fallo);
+    },
+    [estado.categorias, estado.subcategorias]
+  );
+
+  useEffect(() => {
+    if (!supabaseConfigurado || cargando) return;
+
+    const foto = () => ({
+      categorias: new Map(estado.categorias.map((c) => [c.id, c])),
+      subcategorias: new Map(estado.subcategorias.map((s) => [s.id, s])),
+    });
+
+    // Primera pasada después de cargar: es la línea base, no hay nada que guardar.
+    if (catalogoGuardado.current === null) {
+      catalogoGuardado.current = foto();
+      return;
+    }
+
+    // Los nombres se editan tecleando, y sin esperar iría una escritura por tecla:
+    // "Arriendo oficina" serían 17 UPDATE. Mientras se escribe el temporizador se
+    // reinicia y la línea base se queda en lo último guardado, así que al final sale
+    // una sola escritura con el nombre completo.
+    const temporizador = setTimeout(() => {
+      const previo = catalogoGuardado.current;
+      if (previo === null) return;
+      catalogoGuardado.current = foto();
+      persistirCatalogo(previo);
+    }, 700);
+    return () => clearTimeout(temporizador);
+  }, [estado.categorias, estado.subcategorias, cargando, persistirCatalogo]);
+
+
+  const mapCat = useCallback(
+    (id: string, fn: (c: Categoria) => Categoria) =>
+      setEstado((p) => ({
+        ...p,
+        categorias: p.categorias.map((c) => (c.id === id ? fn(c) : c)),
+      })),
+    []
+  );
+
+  const mapSub = useCallback(
+    (id: string, fn: (s: Subcategoria) => Subcategoria) =>
+      setEstado((p) => ({
+        ...p,
+        subcategorias: p.subcategorias.map((s) => (s.id === id ? fn(s) : s)),
+      })),
+    []
+  );
+
   const mapMov = useCallback(
     (id: string, fn: (m: Movimiento) => Movimiento) =>
       setEstado((p) => ({
@@ -241,6 +372,33 @@ export function ProveedorTesoreria({
   );
 
   const { movimientos, empresasSeleccionadas, registroSeleccionado, tc, tasas } = estado;
+
+  // Cuántas líneas apuntan a cada subcategoría: decide si una se puede borrar o
+  // solo desactivar. Se cuenta sobre TODOS los movimientos, no los filtrados por el
+  // selector de empresas: borrar algo que "no tiene uso" porque hay un filtro puesto
+  // dejaría huérfanas las líneas de las otras sociedades.
+  const usoDeSubcategoria = useMemo(() => {
+    const uso = new Map<string, number>();
+    for (const m of estado.movimientos) {
+      for (const l of m.lineas) {
+        uso.set(l.subcategoria_id, (uso.get(l.subcategoria_id) ?? 0) + 1);
+      }
+    }
+    return uso;
+  }, [estado.movimientos]);
+
+  /** Todos los ids en uso, para no generar uno repetido. Categorías y subcategorías
+   *  comparten espacio de nombres porque el slug sale del nombre y "Impuestos" puede
+   *  ser las dos cosas. */
+  const idsDelCatalogo = (e: Estado) =>
+    new Set([...e.categorias.map((c) => c.id), ...e.subcategorias.map((s) => s.id)]);
+
+  // Los índices se rehacen solo cuando el catálogo cambia: recorrer 293 subcategorías
+  // en cada render de una tabla de 10.530 filas se nota.
+  const catalogo = useMemo(
+    () => crearIndices(estado.categorias, estado.subcategorias),
+    [estado.categorias, estado.subcategorias]
+  );
 
   /**
    * Marcar pagado deja el movimiento en `conciliado`, no en `pagado`.
@@ -516,10 +674,12 @@ export function ProveedorTesoreria({
     if (supabaseConfigurado) {
       setCargando(true);
       setErrorCarga(null);
-      cargarMovimientos(crearClienteNavegador())
-        .then((movimientos) => {
+      const supabase = crearClienteNavegador();
+      Promise.all([cargarMovimientos(supabase), cargarCatalogo(supabase)])
+        .then(([movimientos, catalogo]) => {
           guardados.current = null;
-          setEstado((p) => ({ ...p, movimientos }));
+          catalogoGuardado.current = null;
+          setEstado((p) => ({ ...p, movimientos, ...catalogo }));
         })
         .catch((e: Error) => setErrorCarga(e.message))
         .finally(() => setCargando(false));
@@ -602,6 +762,103 @@ export function ProveedorTesoreria({
     agregarMovimiento,
     borrarMovimiento,
     reiniciar,
+
+    catalogo,
+    usoDeSubcategoria,
+    renombrarCategoria: (id, nombre) =>
+      mapCat(id, (c) => ({ ...c, nombre })),
+    renombrarSubcategoria: (id, nombre) => mapSub(id, (x) => ({ ...x, nombre })),
+    cambiarNaturaleza: (id, naturaleza) => mapSub(id, (x) => ({ ...x, naturaleza })),
+    cambiarNaturalezaDeCategoria: (categoria_id, naturaleza) =>
+      setEstado((p) => ({
+        ...p,
+        subcategorias: p.subcategorias.map((x) =>
+          x.categoria_id === categoria_id ? { ...x, naturaleza } : x
+        ),
+      })),
+    alternarControlado: (id) => mapCat(id, (c) => ({ ...c, controlado: !c.controlado })),
+    alternarActiva: (id) => mapSub(id, (x) => ({ ...x, activa: !x.activa })),
+    crearCategoria: (nombre) =>
+      setEstado((p) => {
+        const id = idLibre(nombre, idsDelCatalogo(p));
+        return {
+          ...p,
+          categorias: [
+            ...p.categorias,
+            { id, nombre, orden: p.categorias.length + 1, controlado: true },
+          ],
+          // Sin subcategoría la categoría no sirve para clasificar (§3), así que
+          // nace con una que se puede renombrar en el acto.
+          subcategorias: [
+            ...p.subcategorias,
+            {
+              id: idLibre(nombre, new Set([...idsDelCatalogo(p), id])),
+              categoria_id: id,
+              nombre,
+              naturaleza: "operativo",
+              activa: true,
+            },
+          ],
+        };
+      }),
+    crearSubcategoria: (categoria_id, nombre) =>
+      setEstado((p) => ({
+        ...p,
+        subcategorias: [
+          ...p.subcategorias,
+          {
+            id: idLibre(nombre, idsDelCatalogo(p)),
+            categoria_id,
+            nombre,
+            // Hereda la naturaleza de sus hermanas: lo más probable es que sea la
+            // misma, y si la categoría es mixta se corrige en el selector de al lado.
+            naturaleza:
+              p.subcategorias.find((x) => x.categoria_id === categoria_id)?.naturaleza ??
+              "operativo",
+            activa: true,
+          },
+        ],
+      })),
+    borrarSubcategoria: (id) =>
+      setEstado((p) => ({ ...p, subcategorias: p.subcategorias.filter((x) => x.id !== id) })),
+    borrarCategoria: (id) =>
+      setEstado((p) => ({
+        ...p,
+        categorias: p.categorias.filter((c) => c.id !== id),
+        subcategorias: p.subcategorias.filter((x) => x.categoria_id !== id),
+      })),
+    importarCatalogo: (texto) => {
+      const nuevo = parsearCatalogo(texto, idsDelCatalogo(estado));
+      // Una categoría que ya existe con ese nombre recibe las subcategorías nuevas
+      // en vez de duplicarse: pegar el listado dos veces no debe crear "Administración"
+      // y "Administración-2".
+      const porNombre = new Map(estado.categorias.map((c) => [c.nombre, c.id]));
+      const traduccion = new Map<string, string>();
+      const categorias = nuevo.categorias.filter((c) => {
+        const ya = porNombre.get(c.nombre);
+        if (ya) {
+          traduccion.set(c.id, ya);
+          return false;
+        }
+        return true;
+      });
+      const yaHay = new Set(
+        estado.subcategorias.map((x) => `${x.categoria_id}\u0000${x.nombre}`)
+      );
+      const subcategorias = nuevo.subcategorias
+        .map((x) => ({ ...x, categoria_id: traduccion.get(x.categoria_id) ?? x.categoria_id }))
+        .filter((x) => !yaHay.has(`${x.categoria_id}\u0000${x.nombre}`));
+
+      setEstado((p) => ({
+        ...p,
+        categorias: [
+          ...p.categorias,
+          ...categorias.map((c, i) => ({ ...c, orden: p.categorias.length + i + 1 })),
+        ],
+        subcategorias: [...p.subcategorias, ...subcategorias],
+      }));
+      return { categorias: categorias.length, subcategorias: subcategorias.length };
+    },
   };
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
