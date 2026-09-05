@@ -629,3 +629,16 @@
   padding-right: 0;
   white-space: nowrap;
 }
+
+/* El hito acompaña al número de documento: los dos identifican el cobro dentro del
+   proyecto, y juntos se leen como una sola marca. */
+.hito {
+  font-family: var(--font-cifras);
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: var(--teal-soft);
+  color: var(--teal);
+  white-space: nowrap;
+}

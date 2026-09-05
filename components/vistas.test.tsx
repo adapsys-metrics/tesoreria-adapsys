@@ -452,6 +452,20 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
     expect(document.querySelectorAll('tr[data-fila="movimiento"]')).toHaveLength(1);
   });
 
+  it("el hito se ve en la fila y se puede editar", () => {
+    // Venía en la columna Action de Quicken y se había perdido en la importación:
+    // esa columna trae la empresa en unos registros y el número de hito en otros.
+    conCartera("cuenta:x3");
+    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    const campo = screen.getAllByLabelText("Número de hito")[0]!;
+    fireEvent.change(campo, { target: { value: "3" } });
+    expect(screen.getAllByText("hito 3").length).toBeGreaterThan(0);
+
+    // Vaciarlo lo quita: cero no es un hito.
+    fireEvent.change(campo, { target: { value: "" } });
+    expect(screen.queryByText("hito 3")).toBeNull();
+  });
+
   it("la cartera no ofrece los botones de impuesto", () => {
     // "+ IVA" agrega una línea a IVA compras, que es el crédito fiscal del que
     // paga; y la retención de honorarios solo existe cuando pagamos nosotros. En

@@ -381,6 +381,17 @@ export function Registro() {
                       <td className={clases(tabla.td, css.contraparte)}>{m.contraparte}</td>
                       <td className={clases(tabla.td, css.glosa)} title={m.glosa ?? ""}>
                         {m.documento && <span className={css.documento}>{m.documento}</span>}
+                        {/* Al lado del número de documento, no en una columna propia:
+                            solo lo llevan los cobros de proyectos y una columna de
+                            guiones se comería el ancho de la glosa en 10.530 filas. */}
+                        {m.hito !== null && (
+                          <span
+                            className={css.hito}
+                            title="Cuota del plan de pagos pactado con el cliente"
+                          >
+                            hito {m.hito}
+                          </span>
+                        )}
                         {m.glosa}
                       </td>
 

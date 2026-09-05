@@ -133,6 +133,7 @@ const crear = (
     tipo_cambio: null,
     estado: extra.estado ?? "proyectado",
     doc_tipo: null,
+    hito: null,
     lineas: [{ categoria_id: sub(categoria), subcategoria_id: null, monto, glosa: null }],
   };
   return { ...base, ...extra };

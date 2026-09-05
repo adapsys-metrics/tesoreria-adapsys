@@ -63,6 +63,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0010_presupuesto_mensual.sql"));
   await db.exec(leer("migrations/0011_categorias_fuera_del_control.sql"));
   await db.exec(leer("migrations/0012_tres_niveles.sql"));
+  await db.exec(leer("migrations/0013_hito.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -95,6 +96,53 @@ describe("migraciones y seed", () => {
     // Se limpia: los tests commitean de verdad, y el de la carga cuenta por
     // `origen is not null`.
     await db.exec(`delete from movimientos where origen = 'prueba-bolsa'`);
+  });
+
+  it("guarda el hito y lo deja nulo en todo lo demás", async () => {
+    // El número venía en la columna Action de Quicken y se perdió en la importación:
+    // esa columna trae la empresa en unos registros y el hito en otros (0013).
+    await db.exec(
+      `insert into movimientos (fecha, cuenta_id, monto, moneda, hito, origen)
+       values ('2026-07-10', 'a1', 5943380, 'CLP', 3, 'prueba-hito'),
+              ('2026-07-11', 'a1', -100000, 'CLP', null, 'prueba-hito')`
+    );
+    const r = await db.query<{ hito: number | null }>(
+      `select hito from movimientos where origen = 'prueba-hito' order by fecha`
+    );
+    expect(r.rows.map((x) => x.hito)).toEqual([3, null]);
+    await db.exec(`delete from movimientos where origen = 'prueba-hito'`);
+  });
+
+  it("fn_guardar_movimiento guarda y limpia el hito", async () => {
+    const id = await db.query<{ fn_guardar_movimiento: number }>(
+      `select fn_guardar_movimiento($1::jsonb)`,
+      [
+        JSON.stringify({
+          fecha: "2026-07-10", cuenta_id: "a1", monto: 5943380, moneda: "CLP",
+          estado: "conciliado", hito: 3, origen: null,
+          lineas: [{ categoria_id: "banco-itau", monto: 5943380 }],
+        }),
+      ]
+    );
+    const v_id = id.rows[0]!.fn_guardar_movimiento;
+    const leer1 = await db.query<{ hito: number | null }>(
+      `select hito from movimientos where id = $1`, [v_id]
+    );
+    expect(leer1.rows[0]!.hito).toBe(3);
+
+    // Vaciarlo tiene que dejarlo nulo, no en cero: cero no es un hito.
+    await db.query(`select fn_guardar_movimiento($1::jsonb)`, [
+      JSON.stringify({
+        id: String(v_id), fecha: "2026-07-10", cuenta_id: "a1", monto: 5943380,
+        moneda: "CLP", estado: "conciliado", hito: "",
+        lineas: [{ categoria_id: "banco-itau", monto: 5943380 }],
+      }),
+    ]);
+    const leer2 = await db.query<{ hito: number | null }>(
+      `select hito from movimientos where id = $1`, [v_id]
+    );
+    expect(leer2.rows[0]!.hito).toBeNull();
+    await db.exec(`delete from movimientos where id = ${v_id}`);
   });
 
   it("deja las tres vistas consultables", async () => {

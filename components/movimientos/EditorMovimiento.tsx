@@ -141,6 +141,20 @@ export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) 
         </label>
 
         <label className={css.campo}>
+          <span className={css.etiquetaCampo}>Hito</span>
+          <input
+            type="number"
+            min={1}
+            value={m.hito ?? ""}
+            onChange={(e) => editarMovimiento(m.id, "hito", Number(e.target.value) || null)}
+            placeholder="—"
+            aria-label="Número de hito"
+            title="Cuota del plan de pagos pactado con el cliente. En blanco si el cobro no es por hitos."
+            className={css.entrada}
+          />
+        </label>
+
+        <label className={css.campo}>
           <span className={css.etiquetaCampo}>Tipo de documento</span>
           <select
             value={m.doc_tipo ?? ""}

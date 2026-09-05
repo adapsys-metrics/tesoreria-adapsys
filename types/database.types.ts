@@ -134,6 +134,8 @@ export type Database = {
           tipo_cambio: number | null;
           estado: EstadoMovimiento;
           doc_tipo: DocTipo | null;
+          /** Cuota del plan de pagos pactado con el cliente (0013). */
+          hito: number | null;
           /** Archivo del export de Quicken del que se importó (0003). */
           origen: string | null;
           creado_por: string | null;
@@ -153,6 +155,7 @@ export type Database = {
           tipo_cambio?: number | null;
           estado?: EstadoMovimiento;
           doc_tipo?: DocTipo | null;
+          hito?: number | null;
           origen?: string | null;
           creado_por?: string | null;
         };

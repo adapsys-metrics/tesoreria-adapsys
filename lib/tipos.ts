@@ -99,6 +99,9 @@ export type Movimiento = {
   tipo_cambio: number | null;
   estado: EstadoMovimiento;
   doc_tipo: DocTipo | null;
+  /** Cuota o hito del plan de pagos pactado con el cliente. Venía en la columna
+   *  Action de Quicken y solo lo llevan los cobros de proyectos (0013). */
+  hito: number | null;
   /** Vacío = sin clasificar. Una línea = simple. Dos o más = split. */
   lineas: Linea[];
 };

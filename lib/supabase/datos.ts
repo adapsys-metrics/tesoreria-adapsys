@@ -16,7 +16,7 @@ import type { Linea, Movimiento } from "@/lib/tipos";
 const TAMANO_PAGINA = 1000;
 
 const COLUMNAS =
-  "id,fecha,empresa_id,cuenta_id,contraparte,glosa,documento,monto,moneda,tipo_cambio,estado,doc_tipo," +
+  "id,fecha,empresa_id,cuenta_id,contraparte,glosa,documento,monto,moneda,tipo_cambio,estado,doc_tipo,hito," +
   "movimiento_lineas(categoria_id,subcategoria_id,monto,glosa,orden)";
 
 type FilaCruda = {
@@ -32,6 +32,7 @@ type FilaCruda = {
   tipo_cambio: number | string | null;
   estado: Movimiento["estado"];
   doc_tipo: Movimiento["doc_tipo"];
+  hito: number | null;
   movimiento_lineas: {
     categoria_id: string;
     subcategoria_id: string | null;
@@ -71,6 +72,7 @@ function aMovimiento(fila: FilaCruda): Movimiento {
     tipo_cambio: fila.tipo_cambio === null ? null : aNumero(fila.tipo_cambio),
     estado: fila.estado,
     doc_tipo: fila.doc_tipo,
+    hito: fila.hito,
     lineas,
   };
 }
@@ -106,6 +108,7 @@ export async function guardarMovimiento(
       tipo_cambio: m.tipo_cambio,
       estado: m.estado,
       doc_tipo: m.doc_tipo,
+      hito: m.hito,
       lineas: m.lineas,
     },
   });

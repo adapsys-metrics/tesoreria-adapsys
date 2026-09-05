@@ -66,6 +66,7 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
       tipo_cambio: cuenta.moneda === "USD" ? tc : null,
       estado: "proyectado",
       doc_tipo: doc,
+      hito: null,
       lineas: resultado.lineas,
     };
     agregarMovimiento(nuevo);

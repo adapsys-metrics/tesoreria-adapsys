@@ -38,6 +38,21 @@ export type ArchivoQuicken = {
   totales: { entradas: number; salidas: number; neto: number } | null;
 };
 
+/**
+ * El número de hito, cuando Action trae uno.
+ *
+ * La misma columna lleva la empresa en los espejos de proyección y un número en los
+ * cobros de proyectos, así que se decide por el contenido y no por el registro: es lo
+ * único que funciona cuando un archivo mezcla las dos cosas, y los del banco las
+ * mezclan.
+ */
+export const hitoDe = (action: string): number | null => {
+  const limpio = action.trim();
+  if (!/^\d{1,3}$/.test(limpio)) return null;
+  const n = Number(limpio);
+  return n > 0 ? n : null;
+};
+
 /** Un movimiento reconstruido: cabecera + sus líneas de split (§4.3). */
 export type MovimientoQuicken = {
   fecha: string;
@@ -47,6 +62,9 @@ export type MovimientoQuicken = {
    *  registros de banco la pone la cuenta, y en proyección existe una sola
    *  fila "bolsa" que todavía no tiene empresa asignada. */
   empresa: string | null;
+  /** Cuota o hito del plan de pagos, cuando Action trae un número en vez de una
+   *  empresa. Nulo en casi todo: solo lo llevan los cobros de proyectos. */
+  hito: number | null;
   monto: number;
   lineas: { grupo: string; monto: number; glosa: string }[];
 };
@@ -202,6 +220,7 @@ export function agruparMovimientos(filas: FilaQuicken[]): MovimientoQuicken[] {
       contraparte: primera.contraparte,
       documento: primera.documento,
       empresa: empresaDe(primera.tags) ?? empresaDe(primera.action),
+      hito: hitoDe(primera.action),
       monto: grupo.reduce((s, f) => s + f.monto, 0),
       lineas: grupo.map((f) => ({ grupo: f.grupo, monto: f.monto, glosa: f.memo })),
     });

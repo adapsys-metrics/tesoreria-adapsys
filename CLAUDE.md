@@ -70,8 +70,9 @@ categorias      (id, grupo_id, nombre, naturaleza, activa)
 subcategorias   (id, categoria_id, nombre, activa)      -- "Offsite internacional"
 
 movimientos     (id, fecha, empresa_id, cuenta_id, contraparte, glosa,
-                 monto, moneda, tipo_cambio, estado, doc_tipo,
+                 monto, moneda, tipo_cambio, estado, doc_tipo, hito,
                  creado_por, creado_en, actualizado_en)
+                -- hito: cuota del plan de pagos pactado con el cliente (§4.8)
                 -- estado: 'proyectado'|'pagado'|'conciliado'
                 -- doc_tipo: 'exento'|'afecta'|'honorario'
                 -- monto = líquido que entra o sale del banco
@@ -232,6 +233,21 @@ como vinieron.
 
 **TC presupuestario fijo.** El presupuesto usa un tipo de cambio fijo definido al armar el año.
 Si el TC flota, la desviación por gasto y la desviación por dólar se mezclan y ninguna se explica.
+
+### 4.8 El hito es la cuota del plan de pagos
+
+La columna `Action` de Quicken significa **dos cosas** según el registro: en los
+espejos de proyección trae la empresa, y en PROYECTOS APROBADOS y en los registros de
+banco trae un número. Ese número es la cuota del plan de pagos pactado con el
+cliente — CUÁL, no cuántas: dentro de un proyecto forman secuencia, y "Escuela de
+Liderazgo" del Banco de Chile tiene cobros del 1 al 11.
+
+El importador tomaba la empresa y descartaba el número, así que 1.477 movimientos lo
+perdieron. La migración `0013` agrega la columna y `scripts/recuperar-hito.mjs`
+genera los UPDATE para devolverlo sin recargar nada.
+
+Lo llevan solo los cobros de proyectos, así que es nulo en la enorme mayoría: por eso
+se muestra como marca al lado del número de documento y no como columna propia.
 
 ### 4.7 Otras
 
