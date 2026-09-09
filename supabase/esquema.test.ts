@@ -98,6 +98,27 @@ describe("migraciones y seed", () => {
     await db.exec(`delete from movimientos where origen = 'prueba-bolsa'`);
   });
 
+  it("el script de recuperación se basta solo, aunque falte la columna", async () => {
+    // Se rompió de verdad, y justo en la última línea de 1.200: la columna no estaba
+    // porque el script daba por hecho que 0013 ya se había aplicado. Se reproduce
+    // sacando la columna: si el script solo se probara sobre el esquema completo,
+    // este test pasaría sin comprobar nada.
+    const sql = readFileSync(join(AQUI, "carga/3_recuperar_hito.sql"), "utf8");
+    await db.exec(`alter table movimientos drop column hito`);
+
+    await expect(db.exec(sql)).resolves.toBeDefined();
+
+    const r = await db.query<{ n: number }>(
+      `select count(*)::int as n from information_schema.columns
+       where table_name = 'movimientos' and column_name = 'hito'`
+    );
+    expect(r.rows[0]!.n).toBe(1);
+
+    // Y de nuevo, tal cual: se entrega para pegarlo más de una vez si algo quedó a
+    // medias, así que no puede fallar por la columna que él mismo acaba de crear.
+    await expect(db.exec(sql)).resolves.toBeDefined();
+  });
+
   it("guarda el hito y lo deja nulo en todo lo demás", async () => {
     // El número venía en la columna Action de Quicken y se perdió en la importación:
     // esa columna trae la empresa en unos registros y el hito en otros (0013).

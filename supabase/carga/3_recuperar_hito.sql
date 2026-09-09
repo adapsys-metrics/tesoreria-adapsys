@@ -3,10 +3,22 @@
 -- Devuelve el número de hito a los movimientos importados desde Quicken. Se puede
 -- correr más de una vez: escribe el mismo valor.
 --
+-- Crea la columna si falta, en vez de dar por hecho que la migración 0013 ya se
+-- aplicó. Son 1.200 líneas de datos: fallar en la última por una columna ausente
+-- obliga a rehacer todo el pegado, y `if not exists` no cuesta nada cuando ya está.
+--
 -- 1477 movimientos traían hito en el CSV.
 -- 1264 claves se pueden emparejar sin ambigüedad.
 -- 5 quedan fuera: dos movimientos idénticos en origen, fecha, contraparte y
 --    monto con hitos distintos. Se corrigen a mano desde la app si hace falta.
+
+alter table movimientos add column if not exists hito smallint;
+
+comment on column movimientos.hito is
+  'Cuota o hito del plan de pagos pactado con el cliente, de la columna Action de '
+  'Quicken. Nulo en casi todo: solo lo llevan los cobros de proyectos.';
+
+create index if not exists movimientos_hito_idx on movimientos (hito) where hito is not null;
 
 with datos (origen, fecha, contraparte, monto, hito) as (values
   ('a1.csv', '2026-08-20'::date, 'BANCO ITAÚ', 5943380, 3),
