@@ -374,6 +374,23 @@ mínimo. En la app real, tests de render por ruta.
 - Autoclasificación por diccionario de proveedores. Ya existe uno construido para la conciliación
   de la tarjeta corporativa; reutilizarlo.
 
+### Pago de proveedores
+
+Pedido por el equipo el 2026-09-09, **sin especificar todavía**. Queda anotado tal cual
+para no inventarle alcance: lo primero al retomarlo es preguntar qué parte del trabajo
+de pagar duele hoy, no diseñar sobre una suposición.
+
+Lo que se sabe del contexto, que acota por dónde puede ir:
+
+- Los egresos futuros ya viven como movimientos `proyectado` (§4.1) y se marcan pagados
+  de a uno. La molestia probable es que un pago real agrupa varias facturas en una sola
+  transferencia, igual que en el cobro a clientes.
+- La selección múltiple con suma (§6, Movimientos) ya resuelve *verificar* que varias
+  facturas suman lo transferido. Lo que no existe es actuar sobre esa selección:
+  marcarlas pagadas juntas, con la misma fecha.
+- Está sin responder si además hace falta producir algo para el banco (nómina de pagos,
+  archivo de transferencias masivas) o si eso se sigue haciendo fuera del sistema.
+
 ### La proyección se genera del presupuesto, no de reglas por proveedor
 
 Decidido con el equipo. La tentación es modelar recurrencias por proveedor ("GTD, día 14,
