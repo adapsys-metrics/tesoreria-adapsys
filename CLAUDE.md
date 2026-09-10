@@ -376,20 +376,46 @@ mínimo. En la app real, tests de render por ruta.
 
 ### Pago de proveedores
 
-Pedido por el equipo el 2026-09-09, **sin especificar todavía**. Queda anotado tal cual
-para no inventarle alcance: lo primero al retomarlo es preguntar qué parte del trabajo
-de pagar duele hoy, no diseñar sobre una suposición.
+Pedido por el equipo. Dos piezas:
 
-Lo que se sabe del contexto, que acota por dónde puede ir:
+1. **Mantenedor de proveedores** con sus cuentas bancarias.
+2. **Exportar a Excel la nómina de pago**, lista para cargar en el portal del banco y
+   transferir. Sale de las proyecciones de egresos (CLP, USD o ambas), tomando lo
+   **vencido** y lo que **vence hoy**.
 
-- Los egresos futuros ya viven como movimientos `proyectado` (§4.1) y se marcan pagados
-  de a uno. La molestia probable es que un pago real agrupa varias facturas en una sola
-  transferencia, igual que en el cobro a clientes.
-- La selección múltiple con suma (§6, Movimientos) ya resuelve *verificar* que varias
-  facturas suman lo transferido. Lo que no existe es actuar sobre esa selección:
-  marcarlas pagadas juntas, con la misma fecha.
-- Está sin responder si además hace falta producir algo para el banco (nómina de pagos,
-  archivo de transferencias masivas) o si eso se sigue haciendo fuera del sistema.
+**Solo la mitad de la proyección de egresos se paga por transferencia.** De las 38
+contrapartes del registro CLP, buena parte no es un proveedor al que se le transfiere:
+
+| No van a la nómina | Por qué |
+|---|---|
+| INGRESO MÍNIMO ASEGURADO, Horas proyectadas, GAP IMA | Provisiones, no tienen destinatario |
+| Sueldos, Aguinaldo | Nómina de remuneraciones, otro proceso |
+| Previred, Tesorería General, IVA CLA * , Patente comercial | Se pagan en el portal del organismo |
+| Mastercard 7184 (pesos y dólar) | Pago del estado de cuenta |
+| Banco Santander, BANCO BCI, Invexor | Créditos e inversiones |
+| Caja chica Administración / diseño | Reposición interna |
+| ENZO ANZIANI | Es un INGRESO (B OTROS INGRESOS) dentro del registro de egresos |
+
+Quedan ~20 proveedores reales. De ahí sale la regla que evita tener que marcar cada
+línea a mano: **a la nómina entra solo lo que tiene proveedor con cuenta bancaria en el
+maestro**. El mantenedor no es un anexo del export, es su filtro.
+
+Ojo con el último caso de la tabla: el registro de proyección tiene montos de los dos
+signos, así que además hay que filtrar por egreso y no asumir que todo lo que está ahí
+se paga.
+
+**Lo que falta para poder implementarlo**
+
+- **El formato exacto del portal.** "Lista para cargar" significa calzar con la
+  plantilla de un banco concreto: orden de columnas, formato del RUT, código de banco
+  destino, tipo de cuenta, codificación del archivo. Sin una plantilla real esto no se
+  puede escribir, solo aproximar. Hay que pedir un archivo de ejemplo.
+- **El RUT no existe en el sistema.** Hoy la contraparte es texto libre en
+  `movimientos.contraparte`, no una entidad. El maestro de proveedores es una tabla
+  nueva y hay que ligar los movimientos a ella; con ~20 nombres se puede hacer a mano.
+- **¿Una línea por factura o una por proveedor?** Si un proveedor tiene tres facturas
+  vencidas, el portal puede querer una transferencia por el total o tres separadas. El
+  proveedor casi siempre prefiere una; la conciliación posterior, tres.
 
 ### La proyección se genera del presupuesto, no de reglas por proveedor
 
