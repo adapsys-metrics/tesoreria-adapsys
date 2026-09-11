@@ -380,9 +380,12 @@ Pedido por el equipo. Dos piezas:
 
 1. **Mantenedor de proveedores** con RUT, banco y cuenta. El equipo ya tiene esos datos
    en un Excel, con los códigos de banco; se carga de ahí, no se escribe de nuevo.
-2. **Exportar la nómina de pago** lista para subir al portal del banco. Sale de las
-   proyecciones de egresos (CLP, USD o ambas), tomando lo **vencido** y lo que
-   **vence hoy**.
+2. **Exportar la nómina de pago** lista para subir al portal del banco. Sale de la
+   proyección de egresos **en pesos**, tomando lo **vencido** y lo que **vence hoy**.
+
+**Solo CLP.** Los pagos en dólares no tienen formato de carga y se hacen directo en el
+portal, así que las columnas de moneda son constantes y no hay que resolver conversión
+ni mezcla de monedas en el archivo.
 
 **Una línea por documento**, no una por proveedor. No es solo preferencia: la glosa que
 llega al banco se arma con número de documento + nombre, y agrupando tres facturas no
@@ -406,9 +409,29 @@ entra en los caracteres disponibles.
 | L | `Glosa Cartola Cliente` | idem I | Es la que se ve en NUESTRA cartola |
 | M | `Glosa Cartola Beneficiario` | idem I | La que ve el proveedor |
 
-Las cuatro glosas salen iguales en el archivo tipo. Conviene generarlas de una sola
-función: si el largo máximo obliga a recortar, tiene que recortar igual en las cuatro o
-la conciliación deja de calzar con lo que el banco muestra.
+**La glosa: 45 caracteres, y sin tildes.**
+
+Las cuatro glosas (I, K, L, M) salen iguales, así que se generan de una sola función.
+Al recortar se **acorta el nombre del proveedor, nunca el número de documento**: el
+número es lo que permite identificar el pago después, el nombre ya está en la columna G.
+
+Y hay que sacar las tildes. La glosa más larga que soporta la cartola llegó así:
+
+```
+FA174670 Empresa Social de Comercializacio?n
+```
+
+Esa `?` está justo donde iba la tilde de "Comercialización". El texto viene en Unicode
+**descompuesto** (NFD): la `ó` son dos caracteres, la `o` y una tilde combinante suelta,
+y el banco no sabe qué hacer con la segunda. Dos consecuencias:
+
+- El beneficiario ve un signo de pregunta en su cartola.
+- La tilde **ocupa un carácter del cupo**: `FA174670 Empresa Social de Comercialización`
+  mide 43 compuesta y 44 descompuesta. Contar sin normalizar da largos distintos para
+  el mismo texto.
+
+Así que antes de medir y de escribir: normalizar y quitar los diacríticos. Queda en 43
+y legible. `lib/catalogo-edicion.ts` ya hace exactamente eso en `slug()`.
 
 **Qué entra a la nómina.** No se puede deducir del movimiento: la proyección de egresos
 mezcla cosas que se transfieren con cosas que no (remuneraciones, que van por el
@@ -430,8 +453,9 @@ filtrar por egreso.
 - El **Excel de proveedores** del equipo, para cargar el maestro.
 - El **número de cuenta de origen** de cada cuenta nuestra: `cuentas` guarda nombre y
   moneda, no el número que pide la columna A.
-- El **largo máximo de la glosa** en el portal. El ejemplo usa 35 caracteres; si el
-  tope es menor, hay que decidir qué se recorta primero (el nombre, no el documento).
+- Confirmar si el portal además rechaza tildes en la **columna G** (`nombre benef.`) o
+  solo las mangle en la glosa. Por ahora se normaliza solo la glosa, que es donde hay
+  evidencia.
 
 ### La proyección se genera del presupuesto, no de reglas por proveedor
 
