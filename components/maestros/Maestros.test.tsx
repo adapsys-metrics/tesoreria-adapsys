@@ -125,6 +125,64 @@ describe("Maestros", () => {
     expect(screen.queryByLabelText("Nombre de Se creó por error")).toBeNull();
   });
 
+  it("pegar desde Excel carga varios de una vez", () => {
+    // Es el caso real: los datos ya están en una planilla y son ~20 filas.
+    montar();
+    fireEvent.click(screen.getByRole("button", { name: "Pegar desde Excel" }));
+    fireEvent.change(screen.getByLabelText("Listado de proveedores"), {
+      target: {
+        value: [
+          "Smartbricks Technologies SPA\t76.624.489-0\t37\t70684756\tk@smartbricks.cl",
+          "Dimerc\t96.670.840-9\t12\t1234567\tpagos@dimerc.cl",
+        ].join("\n"),
+      },
+    });
+    expect(screen.getByText("2")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "CARGAR 2" }));
+
+    expect(screen.getByText("Entraron 2 nuevos.")).toBeDefined();
+    expect(screen.getByText(/2 proveedores · 2 listos para pagar/)).toBeDefined();
+    // El RUT quedó guardado como lo pide el portal y se muestra con formato.
+    expect(
+      (screen.getByLabelText("RUT de Smartbricks Technologies SPA") as HTMLInputElement).value
+    ).toBe("76.624.489-0");
+  });
+
+  it("no carga las filas con problemas, y dice cuál es el problema", () => {
+    // Descartarlas en silencio dejaría al usuario creyendo que cargó 20 cuando cargó 19.
+    montar();
+    fireEvent.click(screen.getByRole("button", { name: "Pegar desde Excel" }));
+    fireEvent.change(screen.getByLabelText("Listado de proveedores"), {
+      target: {
+        value: [
+          "Smartbricks\t76.624.489-0\t37\t70684756",
+          "Con dedo malo\t76.624.489-1\t37\t70684756",
+        ].join("\n"),
+      },
+    });
+    expect(screen.getByText("1 con problemas")).toBeDefined();
+    expect(screen.getByText(/RUT inválido/)).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "CARGAR 1" }));
+    expect(screen.getByLabelText("Nombre de Smartbricks")).toBeDefined();
+    expect(screen.queryByLabelText("Nombre de Con dedo malo")).toBeNull();
+  });
+
+  it("volver a pegar actualiza y no duplica", () => {
+    montar();
+    crear("Dimerc");
+    fireEvent.click(screen.getByRole("button", { name: "Pegar desde Excel" }));
+    fireEvent.change(screen.getByLabelText("Listado de proveedores"), {
+      target: { value: "DIMERC\t96.670.840-9\t12\t1234567" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "CARGAR 1" }));
+
+    expect(screen.getByText("Entraron 1 actualizados.")).toBeDefined();
+    // Uno solo, y con los datos que trajo la planilla.
+    expect(screen.getByText(/1 proveedores · 1 listos para pagar/)).toBeDefined();
+    expect((screen.getByLabelText("Cuenta de Dimerc") as HTMLInputElement).value).toBe("1234567");
+  });
+
   it("cuenta cuántos están listos para pagar", () => {
     montar();
     expect(screen.getByText(/0 proveedores · 0 listos para pagar/)).toBeDefined();

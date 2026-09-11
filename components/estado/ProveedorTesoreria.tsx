@@ -23,6 +23,7 @@ import {
 import { EMPRESAS, GRUPOS, CUENTAS, IDS_ADAPSYS, CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
 import { crearIndices, type Indices } from "@/lib/catalogo-indices";
 import { idLibre, parsearCatalogo } from "@/lib/catalogo-edicion";
+import type { FilaPegada } from "@/lib/proveedores-pegado";
 import { MOVIMIENTOS_EJEMPLO, TC_USD } from "@/lib/datos-ejemplo";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import {
@@ -195,6 +196,10 @@ type Contexto = Estado & {
     valor: Proveedor[K]
   ) => void;
   borrarProveedor: (id: string) => void;
+  /** Carga varios de golpe desde un listado pegado. Actualiza por nombre en vez de
+   *  duplicar, para poder volver a pegar la planilla corregida. Devuelve cuántos
+   *  entraron nuevos y cuántos se actualizaron. */
+  cargarProveedores: (filas: FilaPegada[]) => { nuevos: number; actualizados: number };
 };
 
 const Ctx = createContext<Contexto | null>(null);
@@ -1047,6 +1052,58 @@ export function ProveedorTesoreria({
       })),
     borrarProveedor: (id) =>
       setEstado((p) => ({ ...p, proveedores: p.proveedores.filter((x) => x.id !== id) })),
+    cargarProveedores: (filas) => {
+      const utiles = filas.filter((f) => f.nombre && !f.problemas.length);
+      const clave = (s: string) =>
+        s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+      let nuevos = 0;
+      let actualizados = 0;
+
+      setEstado((p) => {
+        const porClave = new Map(p.proveedores.map((x) => [clave(x.nombre), x]));
+        const tomados = new Set(p.proveedores.map((x) => x.id));
+        const agregados: Proveedor[] = [];
+
+        for (const f of utiles) {
+          const ya = porClave.get(clave(f.nombre));
+          if (ya) {
+            // Solo pisa lo que la planilla trae: un campo vacío ahí no borra lo que
+            // alguien ya había completado a mano en la app.
+            porClave.set(clave(f.nombre), {
+              ...ya,
+              rut: f.rut ?? ya.rut,
+              cod_banco: f.cod_banco ?? ya.cod_banco,
+              cuenta: f.cuenta ?? ya.cuenta,
+              correo: f.correo ?? ya.correo,
+            });
+          } else {
+            const id = idLibre(f.nombre, tomados);
+            tomados.add(id);
+            agregados.push({
+              id,
+              nombre: f.nombre,
+              rut: f.rut,
+              cod_banco: f.cod_banco,
+              cuenta: f.cuenta,
+              correo: f.correo,
+              activo: true,
+            });
+          }
+        }
+
+        nuevos = agregados.length;
+        actualizados = utiles.length - agregados.length;
+        return {
+          ...p,
+          proveedores: [
+            ...p.proveedores.map((x) => porClave.get(clave(x.nombre)) ?? x),
+            ...agregados,
+          ],
+        };
+      });
+
+      return { nuevos, actualizados };
+    },
     importarCatalogo: (texto) => {
       const leido = parsearCatalogo(texto, idsDelCatalogo(estado));
 

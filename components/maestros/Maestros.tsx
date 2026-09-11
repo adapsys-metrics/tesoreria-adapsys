@@ -11,6 +11,7 @@ import { useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Aviso, BotonFantasma, Cabecera, Rotulo, clases } from "@/components/ui/primitivas";
 import { formatearRut, normalizarRut, rutValido } from "@/lib/rut";
+import { parsearProveedores, type FilaPegada } from "@/lib/proveedores-pegado";
 import tabla from "@/components/ui/tabla.module.css";
 import css from "./maestros.module.css";
 
@@ -28,9 +29,11 @@ export function Maestros() {
     crearProveedor,
     editarProveedor,
     borrarProveedor,
+    cargarProveedores,
   } = useTesoreria();
 
   const [nuevo, setNuevo] = useState("");
+  const [pegando, setPegando] = useState(false);
   const [porBorrar, setPorBorrar] = useState<string | null>(null);
 
   // Solo las de banco tienen número: las auxiliares son registros de Quicken —la
@@ -143,7 +146,12 @@ export function Maestros() {
             className={css.buscador}
           />
           <BotonFantasma onClick={agregar}>+ proveedor</BotonFantasma>
+          <BotonFantasma onClick={() => setPegando((v) => !v)}>
+            {pegando ? "Cerrar" : "Pegar desde Excel"}
+          </BotonFantasma>
         </div>
+
+        {pegando && <Pegado cargar={cargarProveedores} existentes={proveedores} />}
 
         {proveedores.length === 0 ? (
           <p className={css.nota}>
@@ -290,5 +298,96 @@ export function Maestros() {
         )}
       </section>
     </>
+  );
+}
+
+
+/** Carga por pegado. Acá sí se muestra, al revés que en el catálogo: los datos ya
+ *  existen en una planilla y son ~20 filas de cinco columnas. Escribirlas a mano es
+ *  donde se cuela un dígito cambiado en un RUT, que bota la nómina entera. */
+function Pegado({
+  cargar,
+  existentes,
+}: {
+  cargar: (filas: FilaPegada[]) => { nuevos: number; actualizados: number };
+  existentes: { nombre: string }[];
+}) {
+  const [texto, setTexto] = useState("");
+  const [resultado, setResultado] = useState<string | null>(null);
+
+  const filas = texto.trim()
+    ? parsearProveedores(texto, existentes as Parameters<typeof parsearProveedores>[1])
+    : [];
+  const buenas = filas.filter((f) => f.nombre && !f.problemas.length);
+  const malas = filas.filter((f) => f.problemas.length);
+
+  const aplicar = () => {
+    const { nuevos, actualizados } = cargar(filas);
+    const partes = [
+      nuevos ? `${nuevos} nuevos` : null,
+      actualizados ? `${actualizados} actualizados` : null,
+    ].filter(Boolean);
+    setResultado(partes.length ? `Entraron ${partes.join(" y ")}.` : "No entró ninguno.");
+    setTexto("");
+  };
+
+  return (
+    <div className={css.pegado}>
+      <p className={css.nota}>
+        Copia las filas desde el Excel y pégalas acá. Si la primera trae los títulos, las
+        columnas se reconocen por el nombre; si no, se leen en orden:{" "}
+        <strong>nombre, RUT, código de banco, cuenta, correo</strong>. Los puntos y
+        guiones se limpian solos.
+      </p>
+      <textarea
+        value={texto}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          setResultado(null);
+        }}
+        rows={6}
+        aria-label="Listado de proveedores"
+        placeholder={"Smartbricks Technologies SPA\t76.624.489-0\t37\t70684756\tkarina.urbina@smartbricks.cl"}
+        className={css.textarea}
+      />
+
+      {resultado && <Aviso tono="teal">{resultado}</Aviso>}
+
+      {filas.length > 0 && (
+        <>
+          <div className={css.resumenPegado}>
+            <strong>{buenas.length}</strong> se pueden cargar
+            {malas.length > 0 && (
+              <>
+                {" · "}
+                <span className={css.conProblema}>{malas.length} con problemas</span>
+              </>
+            )}
+          </div>
+
+          {/* Las filas con problema se listan con el motivo en vez de descartarse en
+              silencio: casi siempre es un dígito y se corrige en la planilla. */}
+          {malas.length > 0 && (
+            <ul className={css.problemas}>
+              {malas.map((f, i) => (
+                <li key={i}>
+                  <span className={css.nombreProblema}>{f.nombre || "(sin nombre)"}</span>{" "}
+                  {f.problemas.join(", ")}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <button
+            type="button"
+            onClick={aplicar}
+            disabled={!buenas.length}
+            className={css.botonAplicar}
+          >
+            CARGAR {buenas.length}
+          </button>
+        </>
+      )}
+    </div>
   );
 }

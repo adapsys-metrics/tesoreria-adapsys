@@ -302,7 +302,7 @@ grupo**. Una lista plana de 290 ítems es inusable.
 | **Conciliación** | Lista de `pagado` sin cuadrar. El total es exactamente la diferencia contra la cartola. |
 | **Presupuesto anual** | Dos modos: *construcción* (responsable, ppto año anterior, ppto año, variación, notas) y *control* (ejecutado, % utilizado con marca de avance del año, disponible, proyección de cierre). |
 | **Reportes** | Armador configurable: filas (categoría / grupo / naturaleza / empresa / proveedor), columnas (mes / trimestre / empresa / grupo / naturaleza / total), rango de fechas con presets, filtro de estados y de categorías. Configuraciones guardables. Export CSV. |
-| **Maestros** | Empresas con el número de cuenta que paga, y proveedores con RUT, banco y cuenta. El RUT se valida con su dígito verificador: el portal rechaza la nómina completa, no la línea mala. Un proveedor se desactiva en vez de borrarse, para conservar sus datos por si vuelve. |
+| **Maestros** | Empresas con el número de cuenta que paga, y proveedores con RUT, banco y cuenta. Se cargan pegando las filas del Excel —acá el importador sí se muestra, al revés que en Categorías: los datos ya existen en una planilla—. El RUT se valida con su dígito verificador: el portal rechaza la nómina completa, no la línea mala. Un proveedor se desactiva en vez de borrarse, para conservar sus datos por si vuelve. |
 | **Categorías** | Mantenedor de los tres niveles. Lo que está en uso no se borra: se desactiva. Existe un importador por pegado (`components/categorias/Importador.tsx`) que **no se muestra**: el equipo crea las categorías caso a caso y el panel estorbaba. Se conserva probado, para devolverlo si aparece una carga masiva. |
 
 ---
@@ -454,8 +454,8 @@ filtrar por egreso.
 
 **Lo que falta**
 
-- El **Excel de proveedores** del equipo, para cargar el maestro (la vista ya existe,
-  falta el contenido).
+- El **Excel de proveedores** del equipo. La vista y el pegado ya están; falta el
+  contenido.
 - Cómo se **empareja un movimiento con su proveedor**. Hoy la contraparte es texto
   libre; lo más simple es calzar por nombre normalizado, y el maestro se carga con el
   nombre tal como aparece en los movimientos.
