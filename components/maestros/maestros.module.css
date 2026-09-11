@@ -1,0 +1,152 @@
+/* Los dos mantenedores, uno debajo del otro. Son tablas cortas —9 cuentas, ~20
+   proveedores— así que no necesitan scroll propio ni colapso. */
+.panel {
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--surface);
+  margin-bottom: 14px;
+}
+
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.buscador {
+  margin-left: auto;
+  width: 220px;
+  padding: 5px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 11.5px;
+  background: var(--paper);
+}
+
+/* Se edita en el sitio: sin bordes hasta que se apunta, para que la tabla se lea como
+   una tabla y no como un formulario de 60 campos. */
+.campo {
+  width: 100%;
+  min-width: 60px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--ink);
+}
+
+.campo:hover {
+  border-color: var(--rule);
+}
+
+.campo:focus {
+  border-color: var(--teal-claro);
+  background: var(--surface);
+  outline: none;
+}
+
+.campoFuerte {
+  font-weight: 600;
+}
+
+.campoCorto {
+  max-width: 70px;
+}
+
+/* Números de cuenta y RUT en monoespaciada: se comparan dígito a dígito contra una
+   factura o contra el portal, y en proporcional eso no se puede hacer. */
+.campoNumero,
+.campoRut {
+  font-family: var(--font-cifras);
+  font-variant-numeric: tabular-nums;
+  max-width: 140px;
+}
+
+/* Un RUT con el dígito verificador malo bota la nómina completa en el portal, no solo
+   su línea. Se marca en el campo y además arriba, porque se descubre tarde. */
+.campoMalo {
+  border-color: var(--brick);
+  background: var(--brick-soft);
+  color: var(--brick);
+}
+
+.filaInactiva .campo {
+  color: var(--tenue);
+}
+
+.insignia {
+  font-family: var(--font-cifras);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
+  border-radius: 2px;
+  border: 0;
+  background: var(--teal-soft);
+  color: var(--teal);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.insigniaFuera {
+  background: var(--rule-soft);
+  color: var(--muted);
+}
+
+.insigniaFalta {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+.borrar {
+  background: none;
+  border: 0;
+  color: var(--muted-claro);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 3px;
+  cursor: pointer;
+}
+
+.borrar:hover {
+  color: var(--brick);
+}
+
+.confirmacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.confirmarBorrar,
+.cancelar {
+  font-family: var(--font-cifras);
+  font-size: 9.5px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  border: 0;
+  cursor: pointer;
+}
+
+.confirmarBorrar {
+  background: var(--brick);
+  color: var(--surface);
+}
+
+.cancelar {
+  background: var(--rule-soft);
+  color: var(--muted);
+}
+
+.nota {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0;
+  padding: 8px 14px;
+}

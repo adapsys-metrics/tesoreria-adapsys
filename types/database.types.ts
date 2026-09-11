@@ -38,6 +38,8 @@ export type Database = {
           tipo: TipoCuenta;
           saldo_inicial: number;
           principal: boolean;
+          /** Número en el banco, para la nómina de pago (0014). */
+          numero: string | null;
         };
         Insert: {
           id: string;
@@ -47,6 +49,7 @@ export type Database = {
           tipo: TipoCuenta;
           saldo_inicial?: number;
           principal?: boolean;
+          numero?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["cuentas"]["Insert"]>;
         Relationships: [
@@ -107,6 +110,29 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      /** Datos bancarios para la nómina de pago (0014). */
+      proveedores: {
+        Row: {
+          id: string;
+          nombre: string;
+          rut: string | null;
+          cod_banco: string | null;
+          cuenta: string | null;
+          correo: string | null;
+          activo: boolean;
+        };
+        Insert: {
+          id: string;
+          nombre: string;
+          rut?: string | null;
+          cod_banco?: string | null;
+          cuenta?: string | null;
+          correo?: string | null;
+          activo?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["proveedores"]["Insert"]>;
+        Relationships: [];
       };
       usuarios_autorizados: {
         Row: { email: string; nombre: string; activo: boolean; creado_en: string };

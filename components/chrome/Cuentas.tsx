@@ -10,7 +10,6 @@
 // que deba verse en pantalla: quien concilia necesita la cuenta tal cual llega del
 // banco, sin compromisos futuros encima.
 
-import { EMPRESAS } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Rotulo, clases } from "@/components/ui/primitivas";
 import { REGISTROS_PROYECCION, claveDeCuenta, totalDeRegistro } from "@/lib/registros";
@@ -28,9 +27,10 @@ export function Cuentas() {
     seleccionarRegistro,
     setEmpresasSeleccionadas,
     porConciliar,
+    empresas,
   } = useTesoreria();
 
-  const porEmpresa = EMPRESAS.map((e) => ({
+  const porEmpresa = empresas.map((e) => ({
     empresa: e,
     cuentas: cuentasFiltradas.filter((c) => c.empresa_id === e.id && c.tipo === "banco"),
   })).filter((x) => x.cuentas.length);

@@ -27,6 +27,26 @@ export type Cuenta = {
   tipo: TipoCuenta;
   saldo_inicial: number;
   principal: boolean;
+  /** Número en el banco, para la columna Cta_origen de la nómina de pago. Null en las
+   *  auxiliares: son registros de Quicken, no cuentas reales. */
+  numero: string | null;
+};
+
+/** Datos bancarios de un proveedor, para la nómina de pago (§10).
+ *
+ *  El maestro es además el filtro: a la nómina entra lo que tiene proveedor con cuenta
+ *  cargada, así que dar de alta a alguien acá es la decisión de "a este se le
+ *  transfiere". Por eso se desactiva en vez de borrarse. */
+export type Proveedor = {
+  id: string;
+  nombre: string;
+  /** Sin puntos ni guion, con el dígito verificador pegado: 766244890. */
+  rut: string | null;
+  /** Código del banco en el portal, no su nombre. */
+  cod_banco: string | null;
+  cuenta: string | null;
+  correo: string | null;
+  activo: boolean;
 };
 
 /** Nivel 1: "2 GASTOS ADMINISTRACIÓN". Es donde se decide si entra o no al control

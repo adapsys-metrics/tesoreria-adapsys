@@ -5,7 +5,6 @@
 // se trabaja en vez de sólo mirarlo (§6).
 
 import { useEffect } from "react";
-import { empresaDe } from "@/lib/catalogo-indices";
 import { enCLP } from "@/lib/dominio";
 import { clp } from "@/lib/formato";
 import { fechaCorta } from "@/lib/fechas";
@@ -13,6 +12,7 @@ import type { LineaExpandida } from "@/lib/tipos";
 import { Insignia, Pill, clases } from "@/components/ui/primitivas";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
+import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { BarraSeleccion, CasillaFila, useSeleccion } from "@/components/ui/seleccion";
 import cssSel from "@/components/ui/seleccion.module.css";
 import css from "./panel.module.css";
@@ -39,6 +39,7 @@ export function PanelDetalle({
    *  como estaba, sin selector de tercer nivel. */
   detallar?: (fila: LineaExpandida, subcategoria_id: string | null) => void;
 }) {
+  const { catalogo } = useTesoreria();
   const total = detalle.items.reduce((s, m) => s + enCLP(m, tc), 0);
 
   // Acá la selección es lo que más sirve: se abrió el detalle justamente para revisar
@@ -119,7 +120,7 @@ export function PanelDetalle({
                             sociedad se gestiona. Se marca en vez de dejarlo en blanco,
                             para que se note que falta asignarla. */}
                         <span className={css.empresa}>
-                          {m.empresa_id ? empresaDe(m.empresa_id).nombre : "SIN EMPRESA"}
+                          {m.empresa_id ? catalogo.empresaDe(m.empresa_id).nombre : "SIN EMPRESA"}
                         </span>
                         <Pill estado={m.estado} />
                       </div>

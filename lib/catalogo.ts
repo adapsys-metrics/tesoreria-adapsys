@@ -35,15 +35,15 @@ export const PRESETS_EMPRESA = [
 // cuentas traen esa fila; el resto parte de cero porque su registro empieza con
 // el primer movimiento real.
 export const CUENTAS: Cuenta[] = [
-  { id: "a1", empresa_id: "adap", nombre: "CLA ADAPTACIÓN PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 74220512, principal: true },
-  { id: "a2", empresa_id: "adap", nombre: "CLA ADAPTACIÓN DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 507.66, principal: false },
-  { id: "b1", empresa_id: "cons", nombre: "CLA CONSULTORES PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 53058579, principal: true },
-  { id: "b2", empresa_id: "cons", nombre: "CLA CONSULTORES DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 72000, principal: false },
-  { id: "c1", empresa_id: "clting", nombre: "CLA CONSULTING PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 0, principal: true },
-  { id: "c2", empresa_id: "clting", nombre: "CLA CONSULTING DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 0, principal: false },
-  { id: "d1", empresa_id: "ctria", nombre: "CLA CONSULTORIA PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 0, principal: true },
-  { id: "e1", empresa_id: "sm", nombre: "SANTA MARÍA PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 0, principal: true },
-  { id: "e2", empresa_id: "sm", nombre: "SANTA MARÍA DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 0, principal: false },
+  { id: "a1", empresa_id: "adap", nombre: "CLA ADAPTACIÓN PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 74220512, principal: true, numero: null },
+  { id: "a2", empresa_id: "adap", nombre: "CLA ADAPTACIÓN DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 507.66, principal: false, numero: null },
+  { id: "b1", empresa_id: "cons", nombre: "CLA CONSULTORES PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 53058579, principal: true, numero: null },
+  { id: "b2", empresa_id: "cons", nombre: "CLA CONSULTORES DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 72000, principal: false, numero: null },
+  { id: "c1", empresa_id: "clting", nombre: "CLA CONSULTING PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 0, principal: true, numero: null },
+  { id: "c2", empresa_id: "clting", nombre: "CLA CONSULTING DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 0, principal: false, numero: null },
+  { id: "d1", empresa_id: "ctria", nombre: "CLA CONSULTORIA PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 0, principal: true, numero: null },
+  { id: "e1", empresa_id: "sm", nombre: "SANTA MARÍA PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 0, principal: true, numero: null },
+  { id: "e2", empresa_id: "sm", nombre: "SANTA MARÍA DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 0, principal: false, numero: null },
   // Cuentas auxiliares: no son bancos, son la cartera de lo que está por entrar.
   // Cuelgan de CLA ADAPTACIÓN por tener que colgar de alguna, pero sus movimientos
   // llevan la empresa real en `empresa_id` — la cartera es de las cuatro.
@@ -53,10 +53,10 @@ export const CUENTAS: Cuenta[] = [
   // una estimación cuya fecha se mueve semana a semana según avanza el proyecto.
   // Juntarlos haría que la proyección de ingresos trate como igual de firme algo
   // que no lo es.
-  { id: "x1", empresa_id: "adap", nombre: "Facturas por cobrar CLP", moneda: "CLP", tipo: "cxc", saldo_inicial: 0, principal: false },
-  { id: "x2", empresa_id: "adap", nombre: "Facturas por cobrar USD", moneda: "USD", tipo: "cxc", saldo_inicial: 0, principal: false },
-  { id: "x3", empresa_id: "adap", nombre: "Proyectos aprobados CLP", moneda: "CLP", tipo: "cxc", saldo_inicial: 0, principal: false },
-  { id: "x4", empresa_id: "adap", nombre: "Proyectos aprobados USD", moneda: "USD", tipo: "cxc", saldo_inicial: 0, principal: false },
+  { id: "x1", empresa_id: "adap", nombre: "Facturas por cobrar CLP", moneda: "CLP", tipo: "cxc", saldo_inicial: 0, principal: false, numero: null },
+  { id: "x2", empresa_id: "adap", nombre: "Facturas por cobrar USD", moneda: "USD", tipo: "cxc", saldo_inicial: 0, principal: false, numero: null },
+  { id: "x3", empresa_id: "adap", nombre: "Proyectos aprobados CLP", moneda: "CLP", tipo: "cxc", saldo_inicial: 0, principal: false, numero: null },
+  { id: "x4", empresa_id: "adap", nombre: "Proyectos aprobados USD", moneda: "USD", tipo: "cxc", saldo_inicial: 0, principal: false, numero: null },
 ];
 
 /**

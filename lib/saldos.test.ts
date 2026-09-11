@@ -10,6 +10,7 @@ const A1: Cuenta = {
   tipo: "banco",
   saldo_inicial: 74220512,
   principal: true,
+  numero: null,
 };
 
 const mov = (p: Partial<Movimiento> & { id: string }): Movimiento => ({

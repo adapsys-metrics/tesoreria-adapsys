@@ -59,8 +59,11 @@ Además existen cuentas auxiliares en Quicken (`FACTURAS POR COBRAR`, `PROY. EGR
 
 ```sql
 empresas        (id, nombre, corto, grupo)              -- grupo: 'Adapsys' | 'Relacionadas'
-cuentas         (id, empresa_id, nombre, moneda, tipo, saldo_inicial, principal)
+cuentas         (id, empresa_id, nombre, moneda, tipo, saldo_inicial, principal, numero)
                 -- moneda: 'CLP'|'USD'  tipo: 'banco'|'cxc'
+                -- numero: cuenta en el banco, para la nómina de pago. Nulo en las auxiliares
+proveedores     (id, nombre, rut, cod_banco, cuenta, correo, activo)
+                -- rut sin puntos ni guion; cod_banco es el código del portal, no el nombre
 
 -- El catálogo tiene TRES niveles (§3.1)
 grupos          (id, nombre, orden, controlado)         -- "2 GASTOS ADMINISTRACIÓN"
@@ -299,6 +302,7 @@ grupo**. Una lista plana de 290 ítems es inusable.
 | **Conciliación** | Lista de `pagado` sin cuadrar. El total es exactamente la diferencia contra la cartola. |
 | **Presupuesto anual** | Dos modos: *construcción* (responsable, ppto año anterior, ppto año, variación, notas) y *control* (ejecutado, % utilizado con marca de avance del año, disponible, proyección de cierre). |
 | **Reportes** | Armador configurable: filas (categoría / grupo / naturaleza / empresa / proveedor), columnas (mes / trimestre / empresa / grupo / naturaleza / total), rango de fechas con presets, filtro de estados y de categorías. Configuraciones guardables. Export CSV. |
+| **Maestros** | Empresas con el número de cuenta que paga, y proveedores con RUT, banco y cuenta. El RUT se valida con su dígito verificador: el portal rechaza la nómina completa, no la línea mala. Un proveedor se desactiva en vez de borrarse, para conservar sus datos por si vuelve. |
 | **Categorías** | Mantenedor de los tres niveles. Lo que está en uso no se borra: se desactiva. Existe un importador por pegado (`components/categorias/Importador.tsx`) que **no se muestra**: el equipo crea las categorías caso a caso y el panel estorbaba. Se conserva probado, para devolverlo si aparece una carga masiva. |
 
 ---
@@ -450,9 +454,11 @@ filtrar por egreso.
 
 **Lo que falta**
 
-- El **Excel de proveedores** del equipo, para cargar el maestro.
-- El **número de cuenta de origen** de cada cuenta nuestra: `cuentas` guarda nombre y
-  moneda, no el número que pide la columna A.
+- El **Excel de proveedores** del equipo, para cargar el maestro (la vista ya existe,
+  falta el contenido).
+- Cómo se **empareja un movimiento con su proveedor**. Hoy la contraparte es texto
+  libre; lo más simple es calzar por nombre normalizado, y el maestro se carga con el
+  nombre tal como aparece en los movimientos.
 - Confirmar si el portal además rechaza tildes en la **columna G** (`nombre benef.`) o
   solo las mangle en la glosa. Por ahora se normaliza solo la glosa, que es donde hay
   evidencia.

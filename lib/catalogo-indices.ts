@@ -39,13 +39,18 @@ export type Indices = {
   subcategoriasDe: (categoria_id: string) => Subcategoria[];
   /** Nombre de una subcategoría, o null si no se pasó ninguna o ya no existe. */
   nombreSubcategoria: (id: string | null) => string | null;
+  /** Nunca falla: una empresa desconocida vuelve con su id de nombre, para que la fila
+   *  se pueda leer igual y se note que falta. */
+  empresaDe: (id: string) => Empresa;
 };
 
 export function crearIndices(
   grupos: Grupo[],
   categorias: Categoria[],
-  subcategorias: Subcategoria[] = []
+  subcategorias: Subcategoria[] = [],
+  empresas: Empresa[] = EMPRESAS
 ): Indices {
+  const porIdEmpresa = new Map(empresas.map((e) => [e.id, e]));
   const porIdSub = new Map(categorias.map((s) => [s.id, s]));
   const porIdCat = new Map(grupos.map((c) => [c.id, c]));
 
@@ -93,6 +98,8 @@ export function crearIndices(
       ),
     subcategoriasDe: (categoria_id) => porCategoria3.get(categoria_id) ?? [],
     nombreSubcategoria: (id) => (id ? (porIdSub3.get(id)?.nombre ?? null) : null),
+    empresaDe: (id) =>
+      porIdEmpresa.get(id) ?? { id, nombre: id, corto: id.toUpperCase(), grupo: "Adapsys" },
   };
 }
 
@@ -100,7 +107,6 @@ export function crearIndices(
  *  tests, generadores. Lo que se muestra en pantalla sale del proveedor, no de acá. */
 export const INDICES_DEL_BUNDLE = crearIndices(GRUPOS, CATEGORIAS, SUBCATEGORIAS);
 
-const POR_ID_EMPRESA = new Map(EMPRESAS.map((e) => [e.id, e]));
-
-export const empresaDe = (id: string): Empresa =>
-  POR_ID_EMPRESA.get(id) ?? { id, nombre: id, corto: id.toUpperCase(), grupo: "Adapsys" };
+/** Para código fuera de React —datos de ejemplo, scripts—. Lo que se muestra en
+ *  pantalla sale del proveedor, que es donde las ediciones se ven. */
+export const empresaDe = INDICES_DEL_BUNDLE.empresaDe;

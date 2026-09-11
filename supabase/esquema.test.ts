@@ -64,6 +64,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0011_categorias_fuera_del_control.sql"));
   await db.exec(leer("migrations/0012_tres_niveles.sql"));
   await db.exec(leer("migrations/0013_hito.sql"));
+  await db.exec(leer("migrations/0014_maestros.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -117,6 +118,35 @@ describe("migraciones y seed", () => {
     // Y de nuevo, tal cual: se entrega para pegarlo más de una vez si algo quedó a
     // medias, así que no puede fallar por la columna que él mismo acaba de crear.
     await expect(db.exec(sql)).resolves.toBeDefined();
+  });
+
+  it("guarda un proveedor con sus datos bancarios", async () => {
+    expect(
+      await intentar(
+        `insert into proveedores (id, nombre, rut, cod_banco, cuenta, correo)
+         values ('smartbricks', 'Smartbricks Technologies SPA', '766244890', '37',
+                 '70684756', 'karina.urbina@smartbricks.cl')`
+      )
+    ).toBeNull();
+    const r = await db.query<{ activo: boolean }>(
+      `select activo from proveedores where id = 'smartbricks'`
+    );
+    // Nace activo: darlo de alta ES la decisión de "a este se le transfiere".
+    expect(r.rows[0]!.activo).toBe(true);
+    await db.exec(`delete from proveedores where id = 'smartbricks'`);
+  });
+
+  it("la cuenta guarda su número para la columna Cta_origen", async () => {
+    await db.exec(`update cuentas set numero = '73021634' where id = 'a1'`);
+    const r = await db.query<{ numero: string | null }>(
+      `select numero from cuentas where id = 'a1'`
+    );
+    expect(r.rows[0]!.numero).toBe("73021634");
+    // Las auxiliares no tienen: son registros de Quicken, no cuentas de banco.
+    const aux = await db.query<{ n: number }>(
+      `select count(*)::int as n from cuentas where tipo = 'cxc' and numero is not null`
+    );
+    expect(aux.rows[0]!.n).toBe(0);
   });
 
   it("guarda el hito y lo deja nulo en todo lo demás", async () => {

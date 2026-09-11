@@ -20,7 +20,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { GRUPOS, CUENTAS, IDS_ADAPSYS, CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
+import { EMPRESAS, GRUPOS, CUENTAS, IDS_ADAPSYS, CATEGORIAS, SUBCATEGORIAS } from "@/lib/catalogo";
 import { crearIndices, type Indices } from "@/lib/catalogo-indices";
 import { idLibre, parsearCatalogo } from "@/lib/catalogo-edicion";
 import { MOVIMIENTOS_EJEMPLO, TC_USD } from "@/lib/datos-ejemplo";
@@ -40,6 +40,13 @@ import {
   guardarCategoria,
   guardarSubcategoria,
 } from "@/lib/supabase/catalogo";
+import {
+  borrarProveedor as borrarProveedorEnBase,
+  cargarMaestros,
+  guardarCuenta,
+  guardarEmpresa,
+  guardarProveedor,
+} from "@/lib/supabase/maestros";
 import { supabaseConfigurado } from "@/lib/supabase/estado";
 import {
   SUB_IVA_COMPRAS,
@@ -52,7 +59,9 @@ import { perteneceAlRegistro, saldoDeCuenta } from "@/lib/registros";
 import { pasoDe } from "@/lib/cobranza";
 import { pct } from "@/lib/formato";
 import type {
+  Empresa,
   Grupo,
+  Proveedor,
   Subcategoria,
   Cuenta,
   Linea,
@@ -76,6 +85,11 @@ type Estado = {
   grupos: Grupo[];
   categorias: Categoria[];
   subcategorias: Subcategoria[];
+  empresas: Empresa[];
+  /** Las cuentas como están en la base. El saldo se deriva aparte: guardarlo acá lo
+   *  dejaría desactualizado en cuanto entrara un movimiento. */
+  cuentasBase: Cuenta[];
+  proveedores: Proveedor[];
   empresasSeleccionadas: string[];
   /** Registro abierto en la barra lateral, o null para ver todo. Puede ser una
    *  cuenta ("cuenta:a1") o un registro de proyección ("proy:egresos-clp"). */
@@ -166,6 +180,21 @@ type Contexto = Estado & {
   renombrarSubcategoria: (id: string, nombre: string) => void;
   alternarActivaSubcategoria: (id: string) => void;
   borrarSubcategoria: (id: string) => void;
+
+  // ── Maestros ──────────────────────────────────────────────────────────────
+  /** Empresas y cuentas se editan porque la nómina de pago necesita el número de la
+   *  cuenta que paga (§10), y eso cambia cuando el banco lo cambia. */
+  empresas: Empresa[];
+  proveedores: Proveedor[];
+  editarEmpresa: <K extends keyof Empresa>(id: string, campo: K, valor: Empresa[K]) => void;
+  editarCuenta: <K extends keyof Cuenta>(id: string, campo: K, valor: Cuenta[K]) => void;
+  crearProveedor: (nombre: string) => void;
+  editarProveedor: <K extends keyof Proveedor>(
+    id: string,
+    campo: K,
+    valor: Proveedor[K]
+  ) => void;
+  borrarProveedor: (id: string) => void;
 };
 
 const Ctx = createContext<Contexto | null>(null);
@@ -192,6 +221,9 @@ const estadoInicial = (registro: string | null): Estado => ({
   grupos: GRUPOS,
   categorias: CATEGORIAS,
   subcategorias: SUBCATEGORIAS,
+  empresas: EMPRESAS,
+  cuentasBase: CUENTAS,
+  proveedores: [],
   empresasSeleccionadas: IDS_ADAPSYS,
   registroSeleccionado: registro,
   tc: TC_USD,
@@ -233,10 +265,14 @@ export function ProveedorTesoreria({
 
     let vigente = true;
     const supabase = crearClienteNavegador();
-    Promise.all([cargarMovimientos(supabase), cargarCatalogo(supabase)])
-      .then(([movimientos, catalogo]) => {
+    Promise.all([
+      cargarMovimientos(supabase),
+      cargarCatalogo(supabase),
+      cargarMaestros(supabase),
+    ])
+      .then(([movimientos, catalogo, maestros]) => {
         if (!vigente) return;
-        setEstado((prev) => ({ ...prev, movimientos, ...catalogo }));
+        setEstado((prev) => ({ ...prev, movimientos, ...catalogo, ...maestros }));
       })
       .catch((e: Error) => {
         if (!vigente) return;
@@ -403,6 +439,64 @@ export function ProveedorTesoreria({
     []
   );
 
+  // Mismo mecanismo que el catálogo: se compara contra lo último guardado y se manda
+  // solo lo que cambió, con espera para no escribir una vez por tecla.
+  const maestrosGuardados = useRef<{
+    empresas: Map<string, Empresa>;
+    cuentas: Map<string, Cuenta>;
+    proveedores: Map<string, Proveedor>;
+  } | null>(null);
+
+  const persistirMaestros = useCallback(
+    (previo: {
+      empresas: Map<string, Empresa>;
+      cuentas: Map<string, Cuenta>;
+      proveedores: Map<string, Proveedor>;
+    }) => {
+      const supabase = crearClienteNavegador();
+      const fallo = (e: Error) => setErrorGuardado(e.message);
+
+      for (const e of estado.empresas) {
+        if (previo.empresas.get(e.id) !== e) guardarEmpresa(supabase, e).catch(fallo);
+      }
+      for (const c of estado.cuentasBase) {
+        if (previo.cuentas.get(c.id) !== c) guardarCuenta(supabase, c).catch(fallo);
+      }
+      for (const x of estado.proveedores) {
+        if (previo.proveedores.get(x.id) !== x) guardarProveedor(supabase, x).catch(fallo);
+      }
+
+      const vivos = new Set(estado.proveedores.map((x) => x.id));
+      for (const id of previo.proveedores.keys()) {
+        if (!vivos.has(id)) borrarProveedorEnBase(supabase, id).catch(fallo);
+      }
+    },
+    [estado.empresas, estado.cuentasBase, estado.proveedores]
+  );
+
+  useEffect(() => {
+    if (!supabaseConfigurado || cargando) return;
+
+    const foto = () => ({
+      empresas: new Map(estado.empresas.map((e) => [e.id, e])),
+      cuentas: new Map(estado.cuentasBase.map((c) => [c.id, c])),
+      proveedores: new Map(estado.proveedores.map((x) => [x.id, x])),
+    });
+
+    if (maestrosGuardados.current === null) {
+      maestrosGuardados.current = foto();
+      return;
+    }
+
+    const temporizador = setTimeout(() => {
+      const previo = maestrosGuardados.current;
+      if (previo === null) return;
+      maestrosGuardados.current = foto();
+      persistirMaestros(previo);
+    }, 700);
+    return () => clearTimeout(temporizador);
+  }, [estado.empresas, estado.cuentasBase, estado.proveedores, cargando, persistirMaestros]);
+
   const mapSub3 = useCallback(
     (id: string, fn: (s: Subcategoria) => Subcategoria) =>
       setEstado((p) => ({
@@ -421,7 +515,8 @@ export function ProveedorTesoreria({
     []
   );
 
-  const { movimientos, empresasSeleccionadas, registroSeleccionado, tc, tasas } = estado;
+  const { movimientos, empresasSeleccionadas, registroSeleccionado, tc, tasas, cuentasBase } =
+    estado;
 
   // Cuántas líneas apuntan a cada categoría: decide si una se puede borrar o
   // solo desactivar. Se cuenta sobre TODOS los movimientos, no los filtrados por el
@@ -460,8 +555,8 @@ export function ProveedorTesoreria({
   // Los índices se rehacen solo cuando el catálogo cambia: recorrer 293 categorías
   // en cada render de una tabla de 10.530 filas se nota.
   const catalogo = useMemo(
-    () => crearIndices(estado.grupos, estado.categorias, estado.subcategorias),
-    [estado.grupos, estado.categorias, estado.subcategorias]
+    () => crearIndices(estado.grupos, estado.categorias, estado.subcategorias, estado.empresas),
+    [estado.grupos, estado.categorias, estado.subcategorias, estado.empresas]
   );
 
   /**
@@ -503,7 +598,7 @@ export function ProveedorTesoreria({
     setEstado((p) => {
       const m = p.movimientos.find((x) => x.id === id);
       if (!m) return p;
-      const cuentas = CUENTAS.map((c) => ({ ...c, saldo: 0 }));
+      const cuentas = p.cuentasBase.map((c) => ({ ...c, saldo: 0 }));
       const paso = pasoDe(m, cuentas);
       if (paso.accion !== "facturar" && paso.accion !== "cobrar") return p;
 
@@ -539,7 +634,7 @@ export function ProveedorTesoreria({
    */
   const cambiarCuenta = useCallback((id: string, cuenta_id: string) => {
     setEstado((p) => {
-      const cuenta = CUENTAS.find((c) => c.id === cuenta_id);
+      const cuenta = p.cuentasBase.find((c) => c.id === cuenta_id);
       if (!cuenta) return p;
       return {
         ...p,
@@ -734,11 +829,16 @@ export function ProveedorTesoreria({
       setCargando(true);
       setErrorCarga(null);
       const supabase = crearClienteNavegador();
-      Promise.all([cargarMovimientos(supabase), cargarCatalogo(supabase)])
-        .then(([movimientos, catalogo]) => {
+      Promise.all([
+        cargarMovimientos(supabase),
+        cargarCatalogo(supabase),
+        cargarMaestros(supabase),
+      ])
+        .then(([movimientos, catalogo, maestros]) => {
           guardados.current = null;
           catalogoGuardado.current = null;
-          setEstado((p) => ({ ...p, movimientos, ...catalogo }));
+          maestrosGuardados.current = null;
+          setEstado((p) => ({ ...p, movimientos, ...catalogo, ...maestros }));
         })
         .catch((e: Error) => setErrorCarga(e.message))
         .finally(() => setCargando(false));
@@ -755,7 +855,7 @@ export function ProveedorTesoreria({
   const derivados = useMemo(() => {
     // El saldo de cada cuenta sale de los movimientos, no de un contador que
     // alguien tiene que acordarse de actualizar.
-    const cuentas: CuentaConSaldo[] = CUENTAS.map((c) => ({
+    const cuentas: CuentaConSaldo[] = cuentasBase.map((c) => ({
       ...c,
       saldo: saldoDeCuenta(c, movimientos),
     }));
@@ -790,7 +890,7 @@ export function ProveedorTesoreria({
         .reduce((t, m) => t + m.monto, 0),
       porConciliar: movimientosFiltrados.filter((m) => m.estado === "pagado").length,
     };
-  }, [movimientos, empresasSeleccionadas, registroSeleccionado]);
+  }, [movimientos, empresasSeleccionadas, registroSeleccionado, cuentasBase]);
 
   const valor: Contexto = {
     ...estado,
@@ -914,6 +1014,39 @@ export function ProveedorTesoreria({
             : m
         ),
       })),
+    editarEmpresa: (id, campo, valor) =>
+      setEstado((p) => ({
+        ...p,
+        empresas: p.empresas.map((e) => (e.id === id ? { ...e, [campo]: valor } : e)),
+      })),
+    editarCuenta: (id, campo, valor) =>
+      setEstado((p) => ({
+        ...p,
+        cuentasBase: p.cuentasBase.map((c) => (c.id === id ? { ...c, [campo]: valor } : c)),
+      })),
+    crearProveedor: (nombre) =>
+      setEstado((p) => ({
+        ...p,
+        proveedores: [
+          ...p.proveedores,
+          {
+            id: idLibre(nombre, new Set(p.proveedores.map((x) => x.id))),
+            nombre,
+            rut: null,
+            cod_banco: null,
+            cuenta: null,
+            correo: null,
+            activo: true,
+          },
+        ],
+      })),
+    editarProveedor: (id, campo, valor) =>
+      setEstado((p) => ({
+        ...p,
+        proveedores: p.proveedores.map((x) => (x.id === id ? { ...x, [campo]: valor } : x)),
+      })),
+    borrarProveedor: (id) =>
+      setEstado((p) => ({ ...p, proveedores: p.proveedores.filter((x) => x.id !== id) })),
     importarCatalogo: (texto) => {
       const leido = parsearCatalogo(texto, idsDelCatalogo(estado));
 

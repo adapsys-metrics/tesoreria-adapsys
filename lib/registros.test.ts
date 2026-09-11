@@ -8,9 +8,9 @@ import {
 import type { Cuenta, Movimiento } from "./tipos";
 
 const CUENTAS: Cuenta[] = [
-  { id: "a1", empresa_id: "adap", nombre: "CLA ADAPTACIÓN PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 74220512, principal: true },
-  { id: "a2", empresa_id: "adap", nombre: "CLA ADAPTACIÓN DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 507.66, principal: false },
-  { id: "x1", empresa_id: "adap", nombre: "Facturas por cobrar CLP", moneda: "CLP", tipo: "cxc", saldo_inicial: 0, principal: false },
+  { id: "a1", empresa_id: "adap", nombre: "CLA ADAPTACIÓN PESOS", moneda: "CLP", tipo: "banco", saldo_inicial: 74220512, principal: true, numero: null },
+  { id: "a2", empresa_id: "adap", nombre: "CLA ADAPTACIÓN DÓLAR", moneda: "USD", tipo: "banco", saldo_inicial: 507.66, principal: false, numero: null },
+  { id: "x1", empresa_id: "adap", nombre: "Facturas por cobrar CLP", moneda: "CLP", tipo: "cxc", saldo_inicial: 0, principal: false, numero: null },
 ];
 
 const mov = (p: Partial<Movimiento>): Movimiento => ({

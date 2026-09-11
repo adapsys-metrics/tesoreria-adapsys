@@ -5,7 +5,6 @@
 // pasa del pasado al futuro.
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { empresaDe } from "@/lib/catalogo-indices";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { descuadre, enCLP } from "@/lib/dominio";
 import { claveDeCuenta, esRegistroDeBanco } from "@/lib/registros";
@@ -134,7 +133,7 @@ export function Registro() {
       // orden.
       cuenta: (m) => {
         const c = cuentasBanco.find((x) => x.id === m.cuenta_id);
-        return c ? `${empresaDe(c.empresa_id).nombre} ${c.moneda}` : "";
+        return c ? `${catalogo.empresaDe(c.empresa_id).nombre} ${c.moneda}` : "";
       },
       // Vacío para los sin clasificar, no "Sin clasificar": así caen al final de
       // la columna en los dos sentidos, agrupados y fáciles de encontrar, en vez
@@ -372,7 +371,7 @@ export function Registro() {
                           {m.cuenta_id === null && <option value="">— sin cuenta —</option>}
                           {cuentasBanco.map((c) => (
                             <option key={c.id} value={c.id}>
-                              {empresaDe(c.empresa_id).nombre} · {c.moneda}
+                              {catalogo.empresaDe(c.empresa_id).nombre} · {c.moneda}
                             </option>
                           ))}
                         </select>

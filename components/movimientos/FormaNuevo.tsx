@@ -5,7 +5,6 @@
 // que es el número que la persona está mirando en la factura o la boleta.
 
 import { useState } from "react";
-import { EMPRESAS } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { conIva, conRetencion, cuentaPrincipalDe } from "@/lib/dominio";
 import { clp, pct } from "@/lib/formato";
@@ -22,8 +21,9 @@ const DOCS: { id: DocTipo; nombre: string; pista: string }[] = [
 ];
 
 export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
-  const { empresasSeleccionadas, cuentas, tc, tasas, agregarMovimiento } = useTesoreria();
-  const empresaInicial = empresasSeleccionadas[0] ?? EMPRESAS[0]!.id;
+  const { empresasSeleccionadas, cuentas, empresas, tc, tasas, agregarMovimiento } =
+    useTesoreria();
+  const empresaInicial = empresasSeleccionadas[0] ?? empresas[0]!.id;
   const [cuentaId, setCuentaId] = useState(
     () => cuentaPrincipalDe(cuentas, empresaInicial)?.id ?? cuentas[0]!.id
   );

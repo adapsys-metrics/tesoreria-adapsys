@@ -24,6 +24,7 @@ const VISTAS = [
   { href: "/presupuesto", texto: "Presupuesto anual" },
   { href: null, texto: "Reportes" },
   { href: "/categorias", texto: "Categorías" },
+  { href: "/maestros", texto: "Maestros" },
 ];
 
 export function Encabezado() {

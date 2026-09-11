@@ -8,7 +8,6 @@
 // que no hace falta un campo aparte para la moneda — y así es imposible registrar
 // un pago en dólares desde la cuenta en pesos.
 
-import { EMPRESAS } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import css from "./movimientos.module.css";
 
@@ -22,9 +21,9 @@ export function SelectorCuenta({
   onChange: (cuenta_id: string) => void;
   etiqueta?: string;
 }) {
-  const { cuentas } = useTesoreria();
+  const { cuentas, empresas } = useTesoreria();
 
-  const porEmpresa = EMPRESAS.map((e) => ({
+  const porEmpresa = empresas.map((e) => ({
     empresa: e,
     cuentas: cuentas.filter((c) => c.empresa_id === e.id && c.tipo === "banco"),
   })).filter((g) => g.cuentas.length);
