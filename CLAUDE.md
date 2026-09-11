@@ -378,44 +378,60 @@ mínimo. En la app real, tests de render por ruta.
 
 Pedido por el equipo. Dos piezas:
 
-1. **Mantenedor de proveedores** con sus cuentas bancarias.
-2. **Exportar a Excel la nómina de pago**, lista para cargar en el portal del banco y
-   transferir. Sale de las proyecciones de egresos (CLP, USD o ambas), tomando lo
-   **vencido** y lo que **vence hoy**.
+1. **Mantenedor de proveedores** con RUT, banco y cuenta. El equipo ya tiene esos datos
+   en un Excel, con los códigos de banco; se carga de ahí, no se escribe de nuevo.
+2. **Exportar la nómina de pago** lista para subir al portal del banco. Sale de las
+   proyecciones de egresos (CLP, USD o ambas), tomando lo **vencido** y lo que
+   **vence hoy**.
 
-**Solo la mitad de la proyección de egresos se paga por transferencia.** De las 38
-contrapartes del registro CLP, buena parte no es un proveedor al que se le transfiere:
+**Una línea por documento**, no una por proveedor. No es solo preferencia: la glosa que
+llega al banco se arma con número de documento + nombre, y agrupando tres facturas no
+entra en los caracteres disponibles.
 
-| No van a la nómina | Por qué |
-|---|---|
-| INGRESO MÍNIMO ASEGURADO, Horas proyectadas, GAP IMA | Provisiones, no tienen destinatario |
-| Sueldos, Aguinaldo | Nómina de remuneraciones, otro proceso |
-| Previred, Tesorería General, IVA CLA * , Patente comercial | Se pagan en el portal del organismo |
-| Mastercard 7184 (pesos y dólar) | Pago del estado de cuenta |
-| Banco Santander, BANCO BCI, Invexor | Créditos e inversiones |
-| Caja chica Administración / diseño | Reposición interna |
-| ENZO ANZIANI | Es un INGRESO (B OTROS INGRESOS) dentro del registro de egresos |
+**La plantilla del portal** — 13 columnas, en este orden:
 
-Quedan ~20 proveedores reales. De ahí sale la regla que evita tener que marcar cada
-línea a mano: **a la nómina entra solo lo que tiene proveedor con cuenta bancaria en el
-maestro**. El mantenedor no es un anexo del export, es su filtro.
+| # | Columna | Ejemplo | De dónde sale |
+|---|---|---|---|
+| A | `Cta_origen` | `73021634` | La cuenta que paga. **No la tenemos: `cuentas` no guarda el número.** |
+| B | `moneda_origen` | `CLP` | `cuentas.moneda` |
+| C | `Cta_destino` | `70684756` | Maestro de proveedores |
+| D | `moneda_destino` | `CLP` | Maestro de proveedores |
+| E | `Cod_banco` | `37` | Maestro de proveedores (código del banco, no el nombre) |
+| F | `RUT benef.` | `766244890` | Maestro. **Sin puntos ni guion**, con el dígito verificador pegado |
+| G | `nombre benef.` | `Smartbricks Technologies SPA` | Maestro |
+| H | `MtoTotal` | `1264717` | `movimientos.monto`, en magnitud |
+| I | `Glosa TEF` | `FA2446 Smartbricks Technologies SPA` | `documento` + nombre |
+| J | `Correo` | `karina.urbina@smartbricks.cl` | Maestro |
+| K | `Glosa correo` | idem I | |
+| L | `Glosa Cartola Cliente` | idem I | Es la que se ve en NUESTRA cartola |
+| M | `Glosa Cartola Beneficiario` | idem I | La que ve el proveedor |
 
-Ojo con el último caso de la tabla: el registro de proyección tiene montos de los dos
-signos, así que además hay que filtrar por egreso y no asumir que todo lo que está ahí
-se paga.
+Las cuatro glosas salen iguales en el archivo tipo. Conviene generarlas de una sola
+función: si el largo máximo obliga a recortar, tiene que recortar igual en las cuatro o
+la conciliación deja de calzar con lo que el banco muestra.
 
-**Lo que falta para poder implementarlo**
+**Qué entra a la nómina.** No se puede deducir del movimiento: la proyección de egresos
+mezcla cosas que se transfieren con cosas que no (remuneraciones, que van por el
+software de RR.HH.; impuestos que se pagan en el portal del organismo; el estado de
+cuenta de la tarjeta; caja chica). Y no alcanza con mirar la contraparte: líneas como
+"INGRESO MÍNIMO ASEGURADO" son una proyección que después se abre y se le cargan los
+documentos de respaldo, y esos **sí** se transfieren.
 
-- **El formato exacto del portal.** "Lista para cargar" significa calzar con la
-  plantilla de un banco concreto: orden de columnas, formato del RUT, código de banco
-  destino, tipo de cuenta, codificación del archivo. Sin una plantilla real esto no se
-  puede escribir, solo aproximar. Hay que pedir un archivo de ejemplo.
-- **El RUT no existe en el sistema.** Hoy la contraparte es texto libre en
-  `movimientos.contraparte`, no una entidad. El maestro de proveedores es una tabla
-  nueva y hay que ligar los movimientos a ella; con ~20 nombres se puede hacer a mano.
-- **¿Una línea por factura o una por proveedor?** Si un proveedor tiene tres facturas
-  vencidas, el portal puede querer una transferencia por el total o tres separadas. El
-  proveedor casi siempre prefiere una; la conciliación posterior, tres.
+La regla es el maestro: **entra lo que tiene proveedor con cuenta bancaria cargada**.
+Eso deja la decisión donde hay un humano que la tomó una vez, en vez de adivinarla por
+el nombre en cada corrida.
+
+Ojo además con el signo: el registro de proyección tiene montos de los dos sentidos
+—"ENZO ANZIANI" son 30 líneas de *B OTROS INGRESOS* ahí adentro—, así que hay que
+filtrar por egreso.
+
+**Lo que falta**
+
+- El **Excel de proveedores** del equipo, para cargar el maestro.
+- El **número de cuenta de origen** de cada cuenta nuestra: `cuentas` guarda nombre y
+  moneda, no el número que pide la columna A.
+- El **largo máximo de la glosa** en el portal. El ejemplo usa 35 caracteres; si el
+  tope es menor, hay que decidir qué se recorta primero (el nombre, no el documento).
 
 ### La proyección se genera del presupuesto, no de reglas por proveedor
 
