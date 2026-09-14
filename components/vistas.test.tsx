@@ -849,7 +849,11 @@ describe("Catálogo", () => {
     // El caso que revienta: 293 categorías con sus selectores, todas a la vez.
     montar(<Categorias />);
     fireEvent.click(screen.getByRole("button", { name: /^Expandir todo$/ }));
-    expect(screen.getAllByLabelText(/^Naturaleza de /).length).toBe(CATEGORIAS.length);
+    // Las subcategorías también eligen naturaleza desde 0015: una categoría puede
+    // tener unas de inversión y otras operativas.
+    expect(screen.getAllByLabelText(/^Naturaleza de /).length).toBe(
+      CATEGORIAS.length + SUBCATEGORIAS.length
+    );
     fireEvent.click(screen.getByRole("button", { name: /^Colapsar todo$/ }));
     expect(screen.queryAllByLabelText(/^Naturaleza de /).length).toBe(0);
   });
@@ -1112,4 +1116,77 @@ describe("El tercer nivel", () => {
     // detalle en ninguna parte: es opcional y no debe ocupar lugar donde no aplica.
     expect(screen.queryByRole("combobox", { name: "Subcategoría" })).toBeNull();
   });
+});
+
+describe("Una categoría puede ser mixta", () => {
+  // El control presupuestario real tiene subcategorías donde unas son de inversión y
+  // otras operativas dentro de la misma categoría. Es la misma regla que ya rige un
+  // nivel más arriba (§4.2), ahora un escalón abajo.
+
+  const abrirEn = (busqueda: string) => {
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: busqueda },
+    });
+  };
+
+  // El grupo también se marca mixto, así que hay que apuntar a la insignia de la
+  // categoría por su título y no por el texto.
+  const MIXTA_CATEGORIA = "Tiene subcategorías de más de un tipo. No se elige: aparece sola.";
+  const CAT = "Sistemas Analítica avanzada, IA y Relac.";
+  // La única del ejemplo con movimientos: sin movimiento no hay fila en el flujo.
+  const SUB = "Automatización y metrics";
+
+  it("la subcategoría hereda mientras no se elija otra cosa", () => {
+    abrirEn("Automatización");
+    const sub = screen.getByLabelText(`Naturaleza de ${SUB}`) as HTMLSelectElement;
+    const cat = screen.getByLabelText(`Naturaleza de ${CAT}`) as HTMLSelectElement;
+    expect(sub.value).toBe(cat.value);
+    expect(sub.title).toMatch(/Hereda/);
+  });
+
+  it("marcar una subcategoría de otro tipo deja la categoría mixta", () => {
+    // "Mixta" no se elige: aparece sola cuando hay desacuerdo.
+    abrirEn("Automatización");
+    expect(screen.queryByTitle(MIXTA_CATEGORIA)).toBeNull();
+    fireEvent.change(screen.getByLabelText(`Naturaleza de ${SUB}`), {
+      target: { value: "inversion" },
+    });
+    expect(screen.getByTitle(MIXTA_CATEGORIA)).toBeDefined();
+    expect(
+      (screen.getByLabelText(`Naturaleza de ${SUB}`) as HTMLSelectElement).title
+    ).toMatch(/Fijada aparte/);
+  });
+
+  it("elegir el tipo en la categoría arrastra a todas hacia abajo", () => {
+    abrirEn("Analítica");
+    fireEvent.change(screen.getByLabelText(`Naturaleza de ${SUB}`), {
+      target: { value: "inversion" },
+    });
+    expect(screen.getByTitle(MIXTA_CATEGORIA)).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText(`Naturaleza de ${CAT}`), {
+      target: { value: "inversion" },
+    });
+    // Ya no hay desacuerdo: todas quedaron en inversión.
+    expect(screen.queryByTitle(MIXTA_CATEGORIA)).toBeNull();
+    expect((screen.getByLabelText(`Naturaleza de ${SUB}`) as HTMLSelectElement).value).toBe(
+      "inversion"
+    );
+  });
+
+  it("volver a elegir en la subcategoría el tipo de su categoría la devuelve a heredar", () => {
+    // Guardar el valor repetido dejaría de seguir a la madre sin que nadie lo pidiera.
+    abrirEn("Automatización");
+    const cat = (screen.getByLabelText(`Naturaleza de ${CAT}`) as HTMLSelectElement).value;
+    fireEvent.change(screen.getByLabelText(`Naturaleza de ${SUB}`), {
+      target: { value: "inversion" },
+    });
+    fireEvent.change(screen.getByLabelText(`Naturaleza de ${SUB}`), { target: { value: cat } });
+    expect(screen.queryByTitle(MIXTA_CATEGORIA)).toBeNull();
+    expect(
+      (screen.getByLabelText(`Naturaleza de ${SUB}`) as HTMLSelectElement).title
+    ).toMatch(/Hereda/);
+  });
+
 });

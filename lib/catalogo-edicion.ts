@@ -114,7 +114,8 @@ export function parsearCatalogo(texto: string, existentes = new Set<string>()): 
     if (subcategorias.some((s) => s.categoria_id === categoria_id && s.nombre === limpio)) return;
     const id = idLibre(limpio, tomados);
     tomados.add(id);
-    subcategorias.push({ id, categoria_id, nombre: limpio, activa: true });
+    // Hereda: el listado pegado define la estructura, no de qué lado cae cada peso.
+    subcategorias.push({ id, categoria_id, nombre: limpio, naturaleza: null, activa: true });
   };
 
   for (const cruda of texto.split(/\r?\n/)) {

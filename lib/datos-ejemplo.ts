@@ -200,7 +200,14 @@ const HISTORICO: Movimiento[] = (() => {
             { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -23.75, glosa: "Microsoft Power BI" },
             { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -12.5, glosa: "Trello" },
             { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -100, glosa: "Siteground" },
-            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -5.5, glosa: "Zapier" },
+            // La única línea del ejemplo con tercer nivel, como en el dato real: Zapier va a
+            // "Automatización y metrics", que en Quicken cuelga de esta categoría.
+            {
+              categoria_id: "sistemas-analitica-avanzada-ia-y-r",
+              subcategoria_id: "automatizacion-y-metrics",
+              monto: -5.5,
+              glosa: "Zapier",
+            },
           ],
         }
       )

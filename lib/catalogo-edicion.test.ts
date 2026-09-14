@@ -96,13 +96,15 @@ describe("parsearCatalogo", () => {
     expect(subcategorias.map((s) => s.nombre)).toEqual(["Offsite"]);
   });
 
-  it("la subcategoría no lleva naturaleza propia: la hereda de su categoría", () => {
+  it("la subcategoría pegada nace heredando, no fijada", () => {
+    // Un listado define la estructura, no de qué lado cae cada peso. Fijarla acá haría
+    // que cambiar la naturaleza de la categoría dejara de arrastrar a sus hijas.
     const { categorias, subcategorias } = parsearCatalogo(
       ["Gastos de Inversión", "Compra activos", "  Equipos", "    Notebooks"].join("\n")
     );
     expect(categorias.find((c) => c.nombre === "Equipos")!.naturaleza).toBe("inversion");
     expect(subcategorias[0]!.nombre).toBe("Notebooks");
-    expect(subcategorias[0]).not.toHaveProperty("naturaleza");
+    expect(subcategorias[0]!.naturaleza).toBeNull();
   });
 
   it("un grupo sin categorías recibe una con su nombre", () => {

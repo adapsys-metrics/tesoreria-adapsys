@@ -79,6 +79,10 @@ export type Subcategoria = {
   id: string;
   categoria_id: string;
   nombre: string;
+  /** null = la de su categoría. Un valor la sobrescribe, y entonces la categoría se
+   *  muestra mixta (§4.2). La categoría conserva la suya igual, porque una línea puede
+   *  no tener subcategoría y necesita saber de qué lado cae. */
+  naturaleza: Naturaleza | null;
   activa: boolean;
 };
 

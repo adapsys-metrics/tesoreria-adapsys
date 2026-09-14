@@ -98,8 +98,21 @@ export type Database = {
       };
       /** Nivel 3, opcional: "Offsite internacional". Detalle, no nivel de reporte. */
       subcategorias: {
-        Row: { id: string; categoria_id: string; nombre: string; activa: boolean };
-        Insert: { id: string; categoria_id: string; nombre: string; activa?: boolean };
+        Row: {
+          id: string;
+          categoria_id: string;
+          nombre: string;
+          /** null = hereda la de su categoría (0015). */
+          naturaleza: Naturaleza | null;
+          activa: boolean;
+        };
+        Insert: {
+          id: string;
+          categoria_id: string;
+          nombre: string;
+          naturaleza?: Naturaleza | null;
+          activa?: boolean;
+        };
         Update: Partial<Database["public"]["Tables"]["subcategorias"]["Insert"]>;
         Relationships: [
           {

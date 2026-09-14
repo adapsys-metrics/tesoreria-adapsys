@@ -43,6 +43,7 @@ export function Categorias() {
     crearSubcategoria,
     renombrarSubcategoria,
     alternarActivaSubcategoria,
+    cambiarNaturalezaSubcategoria,
     borrarSubcategoria,
     tc,
     editarLinea,
@@ -379,6 +380,11 @@ export function Categorias() {
                               cambiarNaturaleza(s.id, e.target.value as Naturaleza)
                             }
                             aria-label={`Naturaleza de ${s.nombre}`}
+                            title={
+                              catalogo.esMixta(s.id)
+                                ? "Alguna subcategoría es de otro tipo. Elegir acá las devuelve a todas a este."
+                                : "Se aplica a la categoría y a todas sus subcategorías"
+                            }
                             className={clases(css.selectMini, css[`nat_${s.naturaleza}`])}
                           >
                             {NATURALEZAS.map((n) => (
@@ -387,6 +393,14 @@ export function Categorias() {
                               </option>
                             ))}
                           </select>
+                          {catalogo.esMixta(s.id) && (
+                            <span
+                              className={clases(css.insignia, css.insigniaMixta)}
+                              title="Tiene subcategorías de más de un tipo. No se elige: aparece sola."
+                            >
+                              mixta
+                            </span>
+                          )}
 
                           {uso ? (
                             <button
@@ -449,6 +463,29 @@ export function Categorias() {
                               aria-label={`Nombre de ${h.nombre}`}
                               className={css.campo}
                             />
+                            <select
+                              value={h.naturaleza ?? s.naturaleza}
+                              onChange={(e) =>
+                                cambiarNaturalezaSubcategoria(h.id, e.target.value as Naturaleza)
+                              }
+                              aria-label={`Naturaleza de ${h.nombre}`}
+                              title={
+                                h.naturaleza
+                                  ? "Fijada aparte de su categoría"
+                                  : "Hereda la de su categoría"
+                              }
+                              className={clases(
+                                css.selectMini,
+                                css[`nat_${h.naturaleza ?? s.naturaleza}`],
+                                !h.naturaleza && css.heredada
+                              )}
+                            >
+                              {NATURALEZAS.map((n) => (
+                                <option key={n.id} value={n.id}>
+                                  {NOMBRE_NATURALEZA[n.id]}
+                                </option>
+                              ))}
+                            </select>
                             {usoDeSubcategoria.get(h.id) ? (
                               <button
                                 type="button"

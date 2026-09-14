@@ -40,7 +40,7 @@ export async function cargarCatalogo(supabase: SupabaseClient<Database>): Promis
       }
       return todas;
     })(),
-    supabase.from("subcategorias").select("id,categoria_id,nombre,activa").order("nombre"),
+    supabase.from("subcategorias").select("id,categoria_id,nombre,naturaleza,activa").order("nombre"),
   ]);
 
   if (gru.error) throw new Error(`No se pudo cargar el catálogo: ${gru.error.message}`);

@@ -70,7 +70,8 @@ grupos          (id, nombre, orden, controlado)         -- "2 GASTOS ADMINISTRAC
 categorias      (id, grupo_id, nombre, naturaleza, activa)
                 -- "Jornadas y eventos organización"
                 -- naturaleza: 'ingreso'|'inversion'|'operativo'
-subcategorias   (id, categoria_id, nombre, activa)      -- "Offsite internacional"
+subcategorias   (id, categoria_id, nombre, naturaleza, activa)  -- "Offsite internacional"
+                -- naturaleza null = la de su categoría; un valor la sobrescribe
 
 movimientos     (id, fecha, empresa_id, cuenta_id, contraparte, glosa,
                  monto, moneda, tipo_cambio, estado, doc_tipo, hito,
@@ -84,8 +85,10 @@ movimiento_lineas (id, movimiento_id, categoria_id, subcategoria_id, monto, glos
                 -- suma de líneas DEBE igualar movimientos.monto
                 -- subcategoria_id es opcional y debe colgar de categoria_id
 
-presupuesto     (id, anio, categoria_id, monto, monto_anterior, responsable, nota)
+presupuesto     (id, anio, categoria_id, subcategoria_id, monto, monto_anterior, responsable, nota)
                 -- consolidado: NO lleva empresa_id
+                -- subcategoria_id nulo = la línea de la categoría en sí, lo que se
+                --   gasta en ella sin precisar subcategoría (el "(Other)" de Quicken)
 
 parametros      (clave, valor, vigencia_desde)          -- tasa_iva, tasa_bhe, tc_presupuesto
 reportes_guardados (id, usuario_id, nombre, config jsonb)
@@ -168,14 +171,29 @@ ocurrió y falta registrarlo, o hay que mover la fecha — una factura que el cl
 reprograma al futuro. En Quicken eso se ve como un cambio de tono en el registro de proyecciones,
 y es el equivalente de lo que en otros sistemas sería la conciliación.
 
-### 4.2 La naturaleza vive en la categoría, no en el grupo
+### 4.2 La naturaleza baja hasta donde haga falta
 
-`inversion` / `operativo` / `ingreso` es propiedad de **cada categoría**. Un mismo grupo
-puede tener líneas de las dos naturalezas — p. ej. "2 GASTOS ADMINISTRACIÓN" tiene arriendo
-(operativo) y equipamiento de oficina (inversión). Al menos 6 de los 16 grupos reales son mixtos.
+`inversion` / `operativo` / `ingreso` vive en la **categoría**, y una **subcategoría**
+puede sobrescribirla. La misma regla en dos niveles:
 
-Consecuencia: en el presupuesto, un grupo mixto aparece en ambas secciones, cada vez con
-solo las líneas que le corresponden.
+- Un **grupo** es mixto cuando sus categorías no coinciden. "2 GASTOS ADMINISTRACIÓN"
+  tiene arriendo (operativo) y equipamiento (inversión); al menos 6 de los 16 lo son.
+- Una **categoría** es mixta cuando alguna subcategoría difiere de ella.
+
+**Mixta no se elige: es derivada.** Aparece cuando hay desacuerdo y desaparece cuando se
+vuelve a elegir el tipo en la categoría, que arrastra a todas sus subcategorías. Por eso
+`subcategorias.naturaleza` es nullable: null es "la de mi categoría" y un valor es un
+override. Guardar el valor repetido en vez de null haría que la hija dejara de seguir a
+la madre sin que nadie lo pidiera.
+
+**Y la categoría conserva la suya siempre.** Una línea puede tener categoría y no tener
+subcategoría —15.649 de 15.670 en el histórico— y sin eso quedaría sin saber de qué lado
+cae. Un valor "mixta" guardado en la categoría no diría qué hacer con esas líneas.
+
+Consecuencia: en el flujo y en el presupuesto, un grupo mixto aparece en ambas secciones
+y una categoría mixta también, cada vez sumando solo lo que le corresponde. Eso se
+resuelve con la **clave de reporte** (`lib/catalogo-indices.ts`): una línea se agrupa por
+su categoría, o por el par categoría-subcategoría cuando la subcategoría sobrescribe.
 
 ### 4.3 Los splits son la norma, no la excepción
 

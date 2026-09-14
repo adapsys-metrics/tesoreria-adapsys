@@ -20,6 +20,9 @@ export const GRUPO_SIN_CLASIFICAR: Grupo = {
   controlado: false,
 };
 
+/** Clave de las líneas que no están clasificadas en ninguna categoría. */
+export const SIN_CLASIFICAR = "__sin_clasificar";
+
 export type Indices = {
   grupos: Grupo[];
   categorias: Categoria[];
@@ -39,6 +42,29 @@ export type Indices = {
   subcategoriasDe: (categoria_id: string) => Subcategoria[];
   /** Nombre de una subcategoría, o null si no se pasó ninguna o ya no existe. */
   nombreSubcategoria: (id: string | null) => string | null;
+  /**
+   * La naturaleza que le corresponde a una línea.
+   *
+   * Es la de su subcategoría si la tiene y la sobrescribe, y si no la de su categoría.
+   * Toda agregación por naturaleza —el flujo, el presupuesto, los reportes— tiene que
+   * pasar por acá: mirar solo la categoría manda al lado equivocado todo lo que se
+   * clasificó en una subcategoría de otro tipo.
+   */
+  naturalezaDe: (categoria_id: string | null, subcategoria_id?: string | null) => Naturaleza;
+  /** ¿Alguna subcategoría difiere de su categoría? Es lo que se muestra como "mixta",
+   *  y es derivado: nadie elige mixta, aparece cuando hay desacuerdo. */
+  esMixta: (categoria_id: string) => boolean;
+  /**
+   * Dónde quedó clasificada una línea, como una sola clave.
+   *
+   * Es lo que agrupan el flujo y el presupuesto. Una línea sin subcategoría usa la
+   * categoría; una con subcategoría usa el par. Sin esto, una categoría mixta no se
+   * podría partir entre sus dos naturalezas: todo caería en la misma celda.
+   */
+  claveDe: (categoria_id: string | null, subcategoria_id?: string | null) => string;
+  /** Las claves de una categoría que caen de un lado. Una categoría mixta devuelve
+   *  unas en inversión y otras en operativo, y por eso aparece en las dos secciones. */
+  clavesDe: (categoria_id: string, naturaleza: Naturaleza) => string[];
   /** Nunca falla: una empresa desconocida vuelve con su id de nombre, para que la fila
    *  se pueda leer igual y se note que falta. */
   empresaDe: (id: string) => Empresa;
@@ -98,6 +124,33 @@ export function crearIndices(
       ),
     subcategoriasDe: (categoria_id) => porCategoria3.get(categoria_id) ?? [],
     nombreSubcategoria: (id) => (id ? (porIdSub3.get(id)?.nombre ?? null) : null),
+    naturalezaDe: (categoria_id, subcategoria_id) => {
+      const sub = subcategoria_id ? porIdSub3.get(subcategoria_id) : undefined;
+      if (sub?.naturaleza) return sub.naturaleza;
+      // Sin subcategoría, o con una que hereda: manda la categoría. Una que no existe
+      // cae en operativo, que es donde caen los gastos y no infla ni ingresos ni
+      // inversión.
+      return categoria_id ? (porIdSub.get(categoria_id)?.naturaleza ?? "operativo") : "operativo";
+    },
+    claveDe: (categoria_id, subcategoria_id) =>
+      subcategoria_id ? `${categoria_id}>${subcategoria_id}` : (categoria_id ?? SIN_CLASIFICAR),
+    clavesDe: (categoria_id, naturaleza) => {
+      const propia = porIdSub.get(categoria_id)?.naturaleza;
+      const claves: string[] = [];
+      // La categoría en sí: es donde cae todo lo clasificado sin precisar subcategoría,
+      // que en el histórico es casi todo.
+      if (propia === naturaleza) claves.push(categoria_id);
+      for (const s of porCategoria3.get(categoria_id) ?? []) {
+        if ((s.naturaleza ?? propia) === naturaleza) claves.push(`${categoria_id}>${s.id}`);
+      }
+      return claves;
+    },
+    esMixta: (categoria_id) => {
+      const propia = porIdSub.get(categoria_id)?.naturaleza;
+      return (porCategoria3.get(categoria_id) ?? []).some(
+        (s) => s.naturaleza !== null && s.naturaleza !== propia
+      );
+    },
     empresaDe: (id) =>
       porIdEmpresa.get(id) ?? { id, nombre: id, corto: id.toUpperCase(), grupo: "Adapsys" },
   };

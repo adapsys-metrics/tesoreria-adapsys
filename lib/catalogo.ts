@@ -413,7 +413,7 @@ export const CATEGORIAS: Categoria[] = [
  *  crecer, pero el nivel es opcional a propósito: una línea se clasifica en la
  *  categoría y la subcategoría solo precisa dentro de cuál. */
 export const SUBCATEGORIAS: Subcategoria[] = [
-  { id: "offsite-internacional", categoria_id: "jornadas-y-eventos-organizacion", nombre: "Offsite internacional", activa: true },
-  { id: "automatizacion-y-metrics", categoria_id: "sistemas-analitica-avanzada-ia-y-r", nombre: "Automatización y metrics", activa: true },
-  { id: "manejador-base-de-datos", categoria_id: "sistemas-analitica-avanzada-ia-y-r", nombre: "Manejador base de datos", activa: true },
+  { id: "offsite-internacional", categoria_id: "jornadas-y-eventos-organizacion", nombre: "Offsite internacional", naturaleza: null, activa: true },
+  { id: "automatizacion-y-metrics", categoria_id: "sistemas-analitica-avanzada-ia-y-r", nombre: "Automatización y metrics", naturaleza: null, activa: true },
+  { id: "manejador-base-de-datos", categoria_id: "sistemas-analitica-avanzada-ia-y-r", nombre: "Manejador base de datos", naturaleza: null, activa: true },
 ];

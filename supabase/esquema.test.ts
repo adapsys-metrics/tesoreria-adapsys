@@ -65,6 +65,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0012_tres_niveles.sql"));
   await db.exec(leer("migrations/0013_hito.sql"));
   await db.exec(leer("migrations/0014_maestros.sql"));
+  await db.exec(leer("migrations/0015_naturaleza_en_la_subcategoria.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {

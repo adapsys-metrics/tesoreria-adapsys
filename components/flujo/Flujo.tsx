@@ -21,7 +21,7 @@ import {
   mesDe,
   sumarDias,
 } from "@/lib/fechas";
-import type { EstadoMovimiento, LineaExpandida } from "@/lib/tipos";
+import type { EstadoMovimiento, LineaExpandida, Naturaleza } from "@/lib/tipos";
 import { Aviso, BotonFantasma, Cabecera, Chip, Nota, clases } from "@/components/ui/primitivas";
 import { PanelDetalle, type Detalle } from "./PanelDetalle";
 import tabla from "@/components/ui/tabla.module.css";
@@ -124,7 +124,7 @@ export function Flujo() {
     for (const fila of datos) {
       const i = periodos.findIndex((p) => fila.fecha >= p.desde && fila.fecha <= p.hasta);
       if (i < 0) continue;
-      const clave = fila.categoria_id ?? SIN_CLASIFICAR;
+      const clave = catalogo.claveDe(fila.categoria_id, fila.subcategoria_id);
       let acumulado = m.get(clave);
       if (!acumulado) {
         acumulado = new Array<number>(periodos.length).fill(0);
@@ -133,7 +133,7 @@ export function Flujo() {
       acumulado[i] = (acumulado[i] ?? 0) + enCLP(fila, tc);
     }
     return m;
-  }, [datos, periodos, tc]);
+  }, [datos, periodos, tc, catalogo]);
 
   const sumaPeriodo = (ids: string[], i: number) =>
     ids.reduce((s, id) => s + (indice.get(id)?.[i] ?? 0), 0);
@@ -149,7 +149,7 @@ export function Flujo() {
       items: datos
         .filter(
           (m) =>
-            ids.includes(m.categoria_id ?? SIN_CLASIFICAR) &&
+            ids.includes(catalogo.claveDe(m.categoria_id, m.subcategoria_id)) &&
             (!p || (m.fecha >= p.desde && m.fecha <= p.hasta))
         )
         .sort((a, b) => a.fecha.localeCompare(b.fecha) || enCLP(a, tc) - enCLP(b, tc)),
@@ -166,13 +166,16 @@ export function Flujo() {
     grupos: catalogo.grupos
       .map((c) => ({
         grupo: c,
-        subs: catalogo.categoriasDe(c.id, n.id).filter((s) => conMovimiento.has(s.id)),
+        subs: catalogo
+          .categoriasDe(c.id)
+          .map((s) => ({ ...s, claves: catalogo.clavesDe(s.id, n.id) }))
+          .filter((s) => s.claves.some((k) => conMovimiento.has(k))),
       }))
       .filter((g) => g.subs.length),
   })).filter((x) => x.grupos.length);
 
-  const idsPorNaturaleza = (nat: string) =>
-    catalogo.categorias.filter((s) => s.naturaleza === nat).map((s) => s.id);
+  const idsPorNaturaleza = (nat: Naturaleza) =>
+    catalogo.categorias.flatMap((s) => catalogo.clavesDe(s.id, nat));
 
   const ingresos = porPeriodo(idsPorNaturaleza("ingreso"));
   const egresos = periodos.map(
@@ -389,7 +392,7 @@ export function Flujo() {
                   </tr>
 
                   {grupos.map(({ grupo, subs }) => {
-                    const ids = subs.map((s) => s.id);
+                    const ids = subs.flatMap((s) => s.claves);
                     const valores = porPeriodo(ids);
                     const desplegada = abiertas.includes(grupo.id);
                     return (
@@ -428,7 +431,7 @@ export function Flujo() {
 
                         {desplegada &&
                           subs.map((s) => {
-                            const valoresSub = porPeriodo([s.id]);
+                            const valoresSub = porPeriodo(s.claves);
                             return (
                               <tr
                                 key={`${naturaleza.id}-${s.id}`}
@@ -438,11 +441,11 @@ export function Flujo() {
                                   {s.nombre}
                                 </td>
                                 {valoresSub.map((v, i) =>
-                                  celda(v, i, { abrir: () => abrir(s.nombre, [s.id], i) })
+                                  celda(v, i, { abrir: () => abrir(s.nombre, s.claves, i) })
                                 )}
-                                {celda(sumaTotal([s.id]), "t", {
+                                {celda(sumaTotal(s.claves), "t", {
                                   borde: true,
-                                  abrir: () => abrir(s.nombre, [s.id], null),
+                                  abrir: () => abrir(s.nombre, s.claves, null),
                                 })}
                               </tr>
                             );

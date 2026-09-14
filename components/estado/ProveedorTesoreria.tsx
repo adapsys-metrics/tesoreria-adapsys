@@ -180,6 +180,10 @@ type Contexto = Estado & {
   crearSubcategoria: (categoria_id: string, nombre: string) => void;
   renombrarSubcategoria: (id: string, nombre: string) => void;
   alternarActivaSubcategoria: (id: string) => void;
+  /** Fija la naturaleza de una subcategoría, o la devuelve a heredar cuando coincide
+   *  con la de su categoría. Guardar null y no el valor repetido es lo que hace que
+   *  cambiar la categoría siga arrastrando a las que no se tocaron. */
+  cambiarNaturalezaSubcategoria: (id: string, naturaleza: Naturaleza) => void;
   borrarSubcategoria: (id: string) => void;
 
   // ── Maestros ──────────────────────────────────────────────────────────────
@@ -932,7 +936,17 @@ export function ProveedorTesoreria({
     renombrarGrupo: (id, nombre) =>
       mapCat(id, (c) => ({ ...c, nombre })),
     renombrarCategoria: (id, nombre) => mapSub(id, (x) => ({ ...x, nombre })),
-    cambiarNaturaleza: (id, naturaleza) => mapSub(id, (x) => ({ ...x, naturaleza })),
+    cambiarNaturaleza: (id, naturaleza) =>
+      setEstado((p) => ({
+        ...p,
+        categorias: p.categorias.map((c) => (c.id === id ? { ...c, naturaleza } : c)),
+        // "Si seleccionamos la categoría de un tipo, todas hacia abajo toman ese mismo
+        // tipo": se limpian los override en vez de reescribirlos, que es lo mismo pero
+        // deja a las hijas siguiendo a la madre de ahí en adelante.
+        subcategorias: p.subcategorias.map((x) =>
+          x.categoria_id === id ? { ...x, naturaleza: null } : x
+        ),
+      })),
     cambiarNaturalezaDeGrupo: (grupo_id, naturaleza) =>
       setEstado((p) => ({
         ...p,
@@ -997,10 +1011,32 @@ export function ProveedorTesoreria({
         ...p,
         subcategorias: [
           ...p.subcategorias,
-          { id: idLibre(nombre, idsDelCatalogo(p)), categoria_id, nombre, activa: true },
+          {
+            id: idLibre(nombre, idsDelCatalogo(p)),
+            categoria_id,
+            nombre,
+            // Nace heredando la de su categoría: crear una subcategoría no debería
+            // cambiar de qué lado cae la plata hasta que alguien lo decida.
+            naturaleza: null,
+            activa: true,
+          },
         ],
       })),
     renombrarSubcategoria: (id, nombre) => mapSub3(id, (x) => ({ ...x, nombre })),
+    cambiarNaturalezaSubcategoria: (id, naturaleza) =>
+      setEstado((p) => {
+        const sub = p.subcategorias.find((x) => x.id === id);
+        if (!sub) return p;
+        const dueña = p.categorias.find((c) => c.id === sub.categoria_id);
+        return {
+          ...p,
+          subcategorias: p.subcategorias.map((x) =>
+            x.id === id
+              ? { ...x, naturaleza: naturaleza === dueña?.naturaleza ? null : naturaleza }
+              : x
+          ),
+        };
+      }),
     alternarActivaSubcategoria: (id) => mapSub3(id, (x) => ({ ...x, activa: !x.activa })),
     borrarSubcategoria: (id) =>
       setEstado((p) => ({

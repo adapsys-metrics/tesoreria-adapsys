@@ -441,3 +441,9 @@
   padding-left: 24px;
   color: var(--muted-claro);
 }
+
+/* Una naturaleza heredada se ve más tenue que una fijada aparte: las dos dicen lo
+   mismo, pero solo una es una decisión que alguien tomó sobre esta subcategoría. */
+.heredada {
+  opacity: 0.55;
+}
