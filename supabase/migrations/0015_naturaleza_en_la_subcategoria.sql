@@ -7,6 +7,11 @@
 -- Es la misma regla que ya rige un nivel más arriba: un grupo es "mixto" cuando sus
 -- categorías no coinciden. Ahora una categoría es mixta cuando alguna subcategoría
 -- difiere de ella.
+--
+-- Se puede correr más de una vez. No es adorno: estas migraciones se pegan a mano en
+-- el editor de Supabase, y ahí una corrida puede quedar a medias o repetirse. Fallar
+-- con "la columna ya existe" obliga a editar el archivo para saltarse lo hecho, que es
+-- justo cuando alguien se salta de más.
 
 -- Nullable a propósito: null significa "la que tenga su categoría". Un valor guardado
 -- sería un override, y esa distinción es la que hace que cambiar la naturaleza de la
@@ -15,8 +20,21 @@
 -- Y sobre todo: la categoría conserva su naturaleza. Una línea de movimiento puede
 -- tener categoría y no tener subcategoría —15.649 de 15.670 en el histórico— y sin eso
 -- quedaría sin saber si es inversión u operativo.
-alter table subcategorias add column naturaleza text
-  check (naturaleza in ('ingreso', 'inversion', 'operativo'));
+alter table subcategorias add column if not exists naturaleza text;
+
+-- El check va aparte porque `add column if not exists` no lo agrega si la columna ya
+-- estaba: en una segunda corrida quedaría sin validación y nadie lo notaría.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'subcategorias'::regclass
+      and conname = 'subcategorias_naturaleza_check'
+  ) then
+    alter table subcategorias add constraint subcategorias_naturaleza_check
+      check (naturaleza in ('ingreso', 'inversion', 'operativo'));
+  end if;
+end $$;
 
 comment on column subcategorias.naturaleza is
   'null = hereda la de su categoría. Un valor la sobrescribe, y entonces la categoría '
@@ -32,19 +50,21 @@ comment on column subcategorias.naturaleza is
 -- precisar subcategoría. Quicken lo muestra como "(Other)" y sigue necesitando su
 -- propio presupuesto.
 
-alter table presupuesto add column subcategoria_id text references subcategorias (id);
-alter table presupuesto_meses add column subcategoria_id text references subcategorias (id);
+alter table presupuesto add column if not exists subcategoria_id text
+  references subcategorias (id);
+alter table presupuesto_meses add column if not exists subcategoria_id text
+  references subcategorias (id);
 
 -- Las claves tienen que incluir la subcategoría, pero una columna nullable no puede ir
 -- en una primary key ni en un unique que trate los nulos como distintos: dos líneas de
 -- la misma categoría sin subcategoría serían "diferentes" y se duplicarían. Por eso el
 -- índice va sobre coalesce.
-alter table presupuesto drop constraint presupuesto_anio_subcategoria_id_key;
-create unique index presupuesto_linea_idx
+alter table presupuesto drop constraint if exists presupuesto_anio_subcategoria_id_key;
+create unique index if not exists presupuesto_linea_idx
   on presupuesto (anio, categoria_id, coalesce(subcategoria_id, ''));
 
-alter table presupuesto_meses drop constraint presupuesto_meses_pkey;
-create unique index presupuesto_meses_linea_idx
+alter table presupuesto_meses drop constraint if exists presupuesto_meses_pkey;
+create unique index if not exists presupuesto_meses_linea_idx
   on presupuesto_meses (anio, categoria_id, coalesce(subcategoria_id, ''), mes);
 alter table presupuesto_meses alter column mes set not null;
 
@@ -66,10 +86,12 @@ begin
 end;
 $$;
 
+drop trigger if exists presupuesto_calza on presupuesto;
 create trigger presupuesto_calza
   before insert or update on presupuesto
   for each row execute function fn_presupuesto_calza();
 
+drop trigger if exists presupuesto_meses_calza on presupuesto_meses;
 create trigger presupuesto_meses_calza
   before insert or update on presupuesto_meses
   for each row execute function fn_presupuesto_calza();

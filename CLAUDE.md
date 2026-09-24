@@ -362,6 +362,22 @@ La densidad no se negocia: esto es una herramienta de trabajo diario, no una lan
 y la densidad choquen, gana la densidad — el kit resuelve cómo se ve Adapsys, no cómo se lee una
 tabla de tesorería.
 
+### Las migraciones se corren a mano, así que tienen que ser repetibles
+
+No hay CLI de migraciones: se pegan en el editor SQL de Supabase. Ahí una corrida puede
+quedar a medias, o repetirse porque no quedó claro si la anterior pasó. Una migración
+que falla con "la columna ya existe" obliga a editar el archivo para saltarse lo ya
+hecho, y ese es justo el momento en que alguien se salta de más.
+
+Toda migración nueva se escribe para poder correrse dos veces: `add column if not
+exists`, `drop constraint if exists`, `create index if not exists`, `create or replace
+function`, y `drop trigger if exists` antes de cada `create trigger`. Un `check` que
+acompaña a una columna va en su propio `do $$ ... $$` guardado, porque `add column if
+not exists` no lo agrega cuando la columna ya estaba y quedaría sin validación.
+
+`supabase/esquema.test.ts` corre las últimas dos veces seguidas. Ya pasó dos veces que
+una migración reventara a mitad de camino en producción.
+
 ### Verificación obligatoria
 **Compilar no basta.** El bundler valida sintaxis pero no detecta referencias a variables usadas
 antes de su declaración ni identificadores inexistentes — un error real de este proyecto fue una

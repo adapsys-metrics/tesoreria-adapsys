@@ -121,6 +121,31 @@ describe("migraciones y seed", () => {
     await expect(db.exec(sql)).resolves.toBeDefined();
   });
 
+  it("las migraciones se pueden correr dos veces", async () => {
+    // Se pegan a mano en el editor de Supabase, y ahí una corrida puede quedar a
+    // medias o repetirse. Ya pasó dos veces: primero con el hito y después con 0015,
+    // que reventó con "la columna naturaleza ya existe" después de haber aplicado
+    // media migración. Correrlas de nuevo tiene que ser inofensivo.
+    for (const archivo of ["migrations/0014_maestros.sql", "migrations/0015_naturaleza_en_la_subcategoria.sql"]) {
+      await expect(db.exec(leer(archivo))).resolves.toBeDefined();
+    }
+
+    // Y el estado tiene que quedar igual, no a medias: el check de la columna sigue
+    // puesto aunque `add column if not exists` no lo hubiera vuelto a agregar.
+    const r = await db.query<{ n: number }>(
+      `select count(*)::int as n from pg_constraint
+       where conrelid = 'subcategorias'::regclass
+         and conname = 'subcategorias_naturaleza_check'`
+    );
+    expect(r.rows[0]!.n).toBe(1);
+    expect(
+      await intentar(
+        `insert into subcategorias (id, categoria_id, nombre, naturaleza)
+         values ('x', 'arriendo-oficina', 'X', 'inventada')`
+      )
+    ).toMatch(/subcategorias_naturaleza_check/);
+  });
+
   it("guarda un proveedor con sus datos bancarios", async () => {
     expect(
       await intentar(

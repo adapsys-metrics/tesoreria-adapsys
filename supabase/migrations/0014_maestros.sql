@@ -6,8 +6,11 @@
 --
 -- Además el maestro es el filtro de la nómina: entra a pagarse lo que tiene proveedor
 -- con cuenta cargada. Por eso lleva `activo` y no se borra lo que ya se usó.
+--
+-- Se puede correr más de una vez: estas migraciones se pegan a mano en el editor de
+-- Supabase y ahí una corrida puede quedar a medias o repetirse.
 
-create table proveedores (
+create table if not exists proveedores (
   id text primary key,
   nombre text not null,
   -- Sin puntos ni guion y con el dígito verificador pegado, que es como lo pide el
@@ -23,10 +26,11 @@ create table proveedores (
 );
 
 -- Se busca por nombre al emparejar con la contraparte del movimiento.
-create index proveedores_nombre_idx on proveedores (lower(nombre));
+create index if not exists proveedores_nombre_idx on proveedores (lower(nombre));
 
 alter table proveedores enable row level security;
 
+drop policy if exists "autorizados_todo" on proveedores;
 create policy "autorizados_todo" on proveedores
   for all using (fn_es_usuario_autorizado()) with check (fn_es_usuario_autorizado());
 
@@ -37,7 +41,7 @@ comment on table proveedores is
 -- El número de la cuenta propia, para la columna Cta_origen del archivo. Texto por lo
 -- mismo que arriba, y nullable porque las cuentas auxiliares —facturas por cobrar,
 -- proyecciones— no son cuentas de banco y no tienen número.
-alter table cuentas add column numero text;
+alter table cuentas add column if not exists numero text;
 
 comment on column cuentas.numero is
   'Número de la cuenta en el banco. Solo las de tipo banco lo tienen; las auxiliares '
