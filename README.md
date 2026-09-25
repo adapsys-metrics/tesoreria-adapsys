@@ -149,8 +149,19 @@ callback, el login queda roto en el intermedio.
    proyecto**, que es el que decide a qué despliegue apunta. Con dos proyectos
    conectados al mismo repo, entrar por el del equipo es como se termina apuntando al
    proyecto equivocado.
-2. **DNS de `adapsysgroup.com`** → el registro `CNAME` que indique Vercel. Lo maneja
-   quien administre el dominio corporativo.
+2. **DNS de `adapsysgroup.com`** → el registro `CNAME` que indique Vercel.
+
+   El DNS está en **Cloudflare** (`ivy.ns` / `owen.ns.cloudflare.com`), no en Vercel:
+   lo carga quien administre esa cuenta. Y el apex y `www` resuelven a IPs de
+   Cloudflare, así que el sitio corporativo se sirve por ahí con algún origen detrás.
+
+   **Ojo con "Reclamar la propiedad del dominio".** `adapsysgroup.com` ya está tomado
+   por otra cuenta de Vercel, así que al agregar el subdominio Vercel pide un TXT en
+   `_vercel.adapsysgroup.com` y ofrece "Verificar y reclamar". El TXT en sí es
+   inofensivo —es un registro nuevo—, pero el botón habla de *transferencia de
+   propiedad*: si el sitio corporativo se sirve desde esa otra cuenta, reclamar el
+   dominio puede dejarlo respondiendo 404. Antes de apretarlo hay que averiguar quién
+   tiene el dominio en Vercel y qué proyecto sirve el sitio.
 3. **Google Cloud Console** → el OAuth Client → *Authorized redirect URIs*. Ahí va la
    de Supabase (`https://<project-ref>.supabase.co/auth/v1/callback`), que no cambia:
    Google le responde a Supabase, no a la app.
@@ -165,6 +176,12 @@ callback, el login queda roto en el intermedio.
 
 Recién cuando el paso 5 pase, avisarles a las otras dos personas: hasta entonces les va
 a pedir una cuenta de Vercel que no tienen.
+
+**El dominio no es el camino corto.** Si lo que urge es que las otras dos personas
+puedan entrar, alcanza con apagar la protección de producción (paso 5) — eso no depende
+de nadie más. El control de acceso queda donde siempre estuvo: la lista de autorizados
+más el dominio corporativo. El dominio propio es comodidad, y puede resolverse después
+sin bloquear a nadie.
 
 ### Cuál es el link de la app
 
