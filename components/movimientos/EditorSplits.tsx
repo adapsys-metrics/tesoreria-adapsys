@@ -96,7 +96,8 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
                 }
                 className={clases(css.selectTipo, !l.doc_tipo && css.heredado)}
               >
-                <option value="">{m.doc_tipo ? `— ${m.doc_tipo} —` : "— sin tipo —"}</option>
+                {/* Corto a propósito: la columna es angosta y el título explica el resto. */}
+                <option value="">{m.doc_tipo ?? "sin tipo"}</option>
                 <option value="afecta">afecta</option>
                 <option value="exento">exenta</option>
                 <option value="honorario">honorario</option>

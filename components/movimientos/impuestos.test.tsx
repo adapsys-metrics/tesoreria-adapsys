@@ -5,8 +5,9 @@
 // la suma de líneas igual cuadra con el monto — solo que el monto quedó mal.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { ProveedorTesoreria, useTesoreria } from "@/components/estado/ProveedorTesoreria";
+import { Registro } from "@/components/movimientos/Registro";
 import { SUB_IVA_COMPRAS } from "@/lib/dominio";
 import type { DocTipo, Movimiento } from "@/lib/tipos";
 
@@ -114,5 +115,41 @@ describe("IVA sobre un pago con facturas de distinto tipo", () => {
     fireEvent.click(screen.getByText("iva"));
     expect(Number(screen.getByTestId("iva").textContent)).toBe(-285_000);
     expect(Number(screen.getByTestId("total").textContent)).toBe(-2_085_000);
+  });
+});
+
+describe("La fila de un split", () => {
+  // Se rompió al agregar el tipo por línea: la fila era un grid de cuatro columnas y
+  // con seis controles el monto quedaba aplastado y el aspa caía a la línea de abajo.
+  const abrir = () => {
+    render(
+      <ProveedorTesoreria registroInicial={null}>
+        <Registro />
+      </ProveedorTesoreria>
+    );
+    // Se abre el editor de cada movimiento hasta dar con uno que tenga split: los
+    // datos de ejemplo tienen varios, pero cuál es el primero depende del orden.
+    for (const boton of screen.getAllByTitle("Editar el movimiento")) {
+      fireEvent.click(boton);
+      if (screen.queryAllByLabelText("Monto de la línea").length > 1) return;
+      fireEvent.click(boton);
+    }
+    throw new Error("ningún movimiento de ejemplo tiene split");
+  };
+
+  it("lleva todos sus controles, y el aspa entre ellos", () => {
+    abrir();
+    const montos = screen.getAllByLabelText("Monto de la línea");
+    expect(montos.length).toBeGreaterThan(1);
+    // Todos los controles de una línea cuelgan del mismo contenedor: si alguno se
+    // fuera a otra fila, dejaría de ser hermano del monto.
+    const fila = montos[0]!.parentElement!;
+    expect(fila.querySelectorAll("input, select, button").length).toBeGreaterThanOrEqual(4);
+    expect(within(fila as HTMLElement).getByTitle(/Eliminar línea|al menos una línea/)).toBeDefined();
+  });
+
+  it("el tipo por línea solo aparece en los splits", () => {
+    abrir();
+    expect(screen.getAllByLabelText("Tipo de documento de la línea").length).toBeGreaterThan(1);
   });
 });

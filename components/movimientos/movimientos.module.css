@@ -266,16 +266,29 @@
   margin-bottom: 9px;
 }
 
+/* La fila tiene entre cuatro y seis controles: la subcategoría solo aparece si la
+   categoría tiene alguna, y el tipo de documento solo en los splits. Con un grid de
+   columnas fijas los que sobraban se iban a una segunda fila —el monto quedaba
+   aplastado en los 24px del aspa y el aspa caía debajo—.
+   Con flex, lo que no está no ocupa, y el monto sigue alineado entre filas porque la
+   glosa absorbe la diferencia: todo lo que va a su derecha tiene ancho propio. */
 .linea {
-  display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(140px, 220px) 110px 24px;
-  gap: 6px;
+  display: flex;
   align-items: center;
+  gap: 6px;
+}
+
+/* Los selectores no se encogen: apretarlos hasta que no se lea la categoría es peor
+   que recortar la glosa, que se entiende igual truncada. */
+.linea > select,
+.linea > button {
+  flex: none;
 }
 
 .inputGlosa {
-  width: 100%;
-  min-width: 0;
+  flex: 1 1 120px;
+  /* Puede achicarse todo lo necesario: es lo único que cede cuando falta espacio. */
+  min-width: 50px;
   font-size: 11px;
   padding: 3px 6px;
   border: 1px solid var(--rule-soft);
@@ -284,7 +297,7 @@
 }
 
 .inputMonto {
-  width: 100%;
+  flex: 0 0 110px;
   text-align: right;
   font-family: var(--font-cifras);
   font-size: 11px;
