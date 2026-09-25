@@ -327,8 +327,16 @@ grupo**. Una lista plana de 290 ítems es inusable.
 
 ## 7. Stack
 
-- **Postgres vía Supabase** — auth con Google corporativo, Row Level Security para permisos,
-  backup diario automático (esto resuelve el "respaldado en la nube" mejor que un archivo local).
+- **Postgres vía Supabase** — auth con Google corporativo, Row Level Security para permisos.
+
+  **El respaldo automático depende del plan contratado**, no viene por el solo hecho de usar
+  Supabase: en el gratuito no hay ninguno. Hay que verificarlo en el panel (Database → Backups)
+  y no darlo por hecho. Además, un respaldo del proveedor no cubre el caso que de verdad ocurre
+  en una operación de tres personas: alguien borra algo sin querer y no hay deshacer (§10).
+
+  Por eso Maestros tiene **"Descargar todo"**, que baja un JSON con todas las tablas a tu
+  computador. Pasa por la sesión de quien lo pide, así que respeta RLS y no necesita la llave
+  de service_role — que se sacó de Vercel a propósito porque se la salta.
 - **Next.js** desplegado en Vercel.
 - Mantener export a CSV/Sheets para quien prefiera seguir trabajando ahí.
 

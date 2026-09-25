@@ -13,6 +13,7 @@ import { Aviso, BotonFantasma, Cabecera, Rotulo, clases } from "@/components/ui/
 import { formatearRut, normalizarRut, rutValido } from "@/lib/rut";
 import { parsearProveedores, type FilaPegada } from "@/lib/proveedores-pegado";
 import tabla from "@/components/ui/tabla.module.css";
+import { Respaldo } from "./Respaldo";
 import css from "./maestros.module.css";
 
 /** Lo que la nómina necesita de un proveedor para poder pagarle. */
@@ -297,6 +298,8 @@ export function Maestros() {
           </div>
         )}
       </section>
+
+      <Respaldo />
     </>
   );
 }

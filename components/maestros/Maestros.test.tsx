@@ -183,6 +183,14 @@ describe("Maestros", () => {
     expect((screen.getByLabelText("Cuenta de Dimerc") as HTMLInputElement).value).toBe("1234567");
   });
 
+  it("ofrece bajar el respaldo, y dice que no reemplaza al del proveedor", () => {
+    // Un respaldo que nadie encuentra no existe, y uno que alguien cree que tiene y no
+    // tiene es peor: el texto tiene que decir qué cubre y qué no.
+    montar();
+    expect(screen.getByRole("button", { name: /Descargar todo/ })).toBeDefined();
+    expect(screen.getByText(/movimientos con sus líneas/)).toBeDefined();
+  });
+
   it("cuenta cuántos están listos para pagar", () => {
     montar();
     expect(screen.getByText(/0 proveedores · 0 listos para pagar/)).toBeDefined();

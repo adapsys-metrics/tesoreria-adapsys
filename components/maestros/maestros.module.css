@@ -211,3 +211,7 @@
   background: var(--rule-medio);
   cursor: default;
 }
+
+.empuje {
+  flex: 1;
+}
