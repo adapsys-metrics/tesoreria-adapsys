@@ -111,6 +111,29 @@ vercel deploy --prod
 O conectar el repo directamente desde el dashboard de Vercel y cargar las mismas
 variables de entorno ahí (Project Settings → Environment Variables).
 
+### Cuál es el link de la app
+
+**El de la pestaña Deployments de GitHub no sirve para entrar todos los días.** Ahí
+GitHub muestra la URL de *ese despliegue puntual*, que lleva un hash
+(`tesoreria-adapsys-83xrvco6u-...`) y que **Vercel borra al cabo de un tiempo** por su
+política de retención: el link queda devolviendo `410 GONE`, aunque la app esté
+perfectamente viva.
+
+El link que hay que usar es el **dominio estable del proyecto** —el que no lleva hash—,
+que Vercel apunta siempre al último despliegue de producción. Está en el dashboard de
+Vercel, en el proyecto, arriba: *Domains*. Ese es el que se guarda en favoritos y el
+que se comparte.
+
+Además es el único que sirve para el login: la URL de callback de Google
+(`https://<dominio>/auth/callback`) se registra una vez, y una URL con hash cambia en
+cada despliegue.
+
+**Un repo, un proyecto de Vercel.** Si el mismo repositorio quedó conectado a dos
+proyectos, cada push despliega dos veces y hay dos apps contra la misma base. No es
+solo ruido: las variables de entorno y la URL de callback se configuran por proyecto,
+así que uno de los dos puede quedar apuntando a otra parte o sin poder iniciar sesión.
+Conviene dejar uno solo y borrar el resto.
+
 ### Preview sin proyecto Supabase todavía
 
 La app no explota si `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
