@@ -66,6 +66,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0013_hito.sql"));
   await db.exec(leer("migrations/0014_maestros.sql"));
   await db.exec(leer("migrations/0015_naturaleza_en_la_subcategoria.sql"));
+  await db.exec(leer("migrations/0016_doc_tipo_por_linea.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -126,7 +127,11 @@ describe("migraciones y seed", () => {
     // medias o repetirse. Ya pasó dos veces: primero con el hito y después con 0015,
     // que reventó con "la columna naturaleza ya existe" después de haber aplicado
     // media migración. Correrlas de nuevo tiene que ser inofensivo.
-    for (const archivo of ["migrations/0014_maestros.sql", "migrations/0015_naturaleza_en_la_subcategoria.sql"]) {
+    for (const archivo of [
+      "migrations/0014_maestros.sql",
+      "migrations/0015_naturaleza_en_la_subcategoria.sql",
+      "migrations/0016_doc_tipo_por_linea.sql",
+    ]) {
       await expect(db.exec(leer(archivo))).resolves.toBeDefined();
     }
 

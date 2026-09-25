@@ -6,6 +6,7 @@
 
 import { useRef, useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
+import type { DocTipo } from "@/lib/tipos";
 import { descuadre } from "@/lib/dominio";
 import { clp, pct } from "@/lib/formato";
 import type { Movimiento } from "@/lib/tipos";
@@ -79,6 +80,28 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
               onChange={(id) => editarLinea(m.id, i, "subcategoria_id", id)}
               compacto
             />
+            {/* El tipo por línea solo aparece en los splits: con una sola línea, el
+                del movimiento alcanza y un selector más sería ruido en cada fila. */}
+            {m.lineas.length > 1 && (
+              <select
+                value={l.doc_tipo ?? ""}
+                onChange={(e) =>
+                  editarLinea(m.id, i, "doc_tipo", (e.target.value || null) as DocTipo | null)
+                }
+                aria-label="Tipo de documento de la línea"
+                title={
+                  l.doc_tipo
+                    ? "Fijado aparte del movimiento: el IVA se calcula solo sobre las afectas"
+                    : "Hereda el del movimiento"
+                }
+                className={clases(css.selectTipo, !l.doc_tipo && css.heredado)}
+              >
+                <option value="">{m.doc_tipo ? `— ${m.doc_tipo} —` : "— sin tipo —"}</option>
+                <option value="afecta">afecta</option>
+                <option value="exento">exenta</option>
+                <option value="honorario">honorario</option>
+              </select>
+            )}
             <input
               type="number"
               value={l.monto}

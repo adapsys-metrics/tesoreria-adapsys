@@ -46,7 +46,7 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
         ? conRetencion(montoBase, categoria, tasas.bhe)
         : {
             monto: montoBase,
-            lineas: [{ categoria_id: categoria, subcategoria_id: null, monto: montoBase, glosa: null }],
+            lineas: [{ categoria_id: categoria, subcategoria_id: null, doc_tipo: null, monto: montoBase, glosa: null }],
           };
 
   const cuenta = cuentas.find((c) => c.id === cuentaId) ?? cuentas[0]!;

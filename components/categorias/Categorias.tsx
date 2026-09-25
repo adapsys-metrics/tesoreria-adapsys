@@ -139,7 +139,7 @@ export function Categorias() {
       editarLinea(fila.movimiento_id, fila.indice_linea, "categoria_id", categoria_id);
     } else {
       editarMovimiento(fila.movimiento_id, "lineas", [
-        { categoria_id, subcategoria_id: null, monto: fila.monto, glosa: fila.glosa },
+        { categoria_id, subcategoria_id: null, doc_tipo: null, monto: fila.monto, glosa: fila.glosa },
       ]);
     }
   };

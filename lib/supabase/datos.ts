@@ -8,7 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
-import type { Linea, Movimiento } from "@/lib/tipos";
+import type { DocTipo, Linea, Movimiento } from "@/lib/tipos";
 
 /** PostgREST corta en 1.000 filas por respuesta (el `max-rows` por defecto de
  *  Supabase). Con 10.530 movimientos, pedir "todo" sin paginar devuelve el 9,5%
@@ -17,7 +17,7 @@ const TAMANO_PAGINA = 1000;
 
 const COLUMNAS =
   "id,fecha,empresa_id,cuenta_id,contraparte,glosa,documento,monto,moneda,tipo_cambio,estado,doc_tipo,hito," +
-  "movimiento_lineas(categoria_id,subcategoria_id,monto,glosa,orden)";
+  "movimiento_lineas(categoria_id,subcategoria_id,doc_tipo,monto,glosa,orden)";
 
 type FilaCruda = {
   id: number;
@@ -36,6 +36,7 @@ type FilaCruda = {
   movimiento_lineas: {
     categoria_id: string;
     subcategoria_id: string | null;
+    doc_tipo: DocTipo | null;
     monto: number | string;
     glosa: string | null;
     orden: number;
@@ -55,6 +56,7 @@ function aMovimiento(fila: FilaCruda): Movimiento {
     .map((l) => ({
       categoria_id: l.categoria_id,
       subcategoria_id: l.subcategoria_id,
+      doc_tipo: l.doc_tipo,
       monto: aNumero(l.monto),
       glosa: l.glosa,
     }));

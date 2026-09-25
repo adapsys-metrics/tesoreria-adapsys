@@ -81,9 +81,10 @@ movimientos     (id, fecha, empresa_id, cuenta_id, contraparte, glosa,
                 -- doc_tipo: 'exento'|'afecta'|'honorario'
                 -- monto = líquido que entra o sale del banco
 
-movimiento_lineas (id, movimiento_id, categoria_id, subcategoria_id, monto, glosa, orden)
+movimiento_lineas (id, movimiento_id, categoria_id, subcategoria_id, doc_tipo, monto, glosa, orden)
                 -- suma de líneas DEBE igualar movimientos.monto
                 -- subcategoria_id es opcional y debe colgar de categoria_id
+                -- doc_tipo null = el del movimiento; un valor lo sobrescribe (§4.3)
 
 presupuesto     (id, anio, categoria_id, subcategoria_id, monto, monto_anterior, responsable, nota)
                 -- consolidado: NO lleva empresa_id
@@ -213,6 +214,17 @@ Ejemplo real (boleta): bruto −1.253.118 + retención +191.100 = **−1.062.018
 
 **El documento manda sobre la fórmula.** 306.745 × 19% = 58.281,55 pero la factura dice 58.281.
 Los helpers calculan, pero el monto de cada línea siempre debe quedar editable.
+
+**El tipo de documento puede variar dentro de un mismo pago.** Un proveedor manda tres
+facturas —dos afectas y una exenta— y se pagan en una transferencia. Cobrar IVA sobre
+las tres es plata que no existe, y el detector de descuadre no lo delata: la suma de
+líneas igual cuadra con el monto, solo que el monto quedó mal.
+
+Por eso `movimiento_lineas.doc_tipo` es nullable, con la misma forma que la naturaleza
+en la subcategoría (§4.2): null es "el del movimiento" y un valor lo sobrescribe. La
+base del impuesto son las líneas de ese tipo; **si ninguna lo dice, son todas** —
+apretar el botón ya es decir "esto es afecto", que es el caso corriente y no debería
+obligar a marcar nada.
 
 **Tarjetas de crédito.** Un movimiento (el pago del estado de cuenta) con muchas líneas, cada una
 con su propia glosa y categoría. Necesita carga masiva por pegado.

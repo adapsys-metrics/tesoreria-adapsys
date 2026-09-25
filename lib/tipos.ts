@@ -92,6 +92,10 @@ export type Subcategoria = {
 export type Linea = {
   categoria_id: string;
   subcategoria_id: string | null;
+  /** null = el del movimiento. Un valor lo sobrescribe: sirve cuando se pagan juntas
+   *  varias facturas de distinto tipo, o en el estado de cuenta de la tarjeta, donde
+   *  conviven compras afectas con suscripciones extranjeras sin IVA (§4.3). */
+  doc_tipo: DocTipo | null;
   monto: number;
   glosa: string | null;
 };
@@ -144,6 +148,8 @@ export type LineaExpandida = {
   categoria_id: string | null;
   /** El detalle de la línea, cuando lo tiene. Casi siempre null (§3.1). */
   subcategoria_id: string | null;
+  /** El tipo ya resuelto: el de la línea si lo fijó, si no el del movimiento (§4.3). */
+  doc_tipo: DocTipo | null;
   monto: number;
   glosa: string | null;
   contraparte: string | null;

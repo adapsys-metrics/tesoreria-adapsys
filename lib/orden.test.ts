@@ -117,7 +117,7 @@ describe("textos", () => {
   it("los movimientos sin clasificar quedan al final de su columna", () => {
     const movs = [
       mov({ id: "sin" }),
-      mov({ id: "con", lineas: [{ categoria_id: "sueldos", subcategoria_id: null, monto: -1000, glosa: null }] }),
+      mov({ id: "con", lineas: [{ categoria_id: "sueldos", subcategoria_id: null, doc_tipo: null, monto: -1000, glosa: null }] }),
     ];
     expect(ordenar(movs, { columna: "categoria", sentido: "asc" })).toEqual(["con", "sin"]);
   });

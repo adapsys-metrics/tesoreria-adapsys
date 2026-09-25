@@ -224,6 +224,8 @@ export type Database = {
           /** Opcional (0012): la enorme mayoría de las líneas se clasifica a nivel
            *  de categoría. Si viene, pertenece a esa categoría — lo valida un trigger. */
           subcategoria_id: string | null;
+          /** null = el del movimiento (0016). */
+          doc_tipo: DocTipo | null;
           monto: number;
           glosa: string | null;
           orden: number;
@@ -233,6 +235,7 @@ export type Database = {
           movimiento_id: number;
           categoria_id: string;
           subcategoria_id?: string | null;
+          doc_tipo?: DocTipo | null;
           monto: number;
           glosa?: string | null;
           orden?: number;

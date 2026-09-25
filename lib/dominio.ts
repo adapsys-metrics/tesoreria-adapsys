@@ -32,8 +32,8 @@ export const conRetencion = (
   return {
     monto: bruto + retencion,
     lineas: [
-      { categoria_id: categoriaBruto, subcategoria_id: null, monto: bruto, glosa: "Bruto" },
-      { categoria_id: SUB_RETENCION_BHE, subcategoria_id: null, monto: retencion,
+      { categoria_id: categoriaBruto, subcategoria_id: null, doc_tipo: null, monto: bruto, glosa: "Bruto" },
+      { categoria_id: SUB_RETENCION_BHE, subcategoria_id: null, doc_tipo: null, monto: retencion,
         glosa: `Retención ${pct(tasa)}`,
       },
     ],
@@ -56,8 +56,8 @@ export const conIva = (
   return {
     monto: neto + iva,
     lineas: [
-      { categoria_id: categoriaNeto, subcategoria_id: null, monto: neto, glosa: "Neto" },
-      { categoria_id: SUB_IVA_COMPRAS, subcategoria_id: null, monto: iva, glosa: `IVA ${pct(tasa)}` },
+      { categoria_id: categoriaNeto, subcategoria_id: null, doc_tipo: null, monto: neto, glosa: "Neto" },
+      { categoria_id: SUB_IVA_COMPRAS, subcategoria_id: null, doc_tipo: null, monto: iva, glosa: `IVA ${pct(tasa)}` },
     ],
   };
 };
@@ -88,6 +88,7 @@ export const expandir = (movimientos: Movimiento[]): LineaExpandida[] =>
           ...comun,
           categoria_id: null,
           subcategoria_id: null,
+          doc_tipo: m.doc_tipo,
           monto: m.monto,
           glosa: m.glosa,
           indice_linea: null,
@@ -98,6 +99,9 @@ export const expandir = (movimientos: Movimiento[]): LineaExpandida[] =>
       ...comun,
       categoria_id: l.categoria_id,
       subcategoria_id: l.subcategoria_id,
+      // Ya resuelto acá, una vez: calcularlo en cada consumidor es donde se
+      // desincroniza (§4.3).
+      doc_tipo: l.doc_tipo ?? m.doc_tipo,
       monto: l.monto,
       glosa: l.glosa ?? m.glosa,
       indice_linea: i,

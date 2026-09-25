@@ -60,6 +60,7 @@ import { perteneceAlRegistro, saldoDeCuenta } from "@/lib/registros";
 import { pasoDe } from "@/lib/cobranza";
 import { pct } from "@/lib/formato";
 import type {
+  DocTipo,
   Empresa,
   Grupo,
   Proveedor,
@@ -691,7 +692,7 @@ export function ProveedorTesoreria({
           ...m,
           lineas: [
             ...m.lineas,
-            { categoria_id: m.lineas[0]?.categoria_id ?? "", subcategoria_id: null, monto: Math.round(falta),
+            { categoria_id: m.lineas[0]?.categoria_id ?? "", subcategoria_id: null, doc_tipo: null, monto: Math.round(falta),
               glosa: null,
             },
           ],
@@ -718,7 +719,7 @@ export function ProveedorTesoreria({
       mapMov(id, (m) => ({
         ...m,
         lineas: [
-          { categoria_id: m.lineas[0]?.categoria_id ?? "", subcategoria_id: null, monto: m.monto,
+          { categoria_id: m.lineas[0]?.categoria_id ?? "", subcategoria_id: null, doc_tipo: null, monto: m.monto,
             glosa: null,
           },
         ],
@@ -753,14 +754,25 @@ export function ProveedorTesoreria({
       mapMov(id, (m) => {
         const subImpuesto = tipo === "iva" ? SUB_IVA_COMPRAS : SUB_RETENCION_BHE;
         const tasa = tipo === "iva" ? tasas.iva : tasas.bhe;
+        const propio: DocTipo = tipo === "iva" ? "afecta" : "honorario";
+
         const base = m.lineas.filter((l) => l.categoria_id !== subImpuesto);
-        const suma = base.reduce((s, l) => s + l.monto, 0);
+        // La base son las líneas de ese tipo. Un proveedor manda tres facturas, dos
+        // afectas y una exenta, y se pagan juntas: cobrar IVA sobre las tres es plata
+        // que no existe.
+        //
+        // Si ninguna lo dice —ni la línea ni el movimiento— son todas: apretar el
+        // botón ya es decir "esto es afecto", y es como venía funcionando.
+        const deSuTipo = base.filter((l) => (l.doc_tipo ?? m.doc_tipo) === propio);
+        const gravadas = deSuTipo.length ? deSuTipo : base;
+        const suma = gravadas.reduce((s, l) => s + l.monto, 0);
         const monto = Math.round(tipo === "iva" ? suma * tasa : -suma * tasa);
         const lineas: Linea[] = [
           ...base,
           {
             categoria_id: subImpuesto,
             subcategoria_id: null,
+            doc_tipo: null,
             monto,
             glosa: `${tipo === "iva" ? "IVA" : "Retención"} ${pct(tasa)}`,
           },
@@ -795,7 +807,7 @@ export function ProveedorTesoreria({
               .slice(0, t.lastIndexOf(ultimo))
               .replace(/[\t;|]+/g, " ")
               .trim();
-            return { categoria_id: m.lineas[0]?.categoria_id ?? "", subcategoria_id: null, monto: signo * Math.abs(n),
+            return { categoria_id: m.lineas[0]?.categoria_id ?? "", subcategoria_id: null, doc_tipo: null, monto: signo * Math.abs(n),
               glosa: glosa || "—",
             };
           })

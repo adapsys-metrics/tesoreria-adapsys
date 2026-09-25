@@ -101,8 +101,8 @@ describe("expandir (§3)", () => {
       mov({
         monto: -365026,
         lineas: [
-          { categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -306745, glosa: "Neto" },
-          { categoria_id: "iva-compras", subcategoria_id: null, monto: -58281, glosa: "IVA" },
+          { categoria_id: "telefonia-e-internet", subcategoria_id: null, doc_tipo: null, monto: -306745, glosa: "Neto" },
+          { categoria_id: "iva-compras", subcategoria_id: null, doc_tipo: null, monto: -58281, glosa: "IVA" },
         ],
       }),
     ]);
@@ -119,7 +119,7 @@ describe("expandir (§3)", () => {
         tipo_cambio: 950,
         estado: "conciliado",
         empresa_id: "cons",
-        lineas: [{ categoria_id: "horas", subcategoria_id: null, monto: -100, glosa: null }],
+        lineas: [{ categoria_id: "horas", subcategoria_id: null, doc_tipo: null, monto: -100, glosa: null }],
       }),
     ]);
     expect(filas[0]).toMatchObject({
@@ -134,8 +134,8 @@ describe("expandir (§3)", () => {
     const filas = expandir([
       mov({
         lineas: [
-          { categoria_id: "a", subcategoria_id: null, monto: -1, glosa: null },
-          { categoria_id: "b", subcategoria_id: null, monto: -2, glosa: null },
+          { categoria_id: "a", subcategoria_id: null, doc_tipo: null, monto: -1, glosa: null },
+          { categoria_id: "b", subcategoria_id: null, doc_tipo: null, monto: -2, glosa: null },
         ],
       }),
     ]);
@@ -164,8 +164,8 @@ describe("descuadre (§3)", () => {
     const m = mov({
       monto: -365026,
       lineas: [
-        { categoria_id: "a", subcategoria_id: null, monto: -306745, glosa: null },
-        { categoria_id: "b", subcategoria_id: null, monto: -58281, glosa: null },
+        { categoria_id: "a", subcategoria_id: null, doc_tipo: null, monto: -306745, glosa: null },
+        { categoria_id: "b", subcategoria_id: null, doc_tipo: null, monto: -58281, glosa: null },
       ],
     });
     expect(descuadre(m)).toBe(0);
@@ -175,7 +175,7 @@ describe("descuadre (§3)", () => {
   it("detecta el descuadre en vez de corregirlo", () => {
     const m = mov({
       monto: -365026,
-      lineas: [{ categoria_id: "a", subcategoria_id: null, monto: -306745, glosa: null }],
+      lineas: [{ categoria_id: "a", subcategoria_id: null, doc_tipo: null, monto: -306745, glosa: null }],
     });
     expect(descuadre(m)).toBe(-58281);
   });

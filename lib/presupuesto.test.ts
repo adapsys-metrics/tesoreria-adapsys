@@ -35,7 +35,7 @@ const mov = (p: Partial<Movimiento>): Movimiento => ({
 
 /** Un movimiento de una línea, que es el caso corriente. */
 const gasto = (id: string, fecha: string, sub: string, monto: number, extra: Partial<Movimiento> = {}) =>
-  mov({ id, fecha, monto, lineas: [{ categoria_id: sub, subcategoria_id: null, monto, glosa: null }], ...extra });
+  mov({ id, fecha, monto, lineas: [{ categoria_id: sub, subcategoria_id: null, doc_tipo: null, monto, glosa: null }], ...extra });
 
 // El TC no cambia nada mientras todo esté en pesos; se nombra para que se lea
 // por qué el parámetro está ahí.
@@ -199,8 +199,8 @@ describe("distribucionOperativa", () => {
           fecha: "2026-08-14",
           monto: -365026,
           lineas: [
-            { categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -306745, glosa: null },
-            { categoria_id: "iva-compras", subcategoria_id: null, monto: -58281, glosa: null },
+            { categoria_id: "telefonia-e-internet", subcategoria_id: null, doc_tipo: null, monto: -306745, glosa: null },
+            { categoria_id: "iva-compras", subcategoria_id: null, doc_tipo: null, monto: -58281, glosa: null },
           ],
         }),
       ],
@@ -260,8 +260,8 @@ describe("ejecutadoPorCategoria", () => {
         mov({
           monto: -365026,
           lineas: [
-            { categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -306745, glosa: null },
-            { categoria_id: "iva-compras", subcategoria_id: null, monto: -58281, glosa: null },
+            { categoria_id: "telefonia-e-internet", subcategoria_id: null, doc_tipo: null, monto: -306745, glosa: null },
+            { categoria_id: "iva-compras", subcategoria_id: null, doc_tipo: null, monto: -58281, glosa: null },
           ],
         }),
       ],

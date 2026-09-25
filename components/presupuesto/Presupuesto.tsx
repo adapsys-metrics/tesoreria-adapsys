@@ -140,7 +140,7 @@ export function Presupuesto() {
     } else {
       // Sin líneas: clasificarlo crea la primera.
       editarMovimiento(fila.movimiento_id, "lineas", [
-        { categoria_id, subcategoria_id: null, monto: fila.monto, glosa: fila.glosa },
+        { categoria_id, subcategoria_id: null, doc_tipo: null, monto: fila.monto, glosa: fila.glosa },
       ]);
     }
   };

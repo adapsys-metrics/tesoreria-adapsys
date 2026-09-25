@@ -413,7 +413,7 @@ export function Registro() {
                                 m.lineas.length
                                   ? editarLinea(m.id, 0, "categoria_id", id)
                                   : editarMovimiento(m.id, "lineas", [
-                                      { categoria_id: id, subcategoria_id: null, monto: m.monto, glosa: null },
+                                      { categoria_id: id, subcategoria_id: null, doc_tipo: null, monto: m.monto, glosa: null },
                                     ])
                               }
                             />

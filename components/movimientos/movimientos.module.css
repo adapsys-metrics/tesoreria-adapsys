@@ -642,3 +642,22 @@
   color: var(--teal);
   white-space: nowrap;
 }
+
+/* El tipo de documento de la línea. Angosto: es el control menos usado de la fila y
+   compite con la glosa, que es lo que se lee. */
+.selectTipo {
+  font-family: inherit;
+  font-size: 10px;
+  padding: 2px 3px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--ink);
+  max-width: 92px;
+}
+
+/* Heredado se ve más tenue que fijado aparte: los dos dicen lo mismo, pero solo uno
+   es una decisión que alguien tomó sobre esta línea. */
+.heredado {
+  color: var(--muted-claro);
+}

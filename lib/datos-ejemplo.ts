@@ -134,7 +134,7 @@ const crear = (
     estado: extra.estado ?? "proyectado",
     doc_tipo: null,
     hito: null,
-    lineas: [{ categoria_id: sub(categoria), subcategoria_id: null, monto, glosa: null }],
+    lineas: [{ categoria_id: sub(categoria), subcategoria_id: null, doc_tipo: null, monto, glosa: null }],
   };
   return { ...base, ...extra };
 };
@@ -144,6 +144,7 @@ const split = (...pares: [string, number, string][]): { lineas: Linea[] } => ({
   lineas: pares.map(([s, monto, glosa]) => ({
     categoria_id: sub(s),
     subcategoria_id: null,
+    doc_tipo: null,
     monto,
     glosa,
   })),
@@ -195,16 +196,17 @@ const HISTORICO: Movimiento[] = (() => {
           estado: "conciliado",
           ...usd(),
           lineas: [
-            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -67.5, glosa: "Mailchimp" },
-            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -23.75, glosa: "Chat GPT" },
-            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -23.75, glosa: "Microsoft Power BI" },
-            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -12.5, glosa: "Trello" },
-            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, monto: -100, glosa: "Siteground" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, doc_tipo: null, monto: -67.5, glosa: "Mailchimp" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, doc_tipo: null, monto: -23.75, glosa: "Chat GPT" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, doc_tipo: null, monto: -23.75, glosa: "Microsoft Power BI" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, doc_tipo: null, monto: -12.5, glosa: "Trello" },
+            { categoria_id: "sistemas-analitica-avanzada-ia-y-r", subcategoria_id: null, doc_tipo: null, monto: -100, glosa: "Siteground" },
             // La única línea del ejemplo con tercer nivel, como en el dato real: Zapier va a
             // "Automatización y metrics", que en Quicken cuelga de esta categoría.
             {
               categoria_id: "sistemas-analitica-avanzada-ia-y-r",
               subcategoria_id: "automatizacion-y-metrics",
+              doc_tipo: null,
               monto: -5.5,
               glosa: "Zapier",
             },
@@ -227,8 +229,8 @@ const PROYECTADO: Movimiento[] = [
   crear(fecha(ANIO, 8, 14), "adap", "GTD", "FA3109609 Internet oficina", "telefonia-e-internet", -365026, {
     doc_tipo: "afecta",
     lineas: [
-      { categoria_id: "telefonia-e-internet", subcategoria_id: null, monto: -306745, glosa: "Neto" },
-      { categoria_id: "iva-compras", subcategoria_id: null, monto: -58281, glosa: "IVA 19%" },
+      { categoria_id: "telefonia-e-internet", subcategoria_id: null, doc_tipo: null, monto: -306745, glosa: "Neto" },
+      { categoria_id: "iva-compras", subcategoria_id: null, doc_tipo: null, monto: -58281, glosa: "IVA 19%" },
     ],
   }),
   crear(fecha(ANIO, 8, 14), "adap", "Empresa Social de Ca...", "FA174272 Agua Purificada oficina", "gastos-comunes", 0, {
