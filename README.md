@@ -86,7 +86,7 @@ dominio en `lib/supabase/middleware.ts` y en la política RLS `fn_es_usuario_aut
    Client ID y Client Secret.
 4. En **Authentication → URL Configuration**, agregar como Redirect URL:
    - `http://localhost:3000/auth/callback` (desarrollo)
-   - `https://<tu-dominio-en-vercel>/auth/callback` (producción)
+   - `https://tesoreria.adapsysgroup.com/auth/callback` (producción, ver "Dominio propio")
 
 Si el dominio corporativo cambiara, hay que actualizarlo en tres lugares:
 `.env.local` (`NEXT_PUBLIC_DOMINIO_CORPORATIVO`), `lib/supabase/middleware.ts`,
@@ -122,6 +122,43 @@ despliega hace semanas.
 
 El entorno bueno es el que tiene despliegues recientes. Los huérfanos se borran desde
 *Manage environments*.
+
+### Dominio propio
+
+Es lo que conviene tener: una dirección fija, dictable por teléfono, que no cambia con
+cada push. Y resuelve un problema concreto de **Deployment Protection**.
+
+**El problema.** Con Deployment Protection activo, las URLs `*.vercel.app` del proyecto
+—tanto las de cada despliegue como la estable— quedan detrás del SSO de Vercel: para
+abrirlas hay que ser miembro del equipo. Eso es más restrictivo de lo que se busca, y
+por el lado equivocado: obliga a dar cuenta de Vercel a quien solo tiene que usar la
+app, y con ella acceso a los demás proyectos del equipo.
+
+La app **ya tiene su propio control de acceso**, y es más fino: hay que estar en
+`usuarios_autorizados` **y** tener correo corporativo (§1). El SSO de Vercel no agrega
+seguridad sobre eso, agrega una llave distinta para gente distinta.
+
+**Los pasos.** El orden importa: si se cambia el dominio antes de registrar la URL de
+callback, el login queda roto en el intermedio.
+
+1. **Vercel** → el proyecto (uno solo, ver más abajo) → *Settings → Domains* → agregar
+   `tesoreria.adapsysgroup.com`.
+2. **DNS de `adapsysgroup.com`** → el registro `CNAME` que indique Vercel. Lo maneja
+   quien administre el dominio corporativo.
+3. **Google Cloud Console** → el OAuth Client → *Authorized redirect URIs*. Ahí va la
+   de Supabase (`https://<project-ref>.supabase.co/auth/v1/callback`), que no cambia:
+   Google le responde a Supabase, no a la app.
+4. **Supabase** → *Authentication → URL Configuration*:
+   - *Site URL*: `https://tesoreria.adapsysgroup.com`
+   - *Redirect URLs*: agregar `https://tesoreria.adapsysgroup.com/auth/callback` y
+     dejar `http://localhost:3000/auth/callback` para desarrollo.
+5. **Comprobar en una ventana privada.** Tiene que pedir el login de la app —el botón
+   de Google— y **no** el SSO de Vercel. Si aparece el de Vercel, en *Settings →
+   Deployment Protection* hay que dejar de proteger producción; la protección sigue
+   teniendo sentido para los despliegues de preview.
+
+Recién cuando el paso 5 pase, avisarles a las otras dos personas: hasta entonces les va
+a pedir una cuenta de Vercel que no tienen.
 
 ### Cuál es el link de la app
 
