@@ -141,8 +141,14 @@ seguridad sobre eso, agrega una llave distinta para gente distinta.
 **Los pasos.** El orden importa: si se cambia el dominio antes de registrar la URL de
 callback, el login queda roto en el intermedio.
 
-1. **Vercel** → el proyecto (uno solo, ver más abajo) → *Settings → Domains* → agregar
+1. **Vercel** → *Projects* → **el proyecto** → *Settings → Domains* → *Add Domain*:
    `tesoreria.adapsysgroup.com`.
+
+   Ojo: hay **dos** menús llamados Domains. El de la barra lateral del equipo
+   administra los dominios de la cuenta; el que sirve acá es el de **adentro del
+   proyecto**, que es el que decide a qué despliegue apunta. Con dos proyectos
+   conectados al mismo repo, entrar por el del equipo es como se termina apuntando al
+   proyecto equivocado.
 2. **DNS de `adapsysgroup.com`** → el registro `CNAME` que indique Vercel. Lo maneja
    quien administre el dominio corporativo.
 3. **Google Cloud Console** → el OAuth Client → *Authorized redirect URIs*. Ahí va la
