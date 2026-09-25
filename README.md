@@ -111,13 +111,24 @@ vercel deploy --prod
 O conectar el repo directamente desde el dashboard de Vercel y cargar las mismas
 variables de entorno ahí (Project Settings → Environment Variables).
 
+### Revisar los despliegues
+
+La pestaña **Deployments** del repo en GitHub es el lugar para eso. Tiene una barra de
+entornos a la izquierda, y ahí está la trampa: **puede haber entornos huérfanos**. Si
+el proyecto de Vercel se recreó o cambió de nombre, Vercel empieza a publicar en uno
+nuevo llamado `Production – <proyecto>` y el viejo, llamado `Production` a secas, se
+queda con su último despliegue y no recibe nunca más. Abrirlo hace parecer que no se
+despliega hace semanas.
+
+El entorno bueno es el que tiene despliegues recientes. Los huérfanos se borran desde
+*Manage environments*.
+
 ### Cuál es el link de la app
 
-**El de la pestaña Deployments de GitHub no sirve para entrar todos los días.** Ahí
-GitHub muestra la URL de *ese despliegue puntual*, que lleva un hash
-(`tesoreria-adapsys-83xrvco6u-...`) y que **Vercel borra al cabo de un tiempo** por su
-política de retención: el link queda devolviendo `410 GONE`, aunque la app esté
-perfectamente viva.
+**El link que aparece en cada despliegue no es el que hay que guardar.** Es la URL de
+*ese despliegue puntual*, lleva un hash (`tesoreria-adapsys-83xrvco6u-...`) y **Vercel
+la borra al cabo de un tiempo** por su política de retención: queda devolviendo
+`410 GONE` aunque la app esté perfectamente viva.
 
 El link que hay que usar es el **dominio estable del proyecto** —el que no lleva hash—,
 que Vercel apunta siempre al último despliegue de producción. Está en el dashboard de
