@@ -176,9 +176,12 @@ describe("Movimientos", () => {
     // que tampoco se puede mostrar el total.
     const forma = within(document.querySelector('[data-forma="nuevo"]') as HTMLElement);
     fireEvent.click(forma.getByLabelText("Categoría"));
-    fireEvent.change(forma.getByRole("combobox", { name: "Categoría" }), {
-      target: { value: "telefonia-e-internet" },
+    // Se busca y se elige, como en el registro real. Por el placeholder porque el
+    // <label> de la ficha también dice "Categoría".
+    fireEvent.change(forma.getByPlaceholderText("Buscar categoría"), {
+      target: { value: "internet" },
     });
+    fireEvent.mouseDown(forma.getByText("Telefonía e internet"));
 
     // El resumen muestra el total del documento, que es lo que sale del banco.
     expect(screen.getByText("−365.027")).toBeDefined();

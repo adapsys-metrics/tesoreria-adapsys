@@ -323,8 +323,14 @@ Están así porque Quicken no tiene dimensión de cliente. **El equipo decidió 
 porque el reporte de flujo que revisan funciona bien con esa estructura y separarlos complicaría
 la migración. No re-litigar esto sin que lo pidan.
 
-Consecuencias prácticas: cualquier selector de categorías necesita **buscador y colapso por
-grupo**. Una lista plana de 290 ítems es inusable.
+Consecuencias prácticas: cualquier selector de categorías necesita **buscador**. Una lista
+plana de 290 ítems es inusable, y un `<select>` nativo no alcanza: solo salta a lo que
+*empieza* igual, así que escribir "internet" no encuentra "Telefonía e internet".
+
+`components/ui/SelectorCategoria.tsx` filtra por cualquier palabra del nombre **o del
+grupo**, en cualquier orden y sin tildes, y muestra arriba las últimas usadas — en un
+registro se clasifica varias veces seguidas en lo mismo. Cada resultado lleva su grupo
+encima porque dos categorías pueden llamarse igual en grupos distintos.
 
 ---
 

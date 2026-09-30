@@ -43,3 +43,70 @@
 .sinDetalle {
   color: var(--muted-claro);
 }
+
+/* El buscador de categoría. Se abre sobre la fila en vez de empujarla: en una tabla,
+   una fila que crece al editarla mueve todo lo de abajo y se pierde el lugar. */
+.buscador {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  max-width: 260px;
+}
+
+.entradaBuscador {
+  width: 100%;
+  padding: 3px 6px;
+  border: 1px solid var(--teal-claro);
+  border-radius: 2px;
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--surface);
+}
+
+.resultados {
+  position: absolute;
+  z-index: var(--z-popover);
+  top: calc(100% + 2px);
+  left: 0;
+  width: 320px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 12%);
+}
+
+.opcion {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.opcionMarcada {
+  background: var(--teal-soft);
+}
+
+.grupoOpcion {
+  display: block;
+  font-family: var(--font-cifras);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  color: var(--muted-claro);
+}
+
+.nombreOpcion {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink);
+}
+
+.sinResultados {
+  padding: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}

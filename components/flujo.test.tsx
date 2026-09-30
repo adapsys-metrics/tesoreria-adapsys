@@ -42,15 +42,13 @@ describe("Flujo de caja", () => {
     const panel = screen.getByRole("dialog");
     expect(panel).toBeDefined();
     // El panel permite reclasificar ahí mismo: el control existe y al accionarlo
-    // aparece la lista completa de categorías.
+    // aparece el buscador con resultados.
     const selectores = within(panel).getAllByLabelText("Categoría");
     expect(selectores.length).toBeGreaterThan(0);
     fireEvent.click(selectores[0]!);
-    const abierto = within(panel).getAllByLabelText("Categoría")[0]!;
-    expect(abierto.tagName).toBe("SELECT");
-    // Contra el catálogo, no contra un número fijo: lo que se prueba es que el
-    // selector las muestre todas, no cuántas hay.
-    expect(abierto.querySelectorAll("option").length).toBe(CATEGORIAS.length);
+    const abierto = within(panel).getAllByLabelText("Categoría")[0]! as HTMLInputElement;
+    expect(abierto.tagName).toBe("INPUT");
+    expect(within(panel).getAllByRole("option").length).toBeGreaterThan(0);
   });
 
   it("cierra el detalle con Escape", () => {

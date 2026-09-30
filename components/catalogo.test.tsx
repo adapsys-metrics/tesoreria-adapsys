@@ -146,7 +146,7 @@ describe("Catálogo", () => {
 
     // El movimiento que la usaba sigue mostrándola: desactivar no reclasifica.
     fireEvent.click(screen.getAllByLabelText("Categoría")[0]!);
-    expect(screen.getByRole("combobox", { name: "Categoría" })).toBeDefined();
+    expect(screen.getAllByRole("option").length).toBeGreaterThan(0);
   });
 
   it("crear un grupo lo deja usable de inmediato", () => {
