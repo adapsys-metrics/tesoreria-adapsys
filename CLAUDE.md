@@ -407,6 +407,14 @@ Antes de entregar cualquier cambio: renderizar de verdad, recorriendo todas las 
 paneles expandidos. En el prototipo eso se hizo con `react-dom/server` y un `window`/`document`
 mínimo. En la app real, tests de render por ruta.
 
+**Los tests de render van repartidos por vista** (`components/<vista>.test.tsx`, con el entorno
+común en `components/pruebas/entorno.tsx`), y no es orden sino necesidad: juntos en un solo
+archivo el proceso se quedaba sin heap y los últimos tests **nunca llegaban a correr, con la
+suite igual reportándose en verde**. Si un archivo vuelve a crecer hasta ahí, se parte.
+
+Ojo con eso al leer el resumen de vitest: `Tests 406 passed (408)` no es verde — dos no se
+ejecutaron. El número entre paréntesis es el que importa.
+
 ---
 
 ## 9. Parámetros a verificar (no hardcodear)

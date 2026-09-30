@@ -674,3 +674,27 @@
 .heredado {
   color: var(--muted-claro);
 }
+
+/* El estado con el que va a nacer el movimiento. Se muestra porque la regla —lo que
+   se anota en el banco con fecha pasada ya ocurrió— es útil pero no evidente, y
+   porque a veces no aplica: se registra hoy algo que recién sale mañana. */
+.estadoNuevo {
+  font-family: var(--font-cifras);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 5px 8px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.estadoOcurrido {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.estadoFuturo {
+  background: var(--rule-soft);
+  color: var(--muted);
+}

@@ -6,7 +6,9 @@
 
 import { useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
-import { conIva, conRetencion, cuentaPrincipalDe } from "@/lib/dominio";
+import { clases } from "@/components/ui/primitivas";
+import type { EstadoMovimiento } from "@/lib/tipos";
+import { conIva, conRetencion, cuentaPrincipalDe, estadoInicialDe } from "@/lib/dominio";
 import { clp, pct } from "@/lib/formato";
 import { HOY } from "@/lib/fechas";
 import type { DocTipo, Movimiento } from "@/lib/tipos";
@@ -28,6 +30,9 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
     () => cuentaPrincipalDe(cuentas, empresaInicial)?.id ?? cuentas[0]!.id
   );
   const [fecha, setFecha] = useState(HOY);
+  /** null = el que corresponda por cuenta y fecha. Un valor es una decisión explícita
+   *  de quien registra, y entonces deja de seguir a la fecha. */
+  const [forzado, setForzado] = useState<EstadoMovimiento | null>(null);
   const [contraparte, setContraparte] = useState("");
   const [glosa, setGlosa] = useState("");
   const [numeroDoc, setNumeroDoc] = useState("");
@@ -51,6 +56,11 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
 
   const cuenta = cuentas.find((c) => c.id === cuentaId) ?? cuentas[0]!;
 
+  // Lo que se anota en el banco con fecha de hoy o anterior ya ocurrió. Se muestra y
+  // se puede cambiar: decidirlo a escondidas sería cambiar una sorpresa por otra.
+  const sugerido = estadoInicialDe(cuenta, fecha, HOY);
+  const estado = forzado ?? sugerido;
+
   const guardar = () => {
     if (!montoBase || !contraparte.trim()) return;
     const nuevo: Omit<Movimiento, "id"> = {
@@ -64,7 +74,7 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
       monto: resultado.monto,
       moneda: cuenta.moneda,
       tipo_cambio: cuenta.moneda === "USD" ? tc : null,
-      estado: "proyectado",
+      estado,
       doc_tipo: doc,
       hito: null,
       lineas: resultado.lineas,
@@ -156,6 +166,27 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
           className={css.entrada}
         />
       </label>
+
+      <div className={css.campo}>
+        <span className={css.etiquetaCampo}>Estado</span>
+        <button
+          type="button"
+          onClick={() =>
+            setForzado(estado === "conciliado" ? "proyectado" : "conciliado")
+          }
+          title={
+            estado === "conciliado"
+              ? "Ya ocurrió: está en la cartola con esta fecha. Click para registrarlo como compromiso futuro."
+              : "Todavía no ocurre. Click para registrarlo como ya ocurrido."
+          }
+          className={clases(
+            css.estadoNuevo,
+            estado === "conciliado" ? css.estadoOcurrido : css.estadoFuturo
+          )}
+        >
+          {estado === "conciliado" ? "ya ocurrió" : "proyectado"}
+        </button>
+      </div>
 
       <div className={css.campo}>
         <span className={css.etiquetaCampo}>&nbsp;</span>

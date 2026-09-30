@@ -1,7 +1,15 @@
 // Reglas de negocio — CLAUDE.md §4. Todo acá es TS puro y testeable: cuando se
 // cablee Supabase estas funciones no cambian, solo cambia de dónde vienen los datos.
 
-import type { Cuenta, Linea, LineaExpandida, Moneda, Movimiento, Tasas } from "@/lib/tipos";
+import type {
+  Cuenta,
+  EstadoMovimiento,
+  Linea,
+  LineaExpandida,
+  Moneda,
+  Movimiento,
+  Tasas,
+} from "@/lib/tipos";
 import { pct } from "@/lib/formato";
 
 /** Tasas por defecto. La retención BHE es 15,25% para 2026 según la escala de la
@@ -135,6 +143,29 @@ export const sumaLineas = (m: Movimiento): number =>
  */
 export const descuadre = (m: Movimiento): number =>
   m.lineas.length ? m.monto - sumaLineas(m) : 0;
+
+/**
+ * Con qué estado nace un movimiento que se está registrando.
+ *
+ * Lo que se anota en una cuenta del banco con fecha de hoy o anterior **ya ocurrió**:
+ * es una comisión que llegó, un cargo que apareció en la cartola. Nacía `proyectado`
+ * y obligaba a marcarlo pagado enseguida — declarar futuro algo que ya pasó, para
+ * corregirlo en el paso siguiente.
+ *
+ * Va directo a `conciliado` y no a `pagado` por lo mismo que el resto del sistema
+ * (§4.1): el banco se revisa todos los días y se registra porque ya está en la
+ * cartola. La verificación ocurrió al escribirlo.
+ *
+ * Las cuentas auxiliares —facturas por cobrar, proyectos aprobados— son otra cosa: la
+ * factura existe pero la plata no llegó, así que ahí siempre nace proyectado por más
+ * que la fecha sea pasada.
+ */
+export const estadoInicialDe = (
+  cuenta: { tipo: string } | null,
+  fecha: string,
+  hoy: string
+): EstadoMovimiento =>
+  cuenta?.tipo === "banco" && fecha <= hoy ? "conciliado" : "proyectado";
 
 /** Un movimiento afecta el saldo bancario solo desde que está pagado (§4.1). */
 export const afectaSaldo = (m: Movimiento): boolean => m.estado !== "proyectado";
