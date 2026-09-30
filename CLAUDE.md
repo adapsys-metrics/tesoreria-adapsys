@@ -259,6 +259,12 @@ propio, y `Retención BHE` suele salir en **positivo** porque resta de los egres
 Los movimientos y saldos en dólares **no entran** al flujo. Se muestran aparte, en su moneda,
 sin convertir. Debe existir un modo opcional "CLP + USD" que convierta, pero no es el default.
 
+**En el registro manda el dólar; en el flujo manda el peso.** No es inconsistencia: en
+Movimientos se cuadra contra la cartola, que viene en dólares, así que el monto grande es el
+dólar y el peso va debajo en chico, con su TC, como referencia. En el detalle que se abre
+desde una celda del flujo es al revés, porque el total del encabezado es en pesos y las filas
+tienen que sumarlo.
+
 **El movimiento no lleva tipo de cambio.** Las cuentas en dólares se llevan en dólares porque
 reflejan la cartola del banco, donde no hay conversión. El TC hace falta en un solo lugar —el
 control presupuestario— y ahí es un parámetro fijo del año (§4.6), aplicado al consultar y no al

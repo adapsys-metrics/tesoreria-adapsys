@@ -147,6 +147,9 @@ export function PanelDetalle({
                       className={css.celdaMonto}
                       style={{ color: valor < 0 ? "var(--brick)" : "var(--teal)" }}
                     >
+                      {/* Acá manda el peso, al revés que en el registro: el total del
+                          encabezado es en pesos y las filas tienen que sumarlo. El
+                          detalle se abrió desde una celda del flujo, que es CLP (§4.5). */}
                       {m.moneda === "USD" && (
                         <div className={css.montoUsd}>
                           US${clp(m.monto)} @{m.tipo_cambio ?? tc}

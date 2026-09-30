@@ -189,9 +189,13 @@
   white-space: nowrap;
 }
 
-.montoUsd {
+/* La conversión a pesos de un movimiento en dólares: debajo del monto real y
+   atenuada. El TC no se guarda por movimiento (§4.5), así que este número es una
+   referencia y no un dato del banco — mostrarlo igual de fuerte lo haría parecer uno. */
+.montoConvertido {
   font-size: 9px;
   color: var(--muted);
+  font-weight: 400;
 }
 
 .botonEditar {

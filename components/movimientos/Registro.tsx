@@ -494,12 +494,20 @@ export function Registro() {
                         className={clases(tabla.td, css.monto)}
                         style={{ color: valor < 0 ? "var(--brick)" : "var(--teal)" }}
                       >
-                        {m.moneda === "USD" && (
-                          <div className={css.montoUsd}>
-                            US${clp(m.monto)} @{m.tipo_cambio ?? tc}
-                          </div>
+                        {/* En dólares manda el dólar: es lo que dice la cartola, y es
+                            contra la cartola que se cuadra. La conversión va debajo y
+                            en chico, como referencia — el TC no es del movimiento
+                            (§4.5), así que el peso de acá es orientativo. */}
+                        {m.moneda === "USD" ? (
+                          <>
+                            US${clp(m.monto)}
+                            <div className={css.montoConvertido}>
+                              ${clp(valor)} @{m.tipo_cambio ?? tc}
+                            </div>
+                          </>
+                        ) : (
+                          clp(valor)
                         )}
-                        {clp(valor)}
                       </td>
 
                       {saldos && (

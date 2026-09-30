@@ -472,3 +472,34 @@ describe("Registrar algo que ya ocurrió", () => {
     expect(fila.textContent).toMatch(/CONCILIADO/i);
   });
 });
+
+describe("Montos en dólares", () => {
+  // En el banco los montos se ven en dólares, y es contra la cartola que se cuadra.
+  // El peso es una referencia: el TC no se guarda por movimiento (§4.5).
+
+  const enCuentaUsd = () => {
+    montarEn("cuenta:a2", <Registro />);
+    const filas = document.querySelectorAll('tr[data-fila="movimiento"]');
+    expect(filas.length).toBeGreaterThan(0);
+    return filas;
+  };
+
+  it("el monto principal es el dólar", () => {
+    const fila = enCuentaUsd()[0]!;
+    const celda = fila.querySelectorAll("td");
+    const monto = Array.from(celda).find((c) => c.textContent?.includes("US$"))!;
+    // El dólar va primero en el texto de la celda; el peso viene después y en chico.
+    expect(monto.textContent!.indexOf("US$")).toBeLessThan(monto.textContent!.indexOf("@"));
+  });
+
+  it("la conversión a pesos queda como referencia, con su tipo de cambio", () => {
+    const fila = enCuentaUsd()[0]!;
+    expect(fila.textContent).toMatch(/@\d+/);
+  });
+
+  it("en pesos no se muestra ninguna conversión", () => {
+    montarEn("cuenta:a1", <Registro />);
+    const fila = document.querySelector('tr[data-fila="movimiento"]')!;
+    expect(fila.textContent).not.toMatch(/US\$/);
+  });
+});
