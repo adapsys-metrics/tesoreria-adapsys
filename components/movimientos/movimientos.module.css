@@ -717,3 +717,32 @@
 .avisoForma {
   color: var(--amber);
 }
+
+/* Las líneas dentro del alta. Ocupan el ancho completo debajo de las fichas: son lo
+   que se escribe más veces y no tienen por qué competir por espacio con la fecha. */
+.lineasForma {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  grid-column: 1 / -1;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule-soft);
+  align-items: flex-start;
+}
+
+.lineaForma {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.lineaForma > button,
+.lineaForma > select {
+  flex: none;
+}
+
+.notaLineas {
+  font-size: 11px;
+  color: var(--muted);
+}

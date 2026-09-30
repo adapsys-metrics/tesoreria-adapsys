@@ -8,10 +8,10 @@ import { useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { clases } from "@/components/ui/primitivas";
 import type { EstadoMovimiento } from "@/lib/tipos";
-import { conIva, conRetencion, cuentaPrincipalDe, estadoInicialDe } from "@/lib/dominio";
+import { cuentaPrincipalDe, estadoInicialDe, lineaDeImpuesto } from "@/lib/dominio";
 import { clp, pct } from "@/lib/formato";
 import { HOY } from "@/lib/fechas";
-import type { DocTipo, Movimiento } from "@/lib/tipos";
+import type { DocTipo, Linea, Movimiento } from "@/lib/tipos";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { SelectorCuenta } from "./SelectorCuenta";
 import css from "./movimientos.module.css";
@@ -36,35 +36,47 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
   const [contraparte, setContraparte] = useState("");
   const [glosa, setGlosa] = useState("");
   const [numeroDoc, setNumeroDoc] = useState("");
-  // Sin elegir. Antes arrancaba en "sueldos", que no era una sugerencia sino un valor
-  // que se guardaba: quien no lo mirara clasificaba su movimiento ahí sin saberlo.
-  const [categoria, setCategoria] = useState<string | null>(null);
-  const [base, setBase] = useState("");
+  /** Las líneas del movimiento. Arranca con una: casi siempre es una sola, pero un
+   *  pago que junta tres facturas se arma acá y no después (§4.3).
+   *
+   *  La categoría no viene elegida. Antes arrancaba en "sueldos", que no era una
+   *  sugerencia sino un valor que se guardaba: quien no lo mirara clasificaba ahí. */
+  const [filas, setFilas] = useState<{ categoria: string | null; glosa: string; monto: string }[]>(
+    [{ categoria: null, glosa: "", monto: "" }]
+  );
+  const editarFila = (i: number, cambio: Partial<(typeof filas)[number]>) =>
+    setFilas((f) => f.map((x, j) => (j === i ? { ...x, ...cambio } : x)));
   const [doc, setDoc] = useState<DocTipo>("exento");
 
-  const montoBase = Number(base) || 0;
+  // Lo que se muestra es exactamente lo que se va a grabar: mismas líneas, mismo
+  // helper de impuesto que usa el editor (§4.3).
+  const lineasEscritas: Linea[] = filas
+    .filter((f) => f.categoria !== null && Number(f.monto))
+    .map((f) => ({
+      categoria_id: f.categoria!,
+      subcategoria_id: null,
+      doc_tipo: null,
+      monto: Number(f.monto),
+      glosa: f.glosa.trim() || null,
+    }));
 
-  // Previsualización con los mismos helpers que usa el guardado: lo que se muestra
-  // es exactamente lo que se va a grabar.
-  const resultado =
-    categoria === null
-      ? { monto: montoBase, lineas: [] }
-      : doc === "afecta"
-        ? conIva(montoBase, categoria, tasas.iva)
-        : doc === "honorario"
-          ? conRetencion(montoBase, categoria, tasas.bhe)
-          : {
-              monto: montoBase,
-              lineas: [
-                {
-                  categoria_id: categoria,
-                  subcategoria_id: null,
-                  doc_tipo: null,
-                  monto: montoBase,
-                  glosa: null,
-                },
-              ],
-            };
+  const resultado = (() => {
+    if (!lineasEscritas.length) return { monto: 0, lineas: [] as Linea[] };
+    if (doc === "exento") {
+      return {
+        monto: lineasEscritas.reduce((s, l) => s + l.monto, 0),
+        lineas: lineasEscritas,
+      };
+    }
+    const impuesto = lineaDeImpuesto(
+      lineasEscritas,
+      doc,
+      doc === "afecta" ? "iva" : "bhe",
+      doc === "afecta" ? tasas.iva : tasas.bhe
+    );
+    const lineas = [...lineasEscritas, impuesto];
+    return { monto: lineas.reduce((s, l) => s + l.monto, 0), lineas };
+  })();
 
   const cuenta = cuentas.find((c) => c.id === cuentaId) ?? cuentas[0]!;
 
@@ -73,13 +85,13 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
   const sugerido = estadoInicialDe(cuenta, fecha, HOY);
   const estado = forzado ?? sugerido;
 
-  // Sin categoría no se puede armar la línea del impuesto —no habría dónde ponerla— y
-  // el monto quedaría siendo el neto en vez del total. Con exento sí se puede guardar:
-  // queda sin clasificar, que el modelo contempla (§3) y la app muestra marcado.
-  const faltaCategoria = categoria === null && doc !== "exento";
+  // Una fila con monto pero sin categoría no se puede guardar: se perdería, porque
+  // solo entran las que tienen las dos cosas.
+  const filaIncompleta = filas.some((f) => Number(f.monto) && f.categoria === null);
+  const sinLineas = lineasEscritas.length === 0;
 
   const guardar = () => {
-    if (!montoBase || !contraparte.trim() || faltaCategoria) return;
+    if (sinLineas || filaIncompleta || !contraparte.trim()) return;
     const nuevo: Omit<Movimiento, "id"> = {
       fecha,
       // Empresa y moneda salen de la cuenta: no se eligen aparte.
@@ -156,11 +168,6 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
       </label>
 
       <label className={css.campo}>
-        <span className={css.etiquetaCampo}>Categoría</span>
-        <SelectorCategoria valor={categoria} onChange={setCategoria} />
-      </label>
-
-      <label className={css.campo}>
         <span className={css.etiquetaCampo}>Documento</span>
         <select
           value={doc}
@@ -173,20 +180,6 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
             </option>
           ))}
         </select>
-      </label>
-
-      <label className={css.campo}>
-        <span className={css.etiquetaCampo}>
-          {doc === "afecta" ? "Neto" : doc === "honorario" ? "Bruto" : "Monto"}
-          {cuenta.moneda === "USD" ? " (US$)" : ""}
-        </span>
-        <input
-          type="number"
-          value={base}
-          onChange={(e) => setBase(e.target.value)}
-          placeholder="-306745"
-          className={css.entrada}
-        />
       </label>
 
       <div className={css.campo}>
@@ -215,15 +208,15 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
         <button
           type="button"
           onClick={guardar}
-          disabled={faltaCategoria || !montoBase || !contraparte.trim()}
+          disabled={sinLineas || filaIncompleta || !contraparte.trim()}
           title={
-            faltaCategoria
-              ? "Elige la categoría: sin ella no hay dónde poner la línea del impuesto"
-              : !contraparte.trim()
-                ? "Falta el proveedor o cliente"
-                : !montoBase
-                  ? "Falta el monto"
-                  : "Guardar y dejarlo abierto para agregarle líneas"
+            !contraparte.trim()
+              ? "Falta el proveedor o cliente"
+              : filaIncompleta
+                ? "Hay una línea con monto y sin categoría: no se guardaría"
+                : sinLineas
+                  ? "Falta al menos una línea con categoría y monto"
+                  : "Guardar"
           }
           className={css.guardar}
         >
@@ -231,19 +224,74 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
         </button>
       </div>
 
-      <div className={css.resumenForma}>
-        <span>{pista}.</span>
-        {categoria === null && (
-          <span className={css.avisoForma}>
-            {faltaCategoria
-              ? "Elige la categoría para poder calcular el impuesto."
-              : "Sin categoría: va a quedar marcado como sin clasificar."}
+      {/* Las líneas. Arranca con una, que es el caso corriente, y se agregan las que
+          hagan falta: un pago que junta tres facturas se arma acá y no después. */}
+      <div className={css.lineasForma}>
+        {filas.map((f, i) => (
+          <div key={i} className={css.lineaForma}>
+            <SelectorCategoria
+              valor={f.categoria}
+              onChange={(id) => editarFila(i, { categoria: id })}
+              compacto
+            />
+            <input
+              value={f.glosa}
+              onChange={(e) => editarFila(i, { glosa: e.target.value })}
+              placeholder={filas.length > 1 ? "glosa de la línea" : "detalle (opcional)"}
+              aria-label={`Glosa de la línea ${i + 1}`}
+              className={css.inputGlosa}
+            />
+            <input
+              type="number"
+              value={f.monto}
+              onChange={(e) => editarFila(i, { monto: e.target.value })}
+              placeholder="-306745"
+              aria-label={`Monto de la línea ${i + 1}`}
+              className={css.inputMonto}
+              style={{ color: Number(f.monto) < 0 ? "var(--brick)" : "var(--teal)" }}
+            />
+            <button
+              type="button"
+              onClick={() => setFilas((x) => x.filter((_, j) => j !== i))}
+              disabled={filas.length <= 1}
+              title={
+                filas.length <= 1
+                  ? "Un movimiento tiene que tener al menos una línea"
+                  : "Quitar línea"
+              }
+              className={css.quitar}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+
+        <button
+          type="button"
+          onClick={() => setFilas((x) => [...x, { categoria: null, glosa: "", monto: "" }])}
+          className={css.botonAmpliar}
+        >
+          + línea
+        </button>
+        {doc !== "exento" && (
+          <span className={css.notaLineas}>
+            La línea del impuesto se agrega sola al guardar, sobre lo que escribas acá.
           </span>
         )}
-        {doc !== "exento" && montoBase !== 0 && (
+      </div>
+
+      <div className={css.resumenForma}>
+        <span>{pista}.</span>
+        {filaIncompleta && (
+          <span className={css.avisoForma}>
+            Hay una línea con monto y sin categoría: no se guardaría.
+          </span>
+        )}
+        {doc !== "exento" && !sinLineas && (
           <span>
             {doc === "afecta" ? `IVA ${pct(tasas.iva)}` : `Retención ${pct(tasas.bhe)}`}:{" "}
-            <strong>{clp(resultado.lineas[1]?.monto ?? 0)}</strong>
+            {/* La del impuesto es la última: el helper la agrega al final. */}
+            <strong>{clp(resultado.lineas.at(-1)?.monto ?? 0)}</strong>
           </span>
         )}
         <span>

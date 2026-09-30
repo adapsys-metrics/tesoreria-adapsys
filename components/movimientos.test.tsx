@@ -170,11 +170,11 @@ describe("Movimientos", () => {
 
     const docs = screen.getByLabelText("Documento") as HTMLSelectElement;
     fireEvent.change(docs, { target: { value: "afecta" } });
-    fireEvent.change(screen.getByLabelText("Neto"), { target: { value: "-306745" } });
-
-    // Hay que elegir la categoría: sin ella no hay dónde poner la línea del IVA, así
-    // que tampoco se puede mostrar el total.
+    // El monto y la categoría van en la línea: un movimiento puede nacer con varias.
     const forma = within(document.querySelector('[data-forma="nuevo"]') as HTMLElement);
+    fireEvent.change(forma.getByLabelText("Monto de la línea 1"), {
+      target: { value: "-306745" },
+    });
     fireEvent.click(forma.getByLabelText("Categoría"));
     // Se busca y se elige, como en el registro real. Por el placeholder porque el
     // <label> de la ficha también dice "Categoría".
@@ -187,47 +187,62 @@ describe("Movimientos", () => {
     expect(screen.getByText("−365.027")).toBeDefined();
   });
 
-  it("no deja guardar un afecto sin categoría, y dice por qué", () => {
-    // Antes la categoría venía puesta en "Sueldos": quien no la mirara clasificaba su
-    // movimiento ahí sin enterarse.
+  it("un movimiento puede nacer con varias líneas", () => {
+    // El caso real: un proveedor manda tres facturas y se pagan en una transferencia.
+    // Antes había que crearlo con una línea, guardar y recién ahí partirlo.
     montar(<Registro />);
     fireEvent.click(screen.getByText("+ Nuevo"));
-    fireEvent.change(screen.getByLabelText("Documento"), { target: { value: "afecta" } });
-    fireEvent.change(screen.getByLabelText("Proveedor / Cliente"), { target: { value: "GTD" } });
-    fireEvent.change(screen.getByLabelText("Neto"), { target: { value: "-306745" } });
+    const forma = within(document.querySelector('[data-forma="nuevo"]') as HTMLElement);
 
-    const guardar = screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement;
-    expect(guardar.disabled).toBe(true);
-    expect(screen.getByText(/Elige la categoría/)).toBeDefined();
-  });
-
-  it("un exento sí se puede guardar sin categoría, y avisa que queda sin clasificar", () => {
-    // El modelo contempla el movimiento sin clasificar (§3) y la app lo muestra
-    // marcado: es mejor eso que clasificarlo mal en silencio.
-    montar(<Registro />);
-    fireEvent.click(screen.getByText("+ Nuevo"));
-    fireEvent.change(screen.getByLabelText("Proveedor / Cliente"), { target: { value: "GTD" } });
-    fireEvent.change(screen.getByLabelText("Monto"), { target: { value: "-1000" } });
-
-    expect(screen.getByText(/va a quedar marcado como sin clasificar/)).toBeDefined();
-    expect((screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement).disabled).toBe(
-      false
-    );
-  });
-
-  it("al guardar, el movimiento queda abierto para agregarle líneas", () => {
-    // Es como se arma un split desde el principio: se crea y se le agregan líneas con
-    // el editor que ya existe, en vez de duplicarlo en el formulario.
-    montar(<Registro />);
-    fireEvent.click(screen.getByText("+ Nuevo"));
     fireEvent.change(screen.getByLabelText("Proveedor / Cliente"), {
       target: { value: "Vida Cámara prueba" },
     });
-    fireEvent.change(screen.getByLabelText("Monto"), { target: { value: "-1800000" } });
+
+    const cargar = (i: number, monto: string, busca: string, elige: string) => {
+      fireEvent.change(forma.getByLabelText(`Monto de la línea ${i}`), {
+        target: { value: monto },
+      });
+      fireEvent.click(forma.getAllByLabelText("Categoría")[i - 1]!);
+      fireEvent.change(forma.getByPlaceholderText("Buscar categoría"), {
+        target: { value: busca },
+      });
+      // Acotado a la lista del buscador: el nombre ya elegido en las líneas
+      // anteriores también está en pantalla.
+      const lista = within(
+        forma.getByRole("listbox", { name: "Categorías encontradas" }) as HTMLElement
+      );
+      fireEvent.mouseDown(lista.getByText(elige));
+    };
+
+    cargar(1, "-1000000", "beneficios personas", "Beneficios personas");
+    fireEvent.click(forma.getByText("+ línea"));
+    cargar(2, "-500000", "beneficios personas", "Beneficios personas");
+    fireEvent.click(forma.getByText("+ línea"));
+    cargar(3, "-300000", "beneficios personas", "Beneficios personas");
+
+    // El total es la suma de las tres, antes de guardar.
+    expect(forma.getByText("−1.800.000")).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
 
-    // El editor del nuevo está abierto: se ve su botón de agregar línea.
-    expect(screen.getByText("+ línea")).toBeDefined();
+    // Y quedó como split de tres líneas.
+    fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "Vida Cámara prueba" } });
+    expect(screen.getByText(/Split · 3 líneas/)).toBeDefined();
+  });
+
+  it("una línea con monto y sin categoría no deja guardar, y dice por qué", () => {
+    // Se perdería en silencio: solo entran las líneas que tienen las dos cosas.
+    montar(<Registro />);
+    fireEvent.click(screen.getByText("+ Nuevo"));
+    const forma = within(document.querySelector('[data-forma="nuevo"]') as HTMLElement);
+    fireEvent.change(screen.getByLabelText("Proveedor / Cliente"), { target: { value: "GTD" } });
+    fireEvent.change(forma.getByLabelText("Monto de la línea 1"), {
+      target: { value: "-306745" },
+    });
+
+    expect((screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement).disabled).toBe(
+      true
+    );
+    expect(screen.getByText(/línea con monto y sin categoría/)).toBeDefined();
   });
 });
 
@@ -443,9 +458,13 @@ describe("Registrar algo que ya ocurrió", () => {
     fireEvent.change(screen.getByLabelText("Proveedor / Cliente"), {
       target: { value: "Comisión banco" },
     });
-    fireEvent.change(screen.getByLabelText(/^Monto|^Neto|^Bruto/), {
-      target: { value: "-3500" },
+    const forma = within(document.querySelector('[data-forma="nuevo"]') as HTMLElement);
+    fireEvent.change(forma.getByLabelText("Monto de la línea 1"), { target: { value: "-3500" } });
+    fireEvent.click(forma.getByLabelText("Categoría"));
+    fireEvent.change(forma.getByPlaceholderText("Buscar categoría"), {
+      target: { value: "comisiones bancarias" },
     });
+    fireEvent.mouseDown(forma.getByText("Comisiones bancarias"));
     fireEvent.click(screen.getByText("Guardar"));
 
     fireEvent.change(screen.getByLabelText("Buscar"), { target: { value: "Comisión banco" } });

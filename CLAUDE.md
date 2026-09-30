@@ -220,6 +220,10 @@ por defecto del navegador se leían como datos ya escritos.
 **El documento manda sobre la fórmula.** 306.745 × 19% = 58.281,55 pero la factura dice 58.281.
 Los helpers calculan, pero el monto de cada línea siempre debe quedar editable.
 
+**La línea de impuesto se calcula en un solo lugar** (`lineaDeImpuesto` en `lib/dominio.ts`),
+porque la usan el alta y el editor. Si divergen, el monto del movimiento deja de ser el que
+salió del banco y **nada lo delata**: la suma de líneas igual cuadra.
+
 **El tipo de documento puede variar dentro de un mismo pago.** Un proveedor manda tres
 facturas —dos afectas y una exenta— y se pagan en una transferencia. Cobrar IVA sobre
 las tres es plata que no existe, y el detector de descuadre no lo delata: la suma de
@@ -339,7 +343,7 @@ encima porque dos categorías pueden llamarse igual en grupos distintos.
 | Vista | Qué hace |
 |---|---|
 | **Flujo de caja** | Réplica mejorada del reporte de Quicken. Rango de fechas libre, columnas semanales o mensuales, secciones por naturaleza → grupo → categoría. **Solo aparecen las líneas con movimiento en el rango.** Filtro por estado. Cada monto es clicable y abre el detalle con los movimientos que lo componen, reclasificables y seleccionables ahí mismo. |
-| **Movimientos** | Registro único de todas las empresas. El alta crea el movimiento y **lo deja abierto**, que es como se arma un split desde el principio: se le agregan líneas con el editor que ya existe, en vez de duplicarlo en el formulario. La categoría **no trae valor por defecto** — uno real, guardable, es peor que ninguno. Selección múltiple con suma de lo elegido —para cuadrar varias facturas contra una sola transferencia—. Empresa y categoría editables inline. Editor de splits con líneas, glosa, botones de IVA/retención, pegado masivo, y detector de descuadre. |
+| **Movimientos** | Registro único de todas las empresas. El alta trae **una lista de líneas**: un movimiento puede nacer como split, que es como llega un pago que junta tres facturas. La categoría **no trae valor por defecto** — uno real, guardable, es peor que ninguno. Selección múltiple con suma de lo elegido —para cuadrar varias facturas contra una sola transferencia—. Empresa y categoría editables inline. Editor de splits con líneas, glosa, botones de IVA/retención, pegado masivo, y detector de descuadre. |
 | **Conciliación** | Lista de `pagado` sin cuadrar. El total es exactamente la diferencia contra la cartola. |
 | **Presupuesto anual** | Dos modos: *construcción* (responsable, ppto año anterior, ppto año, variación, notas) y *control* (ejecutado, % utilizado con marca de avance del año, disponible, proyección de cierre). |
 | **Reportes** | Armador configurable: filas (categoría / grupo / naturaleza / empresa / proveedor), columnas (mes / trimestre / empresa / grupo / naturaleza / total), rango de fechas con presets, filtro de estados y de categorías. Configuraciones guardables. Export CSV. |

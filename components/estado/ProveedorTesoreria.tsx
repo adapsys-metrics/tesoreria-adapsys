@@ -55,6 +55,7 @@ import {
   TASAS,
   cuentaPrincipalDe,
   enCLP,
+  lineaDeImpuesto,
 } from "@/lib/dominio";
 import { perteneceAlRegistro, saldoDeCuenta } from "@/lib/registros";
 import { pasoDe } from "@/lib/cobranza";
@@ -771,31 +772,9 @@ export function ProveedorTesoreria({
   const aplicarImpuesto = useCallback(
     (id: string, tipo: "iva" | "bhe") =>
       mapMov(id, (m) => {
-        const subImpuesto = tipo === "iva" ? SUB_IVA_COMPRAS : SUB_RETENCION_BHE;
-        const tasa = tipo === "iva" ? tasas.iva : tasas.bhe;
-        const propio: DocTipo = tipo === "iva" ? "afecta" : "honorario";
-
-        const base = m.lineas.filter((l) => l.categoria_id !== subImpuesto);
-        // La base son las líneas de ese tipo. Un proveedor manda tres facturas, dos
-        // afectas y una exenta, y se pagan juntas: cobrar IVA sobre las tres es plata
-        // que no existe.
-        //
-        // Si ninguna lo dice —ni la línea ni el movimiento— son todas: apretar el
-        // botón ya es decir "esto es afecto", y es como venía funcionando.
-        const deSuTipo = base.filter((l) => (l.doc_tipo ?? m.doc_tipo) === propio);
-        const gravadas = deSuTipo.length ? deSuTipo : base;
-        const suma = gravadas.reduce((s, l) => s + l.monto, 0);
-        const monto = Math.round(tipo === "iva" ? suma * tasa : -suma * tasa);
-        const lineas: Linea[] = [
-          ...base,
-          {
-            categoria_id: subImpuesto,
-            subcategoria_id: null,
-            doc_tipo: null,
-            monto,
-            glosa: `${tipo === "iva" ? "IVA" : "Retención"} ${pct(tasa)}`,
-          },
-        ];
+        const impuesto = lineaDeImpuesto(m.lineas, m.doc_tipo, tipo, tipo === "iva" ? tasas.iva : tasas.bhe);
+        // Reemplaza la que hubiera en vez de sumar otra: recalcular no acumula.
+        const lineas = [...m.lineas.filter((l) => l.categoria_id !== impuesto.categoria_id), impuesto];
         return { ...m, lineas, monto: lineas.reduce((s, l) => s + l.monto, 0) };
       }),
     [mapMov, tasas]

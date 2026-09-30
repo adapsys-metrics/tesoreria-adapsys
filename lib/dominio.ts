@@ -3,6 +3,7 @@
 
 import type {
   Cuenta,
+  DocTipo,
   EstadoMovimiento,
   Linea,
   LineaExpandida,
@@ -131,6 +132,39 @@ export const enCLP = (
   m: { moneda: string; monto: number; tipo_cambio: number | null },
   tcPorDefecto: number
 ): number => (m.moneda === "USD" ? m.monto * (m.tipo_cambio ?? tcPorDefecto) : m.monto);
+
+/**
+ * La línea de impuesto que le corresponde a un juego de líneas.
+ *
+ * Vive acá y no en el mutador porque la usan dos caminos —el alta y el editor— y son
+ * exactamente el mismo cálculo: si divergen, el monto del movimiento deja de ser el
+ * que salió del banco y nada lo delata, porque la suma de líneas igual cuadra.
+ *
+ * La base son las líneas de ese tipo. Si ninguna lo dice —ni la línea ni el
+ * movimiento— son todas: pedir el impuesto ya es decir "esto es afecto" (§4.3).
+ */
+export const lineaDeImpuesto = (
+  lineas: Linea[],
+  docTipoMovimiento: DocTipo | null,
+  tipo: "iva" | "bhe",
+  tasa: number
+): Linea => {
+  const categoria = tipo === "iva" ? SUB_IVA_COMPRAS : SUB_RETENCION_BHE;
+  const propio: DocTipo = tipo === "iva" ? "afecta" : "honorario";
+
+  const base = lineas.filter((l) => l.categoria_id !== categoria);
+  const deSuTipo = base.filter((l) => (l.doc_tipo ?? docTipoMovimiento) === propio);
+  const gravadas = deSuTipo.length ? deSuTipo : base;
+  const suma = gravadas.reduce((s, l) => s + l.monto, 0);
+
+  return {
+    categoria_id: categoria,
+    subcategoria_id: null,
+    doc_tipo: null,
+    monto: Math.round(tipo === "iva" ? suma * tasa : -suma * tasa),
+    glosa: `${tipo === "iva" ? "IVA" : "Retención"} ${pct(tasa)}`,
+  };
+};
 
 /** Suma de las líneas de un split. */
 export const sumaLineas = (m: Movimiento): number =>
