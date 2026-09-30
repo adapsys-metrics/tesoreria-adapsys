@@ -22,7 +22,7 @@ const DOCS: { id: DocTipo; nombre: string; pista: string }[] = [
   { id: "honorario", nombre: "Honorario", pista: "se ingresa el bruto y se resta la retención" },
 ];
 
-export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
+export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) {
   const { empresasSeleccionadas, cuentas, empresas, tc, tasas, agregarMovimiento } =
     useTesoreria();
   const empresaInicial = empresasSeleccionadas[0] ?? empresas[0]!.id;
@@ -36,7 +36,9 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
   const [contraparte, setContraparte] = useState("");
   const [glosa, setGlosa] = useState("");
   const [numeroDoc, setNumeroDoc] = useState("");
-  const [categoria, setCategoria] = useState("sueldos");
+  // Sin elegir. Antes arrancaba en "sueldos", que no era una sugerencia sino un valor
+  // que se guardaba: quien no lo mirara clasificaba su movimiento ahí sin saberlo.
+  const [categoria, setCategoria] = useState<string | null>(null);
   const [base, setBase] = useState("");
   const [doc, setDoc] = useState<DocTipo>("exento");
 
@@ -45,14 +47,24 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
   // Previsualización con los mismos helpers que usa el guardado: lo que se muestra
   // es exactamente lo que se va a grabar.
   const resultado =
-    doc === "afecta"
-      ? conIva(montoBase, categoria, tasas.iva)
-      : doc === "honorario"
-        ? conRetencion(montoBase, categoria, tasas.bhe)
-        : {
-            monto: montoBase,
-            lineas: [{ categoria_id: categoria, subcategoria_id: null, doc_tipo: null, monto: montoBase, glosa: null }],
-          };
+    categoria === null
+      ? { monto: montoBase, lineas: [] }
+      : doc === "afecta"
+        ? conIva(montoBase, categoria, tasas.iva)
+        : doc === "honorario"
+          ? conRetencion(montoBase, categoria, tasas.bhe)
+          : {
+              monto: montoBase,
+              lineas: [
+                {
+                  categoria_id: categoria,
+                  subcategoria_id: null,
+                  doc_tipo: null,
+                  monto: montoBase,
+                  glosa: null,
+                },
+              ],
+            };
 
   const cuenta = cuentas.find((c) => c.id === cuentaId) ?? cuentas[0]!;
 
@@ -61,8 +73,13 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
   const sugerido = estadoInicialDe(cuenta, fecha, HOY);
   const estado = forzado ?? sugerido;
 
+  // Sin categoría no se puede armar la línea del impuesto —no habría dónde ponerla— y
+  // el monto quedaría siendo el neto en vez del total. Con exento sí se puede guardar:
+  // queda sin clasificar, que el modelo contempla (§3) y la app muestra marcado.
+  const faltaCategoria = categoria === null && doc !== "exento";
+
   const guardar = () => {
-    if (!montoBase || !contraparte.trim()) return;
+    if (!montoBase || !contraparte.trim() || faltaCategoria) return;
     const nuevo: Omit<Movimiento, "id"> = {
       fecha,
       // Empresa y moneda salen de la cuenta: no se eligen aparte.
@@ -79,14 +96,18 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
       hito: null,
       lineas: resultado.lineas,
     };
-    agregarMovimiento(nuevo);
-    cerrar();
+    // Se devuelve el id para dejar el movimiento abierto: es donde se le agregan las
+    // líneas si tiene más de una, con el editor de splits que ya existe.
+    cerrar(agregarMovimiento(nuevo));
   };
 
   const pista = DOCS.find((d) => d.id === doc)!.pista;
 
   return (
-    <div className={css.forma}>
+    // Marca estable para los tests: los controles del formulario se llaman igual que
+    // los de cada fila de la tabla —Categoría, Fecha— y sin esto hay que elegir por
+    // posición, que se rompe al reordenar.
+    <div data-forma="nuevo" className={css.forma}>
       <label className={css.campo}>
         <span className={css.etiquetaCampo}>Fecha</span>
         <input
@@ -191,13 +212,34 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
 
       <div className={css.campo}>
         <span className={css.etiquetaCampo}>&nbsp;</span>
-        <button type="button" onClick={guardar} className={css.guardar}>
+        <button
+          type="button"
+          onClick={guardar}
+          disabled={faltaCategoria || !montoBase || !contraparte.trim()}
+          title={
+            faltaCategoria
+              ? "Elige la categoría: sin ella no hay dónde poner la línea del impuesto"
+              : !contraparte.trim()
+                ? "Falta el proveedor o cliente"
+                : !montoBase
+                  ? "Falta el monto"
+                  : "Guardar y dejarlo abierto para agregarle líneas"
+          }
+          className={css.guardar}
+        >
           Guardar
         </button>
       </div>
 
       <div className={css.resumenForma}>
         <span>{pista}.</span>
+        {categoria === null && (
+          <span className={css.avisoForma}>
+            {faltaCategoria
+              ? "Elige la categoría para poder calcular el impuesto."
+              : "Sin categoría: va a quedar marcado como sin clasificar."}
+          </span>
+        )}
         {doc !== "exento" && montoBase !== 0 && (
           <span>
             {doc === "afecta" ? `IVA ${pct(tasas.iva)}` : `Retención ${pct(tasas.bhe)}`}:{" "}
@@ -208,7 +250,7 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
           {doc === "honorario" ? "Líquido a pagar" : "Total"}:{" "}
           <span className={css.resumenMonto}>{clp(resultado.monto)}</span>
         </span>
-        <button type="button" onClick={cerrar} className={css.botonAmpliar}>
+        <button type="button" onClick={() => cerrar()} className={css.botonAmpliar}>
           Cancelar
         </button>
       </div>

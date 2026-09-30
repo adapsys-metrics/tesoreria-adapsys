@@ -140,7 +140,8 @@ type Contexto = Estado & {
   cuadrar: (id: string) => void;
   aplicarImpuesto: (id: string, tipo: "iva" | "bhe") => void;
   pegarLineas: (id: string, texto: string) => void;
-  agregarMovimiento: (m: Omit<Movimiento, "id">) => void;
+  /** Devuelve el id provisorio del movimiento creado. */
+  agregarMovimiento: (m: Omit<Movimiento, "id">) => string;
   /** Borra un movimiento registrado por error. Las líneas se van con él. */
   borrarMovimiento: (id: string) => void;
   reiniciar: () => void;
@@ -835,13 +836,16 @@ export function ProveedorTesoreria({
     [mapMov]
   );
 
+  // Contador propio en vez de Date.now(): dos altas en el mismo milisegundo
+  // colisionaban. Y en vez del largo de la lista, que se repite si se borró alguno.
+  const secuenciaNueva = useRef(0);
+
+  /** Devuelve el id provisorio, para poder abrir el movimiento recién creado y
+   *  seguir trabajándolo — agregarle líneas, por ejemplo. */
   const agregarMovimiento = useCallback((nuevo: Omit<Movimiento, "id">) => {
-    setEstado((p) => ({
-      ...p,
-      // Contador sobre el estado en vez de Date.now(): dos altas en el mismo
-      // milisegundo colisionaban.
-      movimientos: [...p.movimientos, { ...nuevo, id: `n${p.movimientos.length + 1}` }],
-    }));
+    const id = `n${++secuenciaNueva.current}`;
+    setEstado((p) => ({ ...p, movimientos: [...p.movimientos, { ...nuevo, id }] }));
+    return id;
   }, []);
 
   /**

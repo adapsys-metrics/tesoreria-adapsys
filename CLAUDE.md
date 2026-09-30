@@ -212,6 +212,11 @@ del movimiento es el líquido que efectivamente se transfirió.
 Ejemplo real (factura GTD): neto −306.745 + IVA −58.281 = **−365.026** transferidos.
 Ejemplo real (boleta): bruto −1.253.118 + retención +191.100 = **−1.062.018** transferidos.
 
+**Ningún campo del alta trae un valor por defecto que se guarde.** La categoría arrancaba
+en "Sueldos" y quien no la mirara clasificaba ahí sin enterarse. Y los ejemplos de los
+campos vacíos van en cursiva y atenuados: eran realistas —"GTD", "FA3109609"— y en el gris
+por defecto del navegador se leían como datos ya escritos.
+
 **El documento manda sobre la fórmula.** 306.745 × 19% = 58.281,55 pero la factura dice 58.281.
 Los helpers calculan, pero el monto de cada línea siempre debe quedar editable.
 
@@ -328,7 +333,7 @@ grupo**. Una lista plana de 290 ítems es inusable.
 | Vista | Qué hace |
 |---|---|
 | **Flujo de caja** | Réplica mejorada del reporte de Quicken. Rango de fechas libre, columnas semanales o mensuales, secciones por naturaleza → grupo → categoría. **Solo aparecen las líneas con movimiento en el rango.** Filtro por estado. Cada monto es clicable y abre el detalle con los movimientos que lo componen, reclasificables y seleccionables ahí mismo. |
-| **Movimientos** | Registro único de todas las empresas. Selección múltiple con suma de lo elegido —para cuadrar varias facturas contra una sola transferencia—. Empresa y categoría editables inline. Editor de splits con líneas, glosa, botones de IVA/retención, pegado masivo, y detector de descuadre. |
+| **Movimientos** | Registro único de todas las empresas. El alta crea el movimiento y **lo deja abierto**, que es como se arma un split desde el principio: se le agregan líneas con el editor que ya existe, en vez de duplicarlo en el formulario. La categoría **no trae valor por defecto** — uno real, guardable, es peor que ninguno. Selección múltiple con suma de lo elegido —para cuadrar varias facturas contra una sola transferencia—. Empresa y categoría editables inline. Editor de splits con líneas, glosa, botones de IVA/retención, pegado masivo, y detector de descuadre. |
 | **Conciliación** | Lista de `pagado` sin cuadrar. El total es exactamente la diferencia contra la cartola. |
 | **Presupuesto anual** | Dos modos: *construcción* (responsable, ppto año anterior, ppto año, variación, notas) y *control* (ejecutado, % utilizado con marca de avance del año, disponible, proyección de cierre). |
 | **Reportes** | Armador configurable: filas (categoría / grupo / naturaleza / empresa / proveedor), columnas (mes / trimestre / empresa / grupo / naturaleza / total), rango de fechas con presets, filtro de estados y de categorías. Configuraciones guardables. Export CSV. |

@@ -172,8 +172,59 @@ describe("Movimientos", () => {
     fireEvent.change(docs, { target: { value: "afecta" } });
     fireEvent.change(screen.getByLabelText("Neto"), { target: { value: "-306745" } });
 
+    // Hay que elegir la categoría: sin ella no hay dónde poner la línea del IVA, así
+    // que tampoco se puede mostrar el total.
+    const forma = within(document.querySelector('[data-forma="nuevo"]') as HTMLElement);
+    fireEvent.click(forma.getByLabelText("Categoría"));
+    fireEvent.change(forma.getByRole("combobox", { name: "Categoría" }), {
+      target: { value: "telefonia-e-internet" },
+    });
+
     // El resumen muestra el total del documento, que es lo que sale del banco.
     expect(screen.getByText("−365.027")).toBeDefined();
+  });
+
+  it("no deja guardar un afecto sin categoría, y dice por qué", () => {
+    // Antes la categoría venía puesta en "Sueldos": quien no la mirara clasificaba su
+    // movimiento ahí sin enterarse.
+    montar(<Registro />);
+    fireEvent.click(screen.getByText("+ Nuevo"));
+    fireEvent.change(screen.getByLabelText("Documento"), { target: { value: "afecta" } });
+    fireEvent.change(screen.getByLabelText("Proveedor / Cliente"), { target: { value: "GTD" } });
+    fireEvent.change(screen.getByLabelText("Neto"), { target: { value: "-306745" } });
+
+    const guardar = screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement;
+    expect(guardar.disabled).toBe(true);
+    expect(screen.getByText(/Elige la categoría/)).toBeDefined();
+  });
+
+  it("un exento sí se puede guardar sin categoría, y avisa que queda sin clasificar", () => {
+    // El modelo contempla el movimiento sin clasificar (§3) y la app lo muestra
+    // marcado: es mejor eso que clasificarlo mal en silencio.
+    montar(<Registro />);
+    fireEvent.click(screen.getByText("+ Nuevo"));
+    fireEvent.change(screen.getByLabelText("Proveedor / Cliente"), { target: { value: "GTD" } });
+    fireEvent.change(screen.getByLabelText("Monto"), { target: { value: "-1000" } });
+
+    expect(screen.getByText(/va a quedar marcado como sin clasificar/)).toBeDefined();
+    expect((screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement).disabled).toBe(
+      false
+    );
+  });
+
+  it("al guardar, el movimiento queda abierto para agregarle líneas", () => {
+    // Es como se arma un split desde el principio: se crea y se le agregan líneas con
+    // el editor que ya existe, en vez de duplicarlo en el formulario.
+    montar(<Registro />);
+    fireEvent.click(screen.getByText("+ Nuevo"));
+    fireEvent.change(screen.getByLabelText("Proveedor / Cliente"), {
+      target: { value: "Vida Cámara prueba" },
+    });
+    fireEvent.change(screen.getByLabelText("Monto"), { target: { value: "-1800000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar" }));
+
+    // El editor del nuevo está abierto: se ve su botón de agregar línea.
+    expect(screen.getByText("+ línea")).toBeDefined();
   });
 });
 

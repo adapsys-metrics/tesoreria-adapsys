@@ -232,7 +232,17 @@ export function Registro() {
         </button>
       </div>
 
-      {nuevo && <FormaNuevo cerrar={() => setNuevo(false)} />}
+      {nuevo && (
+        <FormaNuevo
+          cerrar={(idCreado) => {
+            setNuevo(false);
+            // Queda abierto: ahí se le agregan las líneas si el pago junta varias
+            // facturas, con el editor de splits que ya existe en vez de uno nuevo
+            // duplicado en el formulario.
+            if (idCreado) setAbiertos((p) => [...p, idCreado]);
+          }}
+        />
+      )}
 
       {lista.length === 0 ? (
         <Vacio>

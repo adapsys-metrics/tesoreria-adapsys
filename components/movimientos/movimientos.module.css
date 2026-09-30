@@ -698,3 +698,22 @@
   background: var(--rule-soft);
   color: var(--muted);
 }
+
+/* Los ejemplos de los campos vacíos se ven claramente como ejemplos. Eran realistas
+   —"GTD", "FA3109609"— y en el gris por defecto del navegador se leían como datos ya
+   escritos: alguien podía guardar creyendo que ese campo estaba lleno. */
+.forma ::placeholder {
+  color: var(--tenue);
+  font-style: italic;
+  opacity: 1;
+}
+
+.guardar:disabled {
+  background: var(--rule-medio);
+  cursor: default;
+}
+
+/* Lo que falta para poder guardar, al lado de la pista del tipo de documento. */
+.avisoForma {
+  color: var(--amber);
+}
