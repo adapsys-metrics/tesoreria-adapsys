@@ -813,3 +813,10 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* Un campo obligatorio todavía sin elegir. Se marca sin gritar: es el estado normal
+   al abrir el formulario, no un error de quien escribe. */
+.entradaFalta {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+}

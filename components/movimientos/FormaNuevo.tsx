@@ -23,12 +23,37 @@ const DOCS: { id: DocTipo; nombre: string; pista: string }[] = [
 ];
 
 export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) {
-  const { empresasSeleccionadas, cuentas, empresas, tc, tasas, agregarMovimiento } =
-    useTesoreria();
+  const {
+    empresasSeleccionadas,
+    cuentas,
+    empresas,
+    tc,
+    tasas,
+    agregarMovimiento,
+    registroSeleccionado,
+  } = useTesoreria();
+
+  // La cuenta del registro abierto, si hay uno. Se registra donde uno está mirando:
+  // abrir CLA ADAPTACIÓN DÓLAR y que el alta proponga PESOS es pedir el error.
+  const cuentaAbierta = registroSeleccionado?.startsWith("cuenta:")
+    ? (cuentas.find((c) => c.id === registroSeleccionado.slice("cuenta:".length)) ?? null)
+    : null;
+
   const empresaInicial = empresasSeleccionadas[0] ?? empresas[0]!.id;
   const [cuentaId, setCuentaId] = useState(
-    () => cuentaPrincipalDe(cuentas, empresaInicial)?.id ?? cuentas[0]!.id
+    () => cuentaAbierta?.id ?? cuentaPrincipalDe(cuentas, empresaInicial)?.id ?? cuentas[0]!.id
   );
+
+  /**
+   * La empresa, cuando la cuenta no la determina.
+   *
+   * En una cuenta del banco la empresa sale de la cuenta y no se pregunta. En una
+   * auxiliar —facturas por cobrar, proyectos aprobados— la cuenta es de las cuatro a
+   * la vez (§2), así que hay que elegirla y **no se propone ninguna**: proponer una
+   * es exactamente lo que hizo que las facturas por cobrar quedaran todas en CLA
+   * ADAPTACIÓN sin que nadie lo decidiera.
+   */
+  const [empresaElegida, setEmpresaElegida] = useState<string | null>(null);
   const [fecha, setFecha] = useState(HOY);
   /** null = el que corresponda por cuenta y fecha. Un valor es una decisión explícita
    *  de quien registra, y entonces deja de seguir a la fecha. */
@@ -79,6 +104,8 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
   })();
 
   const cuenta = cuentas.find((c) => c.id === cuentaId) ?? cuentas[0]!;
+  const laCuentaManda = cuenta.tipo === "banco";
+  const empresaDelMovimiento = laCuentaManda ? cuenta.empresa_id : empresaElegida;
 
   // Lo que se anota en el banco con fecha de hoy o anterior ya ocurrió. Se muestra y
   // se puede cambiar: decidirlo a escondidas sería cambiar una sorpresa por otra.
@@ -91,11 +118,11 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
   const sinLineas = lineasEscritas.length === 0;
 
   const guardar = () => {
-    if (sinLineas || filaIncompleta || !contraparte.trim()) return;
+    if (sinLineas || filaIncompleta || !contraparte.trim() || !empresaDelMovimiento) return;
     const nuevo: Omit<Movimiento, "id"> = {
       fecha,
       // Empresa y moneda salen de la cuenta: no se eligen aparte.
-      empresa_id: cuenta.empresa_id,
+      empresa_id: empresaDelMovimiento,
       cuenta_id: cuenta.id,
       contraparte: contraparte.trim(),
       glosa: glosa.trim() || null,
@@ -135,6 +162,27 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
         <span className={css.etiquetaCampo}>Cuenta</span>
         <SelectorCuenta valor={cuentaId} onChange={setCuentaId} />
       </label>
+
+      {/* Solo cuando la cuenta no determina la empresa. En una del banco preguntarla
+          sería redundante y una vía para que no coincidan. */}
+      {!laCuentaManda && (
+        <label className={css.campo}>
+          <span className={css.etiquetaCampo}>Empresa</span>
+          <select
+            value={empresaElegida ?? ""}
+            onChange={(e) => setEmpresaElegida(e.target.value || null)}
+            aria-label="Empresa"
+            className={clases(css.entrada, !empresaElegida && css.entradaFalta)}
+          >
+            <option value="">— elegir —</option>
+            {empresas.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <label className={css.campo}>
         <span className={css.etiquetaCampo}>Proveedor / Cliente</span>
@@ -208,10 +256,12 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
         <button
           type="button"
           onClick={guardar}
-          disabled={sinLineas || filaIncompleta || !contraparte.trim()}
+          disabled={sinLineas || filaIncompleta || !contraparte.trim() || !empresaDelMovimiento}
           title={
-            !contraparte.trim()
-              ? "Falta el proveedor o cliente"
+            !empresaDelMovimiento
+              ? "Elige la empresa: esta cuenta es de las cuatro a la vez"
+              : !contraparte.trim()
+                ? "Falta el proveedor o cliente"
               : filaIncompleta
                 ? "Hay una línea con monto y sin categoría: no se guardaría"
                 : sinLineas
@@ -282,6 +332,11 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
 
       <div className={css.resumenForma}>
         <span>{pista}.</span>
+        {!empresaDelMovimiento && (
+          <span className={css.avisoForma}>
+            Elige la empresa: esta cuenta es de las cuatro a la vez.
+          </span>
+        )}
         {filaIncompleta && (
           <span className={css.avisoForma}>
             Hay una línea con monto y sin categoría: no se guardaría.

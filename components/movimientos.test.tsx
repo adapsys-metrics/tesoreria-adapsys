@@ -503,3 +503,55 @@ describe("Montos en dólares", () => {
     expect(fila.textContent).not.toMatch(/US\$/);
   });
 });
+
+describe("La empresa al crear un movimiento", () => {
+  // En una cuenta del banco la cuenta la determina. En una auxiliar hay que elegirla,
+  // y no se propone ninguna: proponer una es lo que dejó todas las facturas por cobrar
+  // en CLA ADAPTACIÓN sin que nadie lo decidiera (§2).
+
+  const abrirEn = (registro: string) => {
+    montarEn(registro, <Registro />);
+    fireEvent.click(screen.getByText("+ Nuevo"));
+    return within(document.querySelector('[data-forma="nuevo"]') as HTMLElement);
+  };
+
+  it("propone la cuenta del registro que está abierto", () => {
+    // Abrir la cuenta en dólares y que el alta proponga la de pesos es pedir el error.
+    const forma = abrirEn("cuenta:a2");
+    expect((forma.getByLabelText("Cuenta") as HTMLSelectElement).value).toBe("a2");
+  });
+
+  it("en una cuenta del banco no pregunta la empresa: la cuenta la determina", () => {
+    const forma = abrirEn("cuenta:a1");
+    expect(forma.queryByLabelText("Empresa")).toBeNull();
+  });
+
+  it("en la cartera pregunta la empresa y no propone ninguna", () => {
+    const forma = abrirEn("cuenta:x1");
+    expect((forma.getByLabelText("Empresa") as HTMLSelectElement).value).toBe("");
+  });
+
+  it("sin empresa elegida no deja guardar, y dice por qué", () => {
+    const forma = abrirEn("cuenta:x1");
+    fireEvent.change(screen.getByLabelText("Proveedor / Cliente"), { target: { value: "BHP" } });
+    fireEvent.change(forma.getByLabelText("Monto de la línea 1"), { target: { value: "1000" } });
+    fireEvent.click(forma.getByLabelText("Categoría"));
+    fireEvent.change(forma.getByPlaceholderText("Buscar categoría"), { target: { value: "bhp" } });
+    fireEvent.mouseDown(
+      within(forma.getByRole("listbox", { name: "Categorías encontradas" })).getAllByRole(
+        "option"
+      )[0]!
+    );
+
+    expect((screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement).disabled).toBe(
+      true
+    );
+    expect(screen.getByText(/Elige la empresa/)).toBeDefined();
+
+    // Al elegirla, ya se puede guardar.
+    fireEvent.change(forma.getByLabelText("Empresa"), { target: { value: "cons" } });
+    expect((screen.getByRole("button", { name: "Guardar" }) as HTMLButtonElement).disabled).toBe(
+      false
+    );
+  });
+});
