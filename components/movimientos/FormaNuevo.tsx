@@ -92,7 +92,8 @@ export function FormaNuevo({ cerrar }: { cerrar: () => void }) {
         <input
           type="date"
           value={fecha}
-          onChange={(e) => setFecha(e.target.value)}
+          // Igual que en el editor: el vacío no se guarda. Sin fecha no hay movimiento.
+          onChange={(e) => e.target.value && setFecha(e.target.value)}
           className={css.entrada}
         />
       </label>

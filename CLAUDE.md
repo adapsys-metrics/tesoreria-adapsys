@@ -398,6 +398,20 @@ not exists` no lo agrega cuando la columna ya estaba y quedaría sin validación
 `supabase/esquema.test.ts` corre las últimas dos veces seguidas. Ya pasó dos veces que
 una migración reventara a mitad de camino en producción.
 
+### Escribir a la base espera
+
+Movimientos, catálogo y maestros se persisten **con 700 ms de espera** desde el último
+cambio, no en cada `setState`. Sin eso hay una escritura por tecla —una glosa de veinte
+caracteres son veinte UPDATE— y, peor, se guardan los **estados intermedios**: un campo
+`<input type="date">` a medio escribir vale `""`, la base rechaza el movimiento entero
+con *invalid input syntax for type date* y el cartel de error aparece aunque el valor
+final sea correcto. Al recargar todo se ve bien, porque lo que falló nunca llegó.
+
+Lo mismo vale para cualquier campo de texto que se agregue a futuro.
+
+Y por las dudas: un `<input type="date">` **nunca** debe escribir su vacío al estado.
+Un movimiento sin fecha no existe — no está en ninguna cartola ni en ninguna proyección.
+
 ### Verificación obligatoria
 **Compilar no basta.** El bundler valida sintaxis pero no detecta referencias a variables usadas
 antes de su declaración ni identificadores inexistentes — un error real de este proyecto fue una

@@ -72,7 +72,13 @@ export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) 
           <input
             type="date"
             value={m.fecha}
-            onChange={(e) => editarMovimiento(m.id, "fecha", e.target.value)}
+            // Un campo de fecha vale "" mientras se está escribiendo —y si se borra—,
+            // y un movimiento sin fecha no existe: no está en ninguna cartola ni en
+            // ninguna proyección. Se ignora el vacío en vez de guardarlo, que es lo
+            // que hacía que la base rechazara el movimiento a medio tipear.
+            onChange={(e) => {
+              if (e.target.value) editarMovimiento(m.id, "fecha", e.target.value);
+            }}
             className={css.entrada}
           />
         </label>

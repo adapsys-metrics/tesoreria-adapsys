@@ -316,15 +316,8 @@ export function ProveedorTesoreria({
   const guardados = useRef<Map<string, Movimiento> | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!supabaseConfigurado || cargando) return;
-
-    const previos = guardados.current;
-    guardados.current = new Map(estado.movimientos.map((m) => [m.id, m]));
-
-    // Primera pasada después de cargar: es la línea base, no hay nada que guardar.
-    if (previos === null) return;
-
+  const persistirMovimientos = useCallback(
+    (previos: Map<string, Movimiento>) => {
     const cambiados = estado.movimientos.filter((m) => previos.get(m.id) !== m);
     if (!cambiados.length) return;
 
@@ -343,7 +336,32 @@ export function ProveedorTesoreria({
         })
         .catch((e: Error) => setErrorGuardado(e.message));
     }
-  }, [estado.movimientos, cargando]);
+    },
+    [estado.movimientos]
+  );
+
+  useEffect(() => {
+    if (!supabaseConfigurado || cargando) return;
+
+    // Primera pasada después de cargar: es la línea base, no hay nada que guardar.
+    if (guardados.current === null) {
+      guardados.current = new Map(estado.movimientos.map((m) => [m.id, m]));
+      return;
+    }
+
+    // Se espera, como con el catálogo y los maestros. Sin esto había una escritura por
+    // tecla —una glosa de veinte caracteres eran veinte UPDATE—, y peor: un campo de
+    // fecha a medio tipear vale "" y la base rechazaba el movimiento entero con
+    // "invalid input syntax for type date". El error aparecía aunque el valor final
+    // fuera correcto, porque se guardaban también los estados intermedios.
+    const temporizador = setTimeout(() => {
+      const previos = guardados.current;
+      if (previos === null) return;
+      guardados.current = new Map(estado.movimientos.map((m) => [m.id, m]));
+      persistirMovimientos(previos);
+    }, 700);
+    return () => clearTimeout(temporizador);
+  }, [estado.movimientos, cargando, persistirMovimientos]);
 
   // Mismo mecanismo para el catálogo: se compara contra lo último guardado y se
   // manda solo lo que cambió. Un rename dispara una escritura, no 293.
