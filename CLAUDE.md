@@ -53,6 +53,16 @@ Cinco entidades legales, agrupadas en dos:
 Además existen cuentas auxiliares en Quicken (`FACTURAS POR COBRAR`, `PROY. EGRESOS CLP/USD`,
 `PROYECTOS APROBADOS`) que **no deben replicarse como cuentas**. Ver §4.
 
+**Dónde vive la empresa depende del tipo de cuenta**, y confundirlo mueve movimientos sin
+que nadie lo pida:
+
+- En una **cuenta del banco** manda la cuenta: ella determina empresa y moneda. Cambiar de
+  empresa **mueve** el movimiento de una cuenta a otra y cambia el saldo de las dos, así que
+  se confirma antes.
+- En una **auxiliar** es al revés: son de las cuatro empresas a la vez y cuelgan de CLA
+  ADAPTACIÓN solo porque en Quicken todo tiene que vivir en un registro. Ahí la empresa es un
+  dato del movimiento y cambiarla **no lo mueve de cuenta**.
+
 ---
 
 ## 3. Modelo de datos

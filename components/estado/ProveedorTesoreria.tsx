@@ -133,6 +133,9 @@ type Contexto = Estado & {
   conciliar: (id: string) => void;
   /** Cambia cuenta, empresa y moneda juntas: la cuenta determina las otras dos. */
   cambiarCuenta: (id: string, cuenta_id: string) => void;
+  /** Cambia la empresa dejando el movimiento donde está. Para las cuentas auxiliares,
+   *  donde la empresa es del movimiento y no de la cuenta (§2). */
+  cambiarEmpresa: (id: string, empresa_id: string) => void;
   editarMovimiento: <K extends keyof Movimiento>(id: string, campo: K, valor: Movimiento[K]) => void;
   editarLinea: <K extends keyof Linea>(id: string, indice: number, campo: K, valor: Linea[K]) => void;
   agregarLinea: (id: string) => void;
@@ -684,6 +687,22 @@ export function ProveedorTesoreria({
     });
   }, []);
 
+  /**
+   * Cambia la empresa sin mover el movimiento de cuenta.
+   *
+   * Es lo que corresponde en las cuentas auxiliares —facturas por cobrar, proyectos
+   * aprobados, las proyecciones—: son de las cuatro empresas a la vez y cuelgan de
+   * CLA ADAPTACIÓN solo porque en Quicken todo tiene que vivir en un registro (§2).
+   * Ahí la empresa es un dato del movimiento, no de la cuenta.
+   *
+   * En una cuenta del banco es al revés y hay que usar `cambiarCuenta`: la cuenta
+   * manda, y cambiar de empresa significa mover la plata de una cuenta a otra.
+   */
+  const cambiarEmpresa = useCallback(
+    (id: string, empresa_id: string) => mapMov(id, (m) => ({ ...m, empresa_id })),
+    [mapMov]
+  );
+
   const conciliar = useCallback(
     (id: string) => mapMov(id, (m) => ({ ...m, estado: "conciliado" })),
     [mapMov]
@@ -932,6 +951,7 @@ export function ProveedorTesoreria({
     avanzarCobranza,
     conciliar,
     cambiarCuenta,
+    cambiarEmpresa,
     editarMovimiento,
     editarLinea,
     agregarLinea,

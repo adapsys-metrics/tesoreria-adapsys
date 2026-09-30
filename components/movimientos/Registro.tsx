@@ -6,6 +6,8 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
+import type { Movimiento } from "@/lib/tipos";
+import { ConfirmarMovida } from "./ConfirmarMovida";
 import { descuadre, enCLP } from "@/lib/dominio";
 import { claveDeCuenta, esRegistroDeBanco } from "@/lib/registros";
 import { saldosCorrientes } from "@/lib/saldos";
@@ -58,6 +60,8 @@ export function Registro() {
     editarLinea,
     agregarLinea,
     cambiarCuenta,
+    cambiarEmpresa,
+    empresas,
     pagar,
     avanzarCobranza,
     registroSeleccionado,
@@ -66,6 +70,14 @@ export function Registro() {
   } = useTesoreria();
 
   const cuentasBanco = useMemo(() => cuentas.filter((c) => c.tipo === "banco"), [cuentas]);
+
+  /** ¿Vive en una cuenta del banco? Ahí la cuenta manda sobre la empresa; en las
+   *  auxiliares es al revés (§2). */
+  const enCuentaDeBanco = (m: { cuenta_id: string | null }) =>
+    cuentasBanco.some((c) => c.id === m.cuenta_id);
+
+  // El movimiento que está esperando confirmación para cambiarse de cuenta.
+  const [porMover, setPorMover] = useState<{ m: Movimiento; cuenta_id: string } | null>(null);
   const [busqueda, setBusqueda] = useState("");
   const [soloPendiente, setSoloPendiente] = useState(true);
 
@@ -232,6 +244,20 @@ export function Registro() {
         </button>
       </div>
 
+      {porMover && (
+        <ConfirmarMovida
+          movimiento={porMover.m}
+          destino={cuentasBanco.find((c) => c.id === porMover.cuenta_id)!}
+          origen={cuentas.find((c) => c.id === porMover.m.cuenta_id) ?? null}
+          nombreEmpresa={(id) => catalogo.empresaDe(id).nombre}
+          confirmar={() => {
+            cambiarCuenta(porMover.m.id, porMover.cuenta_id);
+            setPorMover(null);
+          }}
+          cancelar={() => setPorMover(null)}
+        />
+      )}
+
       {nuevo && (
         <FormaNuevo
           cerrar={(idCreado) => {
@@ -368,23 +394,45 @@ export function Registro() {
                         )}
                       </td>
 
-                      {/* Se elige la cuenta, no la empresa: la cuenta determina
-                          empresa y moneda a la vez. Se muestra el nombre corto de la
-                          empresa más la moneda, que es lo que distingue las cuentas. */}
+                      {/* En una cuenta del banco se elige la CUENTA: ella determina
+                          empresa y moneda, y cambiarla mueve la plata de una cuenta a
+                          otra — por eso se confirma.
+
+                          En una auxiliar —facturas por cobrar, proyecciones— se elige
+                          la EMPRESA y el movimiento se queda donde está: esas cuentas
+                          son de las cuatro a la vez (§2). Antes se listaban solo las
+                          del banco, así que el selector mostraba la primera en vez del
+                          valor real, y elegir cualquiera se llevaba el movimiento
+                          fuera de la cartera. */}
                       <td className={tabla.td}>
-                        <select
-                          value={m.cuenta_id ?? ""}
-                          aria-label="Cuenta"
-                          onChange={(e) => cambiarCuenta(m.id, e.target.value)}
-                          className={css.selectEmpresa}
-                        >
-                          {m.cuenta_id === null && <option value="">— sin cuenta —</option>}
-                          {cuentasBanco.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {catalogo.empresaDe(c.empresa_id).nombre} · {c.moneda}
-                            </option>
-                          ))}
-                        </select>
+                        {enCuentaDeBanco(m) ? (
+                          <select
+                            value={m.cuenta_id ?? ""}
+                            aria-label="Cuenta"
+                            onChange={(e) => setPorMover({ m, cuenta_id: e.target.value })}
+                            className={css.selectEmpresa}
+                          >
+                            {cuentasBanco.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {catalogo.empresaDe(c.empresa_id).nombre} · {c.moneda}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <select
+                            value={m.empresa_id ?? ""}
+                            aria-label="Empresa"
+                            onChange={(e) => cambiarEmpresa(m.id, e.target.value)}
+                            className={css.selectEmpresa}
+                          >
+                            {m.empresa_id === null && <option value="">— sin empresa —</option>}
+                            {empresas.map((e) => (
+                              <option key={e.id} value={e.id}>
+                                {e.nombre}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </td>
 
                       <td className={clases(tabla.td, css.contraparte)}>{m.contraparte}</td>

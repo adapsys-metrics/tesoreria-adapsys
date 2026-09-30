@@ -128,8 +128,10 @@ describe("Entrar a una cuenta desde el sidebar", () => {
   it("hacer click en la empresa filtra a esa empresa", () => {
     conSidebar();
     fireEvent.click(screen.getByTitle("Ver solo CLA CONSULTORES"));
-    // Queda una sola empresa en el sidebar.
-    expect(screen.queryByText("CLA ADAPTACIÓN")).toBeNull();
-    expect(screen.getByText("CLA CONSULTORES")).toBeDefined();
+    // Dentro del sidebar: fuera de él, cada fila tiene un selector de empresa que
+    // lista las cinco como opciones.
+    const lateral = within(document.querySelector("aside")!);
+    expect(lateral.queryByText("CLA ADAPTACIÓN")).toBeNull();
+    expect(lateral.getByText("CLA CONSULTORES")).toBeDefined();
   });
 });
