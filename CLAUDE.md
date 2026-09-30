@@ -570,6 +570,29 @@ filtrar por egreso.
   solo las mangle en la glosa. Por ahora se normaliza solo la glosa, que es donde hay
   evidencia.
 
+### El registro CC Perú: un control que no entra a ninguna parte
+
+Pedido por el equipo, **falta el export**. En Quicken vive como cuenta porque no había
+otra forma, pero no es una cuenta: es un registro de control de lo que se mueve con
+Adapsys Perú. Cada semestre se netea y el país que debe le paga al otro — **ese pago sí
+sale del banco** y se registra normal en la cuenta dólar de CLA ADAPTACIÓN.
+
+La regla, tal como la dio el equipo: **no se incluye en ninguna parte**. Ni en el flujo
+de caja, ni en el control presupuestario, ni en los saldos. Solo se mira para llevar la
+cuenta.
+
+Eso pide un tercer tipo de cuenta, distinto de los dos que hay:
+
+| tipo | Entra al flujo | Entra al presupuesto | Suma al saldo |
+|---|---|---|---|
+| `banco` | sí | sí | sí |
+| `cxc` (cartera, proyecciones) | sí, como proyectado | sí | no |
+| `control` (nuevo) | **no** | **no** | **no** |
+
+Ojo al cargarlo: los movimientos que hoy están en `a1`/`a2` con la categoría "Cuenta
+corriente Perú-Chile" **son correctos y se quedan donde están** — son pagos y cobros
+reales del banco chileno. El registro nuevo es otra cosa y no hay que mezclarlos.
+
 ### La proyección se genera del presupuesto, no de reglas por proveedor
 
 Decidido con el equipo. La tentación es modelar recurrencias por proveedor ("GTD, día 14,
