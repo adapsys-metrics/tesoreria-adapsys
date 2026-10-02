@@ -155,6 +155,16 @@ describe("El registro lleva su saldo corriente", () => {
     expect(screen.getAllByText(GLOSAS[0]!).length).toBeGreaterThan(0);
   });
 
+  it("el encabezado lo nombra y no le dice «saldo de hoy»", () => {
+    // No se cuadra contra ninguna cartola: no es un saldo del banco, es cuánto va
+    // acumulado en el registro. Llamarle igual que al del banco sería decir que
+    // esa plata está en alguna cuenta.
+    montarEn(claveDeCuenta(CONTROL.id), <Registro />);
+    expect(screen.getByRole("heading", { name: CONTROL.nombre })).toBeDefined();
+    expect(screen.getByText("Saldo del registro")).toBeDefined();
+    expect(screen.queryByText("Saldo de hoy")).toBeNull();
+  });
+
   it("la cartera en cambio no lleva saldo: ahí nada ha pasado todavía", () => {
     expect(esRegistroConSaldo(claveDeCuenta("x1"), CUENTAS)).toBe(false);
     expect(esRegistroConSaldo(claveDeCuenta(CONTROL.id), CUENTAS)).toBe(true);

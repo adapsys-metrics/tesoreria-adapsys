@@ -45,12 +45,45 @@ export function Pill({ estado }: { estado: EstadoMovimiento }) {
   return <span className={clases(css.pill, p.clase)}>{p.texto}</span>;
 }
 
-export function Cabecera({ titulo, bajada }: { titulo: string; bajada: ReactNode }) {
+export function Cabecera({
+  titulo,
+  bajada,
+  derecha,
+}: {
+  titulo: string;
+  bajada: ReactNode;
+  /** El número que resume lo que se está mirando, a la derecha del título. Lo usa
+   *  el registro abierto, como en Quicken. */
+  derecha?: ReactNode;
+}) {
   return (
     <div className={css.cabecera}>
-      <h1>{titulo}</h1>
-      <p>{bajada}</p>
+      <div className={css.cabeceraTexto}>
+        <h1>{titulo}</h1>
+        <p>{bajada}</p>
+      </div>
+      {derecha && <div className={css.cabeceraDerecha}>{derecha}</div>}
     </div>
+  );
+}
+
+/** El número que resume el registro abierto. Va en la cabecera, a la derecha. */
+export function SaldoCabecera({
+  rotulo,
+  texto,
+  negativo,
+}: {
+  rotulo: string;
+  texto: string;
+  negativo?: boolean;
+}) {
+  return (
+    <>
+      <span className={css.cabeceraRotulo}>{rotulo}</span>
+      <div className={clases(css.cabeceraMonto, negativo && css.cabeceraMontoNegativo)}>
+        {texto}
+      </div>
+    </>
   );
 }
 

@@ -21,6 +21,16 @@ export function SelectorEmpresas() {
     (p) => p.ids.length === sel.length && p.ids.every((i) => sel.includes(i))
   );
 
+  // Con una sola empresa elegida decía "1 EMPRESAS", que no nombra cuál. Es el
+  // caso más fácil de alcanzar y el único en que el botón puede decirlo entero.
+  const unica = sel.length === 1 ? empresas.find((e) => e.id === sel[0]) : undefined;
+
+  const etiqueta = preset
+    ? preset.nombre
+    : unica
+      ? unica.nombre
+      : `${sel.length} empresas`;
+
   const alternar = (id: string) =>
     setSel(sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]);
 
@@ -32,7 +42,7 @@ export function SelectorEmpresas() {
         aria-expanded={abierto}
         className={css.selectorBoton}
       >
-        {(preset ? preset.nombre : `${sel.length} empresas`).toUpperCase()}
+        {etiqueta.toUpperCase()}
         <span className={css.selectorFlecha}>▾</span>
       </button>
 

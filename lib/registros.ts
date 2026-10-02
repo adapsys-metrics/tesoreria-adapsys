@@ -103,6 +103,78 @@ export function perteneceAlRegistro(
 }
 
 /**
+ * Lo que va arriba del registro abierto: su nombre, qué muestra y el número que lo
+ * resume.
+ *
+ * Es lo que hace Quicken y por lo que se pidió: con el nombre de la cuenta y su
+ * saldo en el encabezado se sabe dónde se está parado sin tener que mirar la barra
+ * lateral. Acá hay un matiz que Quicken no tiene, porque sus registros son todos
+ * cuentas: **no todos tienen saldo**. La cartera y las proyecciones no son plata
+ * que esté en ninguna parte, así que su número es un total, no un saldo, y el
+ * rótulo tiene que decirlo o el encabezado estaría mintiendo.
+ */
+export type CabeceraRegistro = {
+  nombre: string;
+  bajada: string;
+  rotulo: string;
+  monto: number;
+  moneda: Moneda;
+};
+
+export function cabeceraDeRegistro(
+  clave: string,
+  cuentas: (Cuenta & { saldo: number })[],
+  /** Los movimientos que ya están filtrados a este registro: es lo que se ve en
+   *  pantalla, y el total del encabezado tiene que ser el de esa lista. */
+  delRegistro: Movimiento[]
+): CabeceraRegistro | null {
+  const suma = () => delRegistro.reduce((t, m) => t + m.monto, 0);
+
+  const proy = REGISTROS_PROYECCION.find((r) => r.clave === clave);
+  if (proy) {
+    return {
+      nombre: `${proy.nombre} ${proy.moneda}`,
+      bajada:
+        "Compromisos futuros, de todas las empresas. Dejan de aparecer acá cuando se marcan pagados.",
+      rotulo: "Total comprometido",
+      monto: suma(),
+      moneda: proy.moneda,
+    };
+  }
+
+  if (!clave.startsWith("cuenta:")) return null;
+  const cuenta = cuentas.find((c) => c.id === clave.slice("cuenta:".length));
+  if (!cuenta) return null;
+
+  if (cuenta.tipo === "cxc") {
+    return {
+      nombre: cuenta.nombre,
+      bajada:
+        "Plata por entrar: todavía no pasó por el banco, así que no suma a ningún saldo.",
+      rotulo: "Total por cobrar",
+      monto: suma(),
+      moneda: cuenta.moneda,
+    };
+  }
+
+  return {
+    nombre: cuenta.nombre,
+    bajada:
+      cuenta.tipo === "control"
+        ? "Registro de control: no entra al flujo, al presupuesto ni a ningún saldo. Solo lleva la cuenta."
+        : "Solo lo que ya pasó por el banco, que es lo que permite cuadrar contra la cartola.",
+    // El de control no se cuadra contra ninguna cartola, así que no es un saldo
+    // "de hoy" en el sentido del banco: es cuánto va acumulado en el registro.
+    rotulo: cuenta.tipo === "control" ? "Saldo del registro" : "Saldo de hoy",
+    // El saldo viene ya calculado, el mismo que muestra la barra lateral. Sacarlo
+    // de `delRegistro` daría otro número en cuanto haya un filtro puesto, y dos
+    // saldos distintos para la misma cuenta es peor que no mostrar ninguno.
+    monto: cuenta.saldo,
+    moneda: cuenta.moneda,
+  };
+}
+
+/**
  * Saldo de una cuenta bancaria: el inicial más lo que efectivamente se movió.
  *
  * Los proyectados no suman — no han ocurrido. Es exactamente la diferencia entre

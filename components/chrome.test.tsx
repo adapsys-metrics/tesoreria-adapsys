@@ -40,18 +40,21 @@ describe("Chrome", () => {
     expect(screen.getAllByText(/fuera del flujo/).length).toBeGreaterThan(0);
   });
 
-  it("la empresa y su cuenta en pesos son una sola fila", () => {
+  it("la empresa y su cuenta en pesos son una sola fila, que abre la cuenta", () => {
     // Son el mismo número —el total de la empresa es la suma de sus cuentas CLP y
-    // hay una sola—, así que estaba escrito dos veces. En la fila fusionada el
-    // nombre filtra por empresa y el monto abre la cuenta: dos acciones, una fila.
+    // hay una sola—, así que estaba escrito dos veces. Fusionados, y el clic hace
+    // una sola cosa: abrir la cuenta.
     montar(<Cuentas />);
-    const nombre = screen.getByTitle("Ver solo CLA ADAPTACIÓN");
-    const monto = screen.getByTitle(/Ver los movimientos de CLA ADAPTACIÓN PESOS/);
-    // La prueba es que compartan padre: son la misma fila. Comparar contra el
-    // texto del total no serviría —en los datos de ejemplo el saldo es otro— y
-    // pasaría igual sin haber fusionado nada.
-    expect(nombre.parentElement).toBe(monto.parentElement);
-    expect(nombre.parentElement).not.toBeNull();
+    const fila = screen.getByTitle(/Ver los movimientos de CLA ADAPTACIÓN PESOS/);
+    expect(within(fila).getByText("CLA ADAPTACIÓN")).toBeDefined();
+  });
+
+  it("la barra lateral no filtra por empresa", () => {
+    // Filtrar es global: apaga las otras empresas en todas las vistas y deja el
+    // selector de arriba diciendo cuántas, no cuál. Se activaba sin querer al
+    // apuntar al nombre, así que esa acción salió de la barra.
+    montar(<Cuentas />);
+    expect(screen.queryByTitle(/^Ver solo /)).toBeNull();
   });
 
   it("las proyecciones van en su propio bloque, no mezcladas con el banco", () => {
@@ -145,13 +148,38 @@ describe("Entrar a una cuenta desde el sidebar", () => {
     expect(cuerpo.queryAllByText("conciliado")).toHaveLength(0);
   });
 
-  it("hacer click en la empresa filtra a esa empresa", () => {
+  it("hacer click en la empresa abre su cuenta en pesos, sin tocar el filtro", () => {
     conSidebar();
-    fireEvent.click(screen.getByTitle("Ver solo CLA CONSULTORES"));
-    // Dentro del sidebar: fuera de él, cada fila tiene un selector de empresa que
-    // lista las cinco como opciones.
+    fireEvent.click(screen.getByTitle(/Ver los movimientos de CLA CONSULTORES PESOS/));
+
+    // Se abrió el registro…
+    expect(screen.getByText(/Viendo solo/)).toBeDefined();
+    // …y las otras empresas siguen en la barra, que es lo que no pasaba cuando el
+    // nombre cambiaba el filtro global.
     const lateral = within(document.querySelector("aside")!);
-    expect(lateral.queryByText("CLA ADAPTACIÓN")).toBeNull();
+    expect(lateral.getByText("CLA ADAPTACIÓN")).toBeDefined();
     expect(lateral.getByText("CLA CONSULTORES")).toBeDefined();
+  });
+
+  it("el encabezado toma el nombre del registro abierto y su saldo", () => {
+    // Pedido mirando Quicken: con el nombre de la cuenta arriba se sabe dónde se
+    // está parado sin tener que leer la barra lateral.
+    conSidebar();
+    expect(screen.getByRole("heading", { name: "Movimientos" })).toBeDefined();
+
+    fireEvent.click(screen.getByTitle(/Ver los movimientos de CLA CONSULTORES PESOS/));
+    expect(
+      screen.getByRole("heading", { name: "CLA CONSULTORES PESOS" })
+    ).toBeDefined();
+    expect(screen.getByText("Saldo de hoy")).toBeDefined();
+  });
+
+  it("y en la cartera el número es un total, no un saldo", () => {
+    // La cartera no es plata que esté en ninguna parte: llamarle saldo sería
+    // decir que hay algo en una cuenta.
+    conSidebar();
+    fireEvent.click(screen.getByTitle("Ver facturas por cobrar en CLP"));
+    expect(screen.getByText("Total por cobrar")).toBeDefined();
+    expect(screen.queryByText("Saldo de hoy")).toBeNull();
   });
 });

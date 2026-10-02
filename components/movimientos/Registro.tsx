@@ -9,7 +9,7 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import type { Movimiento } from "@/lib/tipos";
 import { ConfirmarMovida } from "./ConfirmarMovida";
 import { descuadre, enCLP } from "@/lib/dominio";
-import { claveDeCuenta, esRegistroConSaldo } from "@/lib/registros";
+import { cabeceraDeRegistro, claveDeCuenta, esRegistroConSaldo } from "@/lib/registros";
 import { saldosCorrientes } from "@/lib/saldos";
 import { diasDeAtraso, estaVencido } from "@/lib/vencidos";
 import { pasoDe } from "@/lib/cobranza";
@@ -21,7 +21,7 @@ import {
 } from "@/lib/orden";
 import { clp } from "@/lib/formato";
 import { HOY, fechaCorta } from "@/lib/fechas";
-import { Cabecera, Nota, Pill, Vacio, clases } from "@/components/ui/primitivas";
+import { Cabecera, Nota, Pill, SaldoCabecera, Vacio, clases } from "@/components/ui/primitivas";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { EditorMovimiento } from "./EditorMovimiento";
 import { FormaNuevo } from "./FormaNuevo";
@@ -105,6 +105,14 @@ export function Registro() {
 
   const COLUMNAS = useMemo(() => columnas(saldos !== null), [saldos]);
 
+  const cabecera = useMemo(
+    () =>
+      registroSeleccionado
+        ? cabeceraDeRegistro(registroSeleccionado, cuentas, movimientosFiltrados)
+        : null,
+    [registroSeleccionado, cuentas, movimientosFiltrados]
+  );
+
   // Sobre los movimientos del registro abierto, no sobre los que se ven: el
   // contador tiene que decir cuántos hay, no cuántos quedaron tras el buscador.
   const vencidos = useMemo(
@@ -171,9 +179,24 @@ export function Registro() {
 
   return (
     <>
+      {/* Con un registro abierto el título es el nombre del registro y al lado va
+          su saldo, como en Quicken: es lo que permite saber en qué cuenta se está
+          parado sin tener que leer la barra lateral. */}
       <Cabecera
-        titulo="Movimientos"
-        bajada="Registro único de todas las empresas. La empresa y la categoría se editan en la misma fila; los splits se abren para ver y ajustar sus líneas."
+        titulo={cabecera?.nombre ?? "Movimientos"}
+        bajada={
+          cabecera?.bajada ??
+          "Registro único de todas las empresas. La empresa y la categoría se editan en la misma fila; los splits se abren para ver y ajustar sus líneas."
+        }
+        derecha={
+          cabecera && (
+            <SaldoCabecera
+              rotulo={cabecera.rotulo}
+              texto={`${cabecera.moneda === "USD" ? "US$" : "$"}${clp(cabecera.monto)}`}
+              negativo={cabecera.monto < 0}
+            />
+          )
+        }
       />
 
       <div className={css.barra}>

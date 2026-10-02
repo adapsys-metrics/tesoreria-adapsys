@@ -23,9 +23,16 @@
 //     vida. Pasaron al title del rótulo de su sección.
 //   - El total de la empresa y su cuenta en pesos **son el mismo número**: el
 //     total es la suma de las cuentas CLP y hay una sola por empresa. Se fusionan
-//     en una fila, donde el nombre filtra por empresa y el monto abre la cuenta.
-//     Si alguna empresa llegara a tener dos cuentas en pesos, vuelven a separarse
-//     solas — ahí el total sí dice algo que ninguna fila dice.
+//     en una fila, que abre la cuenta. Si alguna empresa llegara a tener dos
+//     cuentas en pesos, vuelven a separarse solas — ahí el total sí dice algo que
+//     ninguna fila dice, y entonces no es un botón.
+//
+// **La barra no filtra por empresa.** El nombre abría la cuenta o cambiaba el
+// filtro global según dónde cayera el clic, y el filtro es global: apaga las otras
+// tres empresas en todas las vistas y deja el selector de arriba diciendo "1
+// EMPRESAS", sin nombrar cuál. Se activaba sin querer y no se veía cómo volver.
+// Filtrar es del selector de arriba, que para eso está; acá una fila abre un
+// registro y nada más, como en Quicken.
 
 import type { ReactNode } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
@@ -157,7 +164,6 @@ export function Cuentas() {
     cuentasFiltradas,
     registroSeleccionado,
     seleccionarRegistro,
-    setEmpresasSeleccionadas,
     porConciliar,
     empresas,
   } = useTesoreria();
@@ -263,34 +269,27 @@ export function Cuentas() {
 
           return (
             <div key={empresa.id} className={css.empresa}>
-              <div className={clases(css.filaEmpresa, activa && css.filaActiva)}>
+              {unica ? (
                 <button
                   type="button"
-                  onClick={() => setEmpresasSeleccionadas([empresa.id])}
-                  title={`Ver solo ${empresa.nombre}`}
-                  className={css.nombreEmpresa}
+                  onClick={() => alternar(claveDeCuenta(unica.id))}
+                  aria-pressed={activa}
+                  title={tituloDeCuenta(unica)}
+                  className={clases(css.filaEmpresa, activa && css.filaActiva)}
                 >
-                  {empresa.nombre}
+                  <span className={css.nombreEmpresa}>{empresa.nombre}</span>
+                  <Monto monto={unica.saldo} moneda="CLP" activa={activa} fuerte />
                 </button>
-
-                {unica ? (
-                  <button
-                    type="button"
-                    onClick={() => alternar(claveDeCuenta(unica.id))}
-                    aria-pressed={activa}
-                    title={tituloDeCuenta(unica)}
-                    className={css.montoBoton}
-                  >
-                    <Monto monto={unica.saldo} moneda="CLP" activa={activa} fuerte />
-                  </button>
-                ) : (
-                  // Dos cuentas en pesos o ninguna: el total vuelve a decir algo
-                  // que ninguna fila dice, y las cuentas se listan abajo.
+              ) : (
+                // Dos cuentas en pesos o ninguna: el total vuelve a decir algo que
+                // ninguna fila dice, y no abre nada — las cuentas van abajo.
+                <div className={css.filaEmpresa}>
+                  <span className={css.nombreEmpresa}>{empresa.nombre}</span>
                   <span className={clases(css.filaMonto, css.montoFuerte)}>
                     {clpK(total)}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
 
               {(unica ? resto : cs).map((c) => (
                 <Fila

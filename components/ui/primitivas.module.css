@@ -53,6 +53,42 @@
 
 .cabecera {
   margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.cabeceraTexto {
+  min-width: 0;
+}
+
+.cabeceraDerecha {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.cabeceraRotulo {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+
+.cabeceraMonto {
+  font-family: var(--font-cifras);
+  font-size: 21px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  color: var(--teal);
+}
+
+.cabeceraMontoNegativo {
+  color: var(--brick);
 }
 
 .cabecera h1 {

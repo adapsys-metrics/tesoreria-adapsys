@@ -362,7 +362,7 @@ encima porque dos categorías pueden llamarse igual en grupos distintos.
 | Vista | Qué hace |
 |---|---|
 | **Flujo de caja** | Réplica mejorada del reporte de Quicken. Rango de fechas libre, columnas semanales o mensuales, secciones por naturaleza → grupo → categoría. **Solo aparecen las líneas con movimiento en el rango.** Filtro por estado. Cada monto es clicable y abre el detalle con los movimientos que lo componen, reclasificables y seleccionables ahí mismo. |
-| **Movimientos** | Registro único de todas las empresas. El alta abre en **la cuenta del registro que se está mirando**, y pide la empresa solo cuando la cuenta no la determina — sin proponer ninguna. Trae **una lista de líneas**: un movimiento puede nacer como split, que es como llega un pago que junta tres facturas. La categoría **no trae valor por defecto** — uno real, guardable, es peor que ninguno. Selección múltiple con suma de lo elegido —para cuadrar varias facturas contra una sola transferencia—. Empresa y categoría editables inline. Editor de splits con líneas, glosa, botones de IVA/retención, pegado masivo, y detector de descuadre. |
+| **Movimientos** | Registro único de todas las empresas. Con un registro abierto el **encabezado toma su nombre y su número**, como en Quicken: así se sabe en qué cuenta se está parado sin leer la barra lateral. El rótulo del número distingue lo que es — *Saldo de hoy* en el banco, *Total por cobrar* en la cartera, *Total comprometido* en las proyecciones, *Saldo del registro* en los de control — porque solo el del banco se cuadra contra una cartola. El alta abre en **la cuenta del registro que se está mirando**, y pide la empresa solo cuando la cuenta no la determina — sin proponer ninguna. Trae **una lista de líneas**: un movimiento puede nacer como split, que es como llega un pago que junta tres facturas. La categoría **no trae valor por defecto** — uno real, guardable, es peor que ninguno. Selección múltiple con suma de lo elegido —para cuadrar varias facturas contra una sola transferencia—. Empresa y categoría editables inline. Editor de splits con líneas, glosa, botones de IVA/retención, pegado masivo, y detector de descuadre. |
 | **Conciliación** | Lista de `pagado` sin cuadrar. El total es exactamente la diferencia contra la cartola. |
 | **Presupuesto anual** | Dos modos: *construcción* (responsable, ppto año anterior, ppto año, variación, notas) y *control* (ejecutado, % utilizado con marca de avance del año, disponible, proyección de cierre). |
 | **Reportes** | Armador configurable: filas (categoría / grupo / naturaleza / empresa / proveedor), columnas (mes / trimestre / empresa / grupo / naturaleza / total), rango de fechas con presets, filtro de estados y de categorías. Configuraciones guardables. Export CSV. |
@@ -434,6 +434,13 @@ Tres cosas la estiraban y ninguna decía nada nuevo, y conviene no volver a mete
 **El color estructura en vez de decorar.** Los rótulos de sección y los saldos del banco van en
 teal oscuro, el registro abierto lleva barra teal y fondo `#B6E6E6`, y el magenta queda reservado
 a negativos y vencidos. Es lo que permite distinguir los tres bloques sin las glosas.
+
+**Y la barra no filtra por empresa.** Una fila abre un registro y nada más. El nombre de la
+empresa filtraba el selector global de arriba, que apaga las otras empresas en *todas* las
+vistas: se activaba sin querer al apuntar al nombre, dejaba el selector diciendo "1 EMPRESAS"
+sin nombrar cuál, y el "Ver todo" de la barra no lo deshacía. Dos acciones distintas en una
+misma fila es una de más. Filtrar es del selector de arriba, que ahora sí nombra la empresa
+cuando hay una sola elegida.
 
 ### Las migraciones se corren a mano, así que tienen que ser repetibles
 
