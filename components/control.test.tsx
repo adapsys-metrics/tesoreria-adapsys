@@ -167,8 +167,10 @@ describe("La barra lateral lo separa de todo lo demás", () => {
     montar(<Cuentas />);
     const rotulo = screen.getByText("Registros de control");
     expect(rotulo).toBeDefined();
+    // La explicación pasó al title del rótulo: en la barra ocupaba tres líneas y
+    // se lee una vez en la vida. Sigue estando, y accesible por su etiqueta.
     expect(
-      screen.getByText(/No entran al flujo, al presupuesto ni a ningún saldo/)
+      screen.getByLabelText(/No entran al flujo, al presupuesto ni a ningún saldo/)
     ).toBeDefined();
   });
 

@@ -145,13 +145,19 @@
 }
 
 /* ── Sidebar de cuentas ── */
+/*
+   El teal estructura la barra. Antes el color aparecía solo en lo activo y todo
+   lo demás era gris, así que los tres bloques se distinguían por sus glosas; sin
+   ellas hace falta que el rótulo se vea. El magenta queda reservado a negativos y
+   vencidos, que es lo que hay que notar sin buscarlo.
+*/
 
 .sidebar {
   width: 244px;
   flex-shrink: 0;
   border-right: 1px solid var(--rule);
   background: var(--surface);
-  padding: 16px 0;
+  padding: 14px 0 10px;
   /* Queda fija al bajar: revisando un movimiento de hace tres años había que
      volver al tope de la página solo para cambiar de empresa o de cuenta.
      `top` se ancla a la altura del encabezado, que también es sticky, para que
@@ -165,12 +171,34 @@
   overscroll-behavior: contain;
 }
 
-.encabezadoSidebar {
+/* ── Encabezados de sección ── */
+
+.seccion {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 16px 8px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 16px 5px;
+}
+
+.rotuloSeccion {
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+
+.empuje {
+  flex: 1;
+}
+
+/* La explicación que antes ocupaba tres líneas. Se mira cuando hace falta. */
+.ayuda {
+  font-size: 10px;
+  line-height: 1;
+  color: var(--teal-claro);
+  cursor: help;
 }
 
 .verTodo {
@@ -178,149 +206,210 @@
   font-size: 9px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  border: 1px solid var(--rule);
+  border: 1px solid var(--teal-soft);
   border-radius: 3px;
-  background: var(--paper);
-  color: var(--muted);
+  background: var(--surface);
+  color: var(--teal);
   padding: 2px 6px;
 }
 
 .verTodo:hover {
   border-color: var(--teal);
-  color: var(--teal);
+  background: var(--teal-soft);
 }
 
 .avisoCuenta {
-  margin: 0 16px 10px;
-  padding: 7px 9px;
+  margin: 0 16px 8px;
+  padding: 5px 8px;
   background: var(--teal-soft);
   border-left: 2px solid var(--teal);
   border-radius: 0 3px 3px 0;
   font-size: 10.5px;
-  line-height: 1.45;
+  line-height: 1.35;
+  color: var(--teal);
 }
 
-.empresa {
-  padding: 9px 16px;
-  border-bottom: 1px solid var(--rule-soft);
+/* ── Bloques ── */
+
+.bloque {
+  padding: 8px 0;
+  border-top: 1px solid var(--rule-soft);
+  margin-top: 2px;
 }
 
-.empresaFila {
+/* El primero va pegado a su encabezado, sin línea: la de arriba separaría el
+   rótulo de las cuentas que nombra. Va por clase y no con :first-of-type, que
+   mira el tipo de elemento y el primer div del aside es el encabezado. */
+.bloquePrimero {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.empresa + .empresa {
+  margin-top: 5px;
+}
+
+/* ── Fila de empresa: nombre y saldo en pesos, fusionados ── */
+/*
+   Son dos botones en una fila porque hacen dos cosas distintas: el nombre filtra
+   por esa empresa y el monto abre su cuenta. Antes eran dos filas y el número
+   estaba repetido, una vez abreviado y otra entero.
+*/
+
+.filaEmpresa {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
-  gap: 8px;
-  width: 100%;
+  gap: 6px;
+  padding: 2px 10px 2px 16px;
+  border-left: 2px solid transparent;
+  border-radius: 0 3px 3px 0;
+}
+
+.filaEmpresa:hover {
+  background: var(--fila-anidada);
+}
+
+.nombreEmpresa {
+  flex: 1;
+  min-width: 0;
   border: 0;
   background: none;
   padding: 0;
   text-align: left;
-  color: inherit;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.empresaFila:hover .empresaNombre {
+.nombreEmpresa:hover {
   color: var(--teal);
 }
 
-.empresaNombre {
-  font-size: 11.5px;
-  font-weight: 600;
+.montoBoton {
+  border: 0;
+  background: none;
+  padding: 0;
 }
 
-.empresaTotal {
-  font-family: var(--font-cifras);
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
+/* ── Filas de registro ── */
 
-.cuentaFila {
+.fila {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-  margin-top: 3px;
-  padding: 2px 5px;
-  border: 1px solid transparent;
-  border-radius: 3px;
+  align-items: baseline;
+  gap: 6px;
+  width: calc(100% - 16px);
+  margin: 1px 0 0 16px;
+  padding: 2px 10px 2px 6px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 3px 3px 0;
   background: none;
   text-align: left;
-  font-size: 10.5px;
-  color: var(--muted);
-  font-family: var(--font-cifras);
-  font-variant-numeric: tabular-nums;
-}
-
-.cuentaFila:hover {
-  border-color: var(--rule);
-  background: var(--paper);
   color: var(--ink);
 }
 
-.cuentaUsd {
+/* Las cuentas que cuelgan de una empresa van más adentro, para que se lea que
+   son suyas y no otro registro. */
+.filaSangria {
+  margin-left: 26px;
+  width: calc(100% - 26px);
+}
+
+.fila:hover {
+  background: var(--fila-anidada);
+}
+
+.filaTenue {
+  color: var(--muted);
+}
+
+.filaNombre {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tres letras en vez de " · CLP" pegado al nombre, que no cabía en el ancho y
+   envolvía la fila a dos líneas. */
+.marcaMoneda {
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   color: var(--muted-claro);
 }
 
-/* Cuenta a la que se entró: las vistas muestran solo sus movimientos. */
-.cuentaActiva,
-.cuentaActiva:hover {
-  border-color: var(--teal);
+.filaMonto {
+  flex-shrink: 0;
+  font-family: var(--font-cifras);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+
+/* El saldo del banco es el número de la barra: va en teal y con peso. */
+.montoFuerte {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--teal);
+}
+
+.montoNegativo {
+  color: var(--brick);
+}
+
+/* Registro abierto: las vistas muestran solo sus movimientos. */
+.filaActiva,
+.filaActiva:hover {
+  border-left-color: var(--teal);
   background: var(--teal-soft);
+  color: var(--teal);
+}
+
+.filaActiva .filaNombre,
+.filaActiva .filaMonto,
+.filaActiva .marcaMoneda,
+.filaActiva .nombreEmpresa {
   color: var(--teal);
   font-weight: 600;
 }
 
-/* Bloque de proyecciones: separado de las cuentas del banco con una línea llena,
-   más marcada que la que divide empresas, porque es otra clase de cosa. */
-.bloqueProyecciones {
-  margin-top: 10px;
-  padding: 12px 0 10px;
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule-soft);
+/* ── Contadores ── */
+
+.filaContador {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 1px 16px;
 }
 
-.bloqueProyecciones .cuentaFila {
-  margin-left: 16px;
-  margin-right: 16px;
-  width: auto;
-}
-
-.glosaProyecciones {
-  padding: 0 16px 6px;
-  font-size: 10px;
-  line-height: 1.45;
-  color: var(--muted);
-}
-
-.bloqueConciliar {
-  padding: 14px 16px;
-  margin-top: 6px;
-}
-
-.conteoConciliar {
+.conteo {
   font-family: var(--font-cifras);
-  font-size: 22px;
+  font-size: 15px;
   font-weight: 600;
-  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
 }
 
-.glosaConciliar {
-  font-size: 10.5px;
-  color: var(--muted);
-  line-height: 1.45;
-  margin-top: 2px;
-}
-
+/* Una sola línea, y la única glosa que sobrevive en la barra: la regla de §4.5
+   explica por qué el saldo en dólares no cuadra con nada del flujo, y eso hay
+   que decirlo aunque sea una vez. */
 .pieSidebar {
-  padding: 0 16px;
-  font-size: 10px;
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-.pieSidebar > div {
+  margin: 4px 16px 0;
+  padding-top: 9px;
   border-top: 1px solid var(--rule-soft);
-  padding-top: 12px;
+  font-size: 9.5px;
+  color: var(--muted-claro);
+  line-height: 1.45;
 }
 
 /* ── Estado de la carga ── */

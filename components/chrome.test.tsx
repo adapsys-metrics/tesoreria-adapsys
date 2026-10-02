@@ -35,7 +35,23 @@ describe("Chrome", () => {
     // "Vencidos" reemplazó a "Por conciliar" como el contador principal: es la
     // lista que se mira todos los días. El de conciliar solo aparece si hay algo.
     expect(screen.getByText("Vencidos")).toBeDefined();
+    // La regla de §4.5 se dice una vez, abajo: antes iba pegada a cada cuenta en
+    // dólares y la etiqueta no cabía en el ancho, así que envolvía la fila.
     expect(screen.getAllByText(/fuera del flujo/).length).toBeGreaterThan(0);
+  });
+
+  it("la empresa y su cuenta en pesos son una sola fila", () => {
+    // Son el mismo número —el total de la empresa es la suma de sus cuentas CLP y
+    // hay una sola—, así que estaba escrito dos veces. En la fila fusionada el
+    // nombre filtra por empresa y el monto abre la cuenta: dos acciones, una fila.
+    montar(<Cuentas />);
+    const nombre = screen.getByTitle("Ver solo CLA ADAPTACIÓN");
+    const monto = screen.getByTitle(/Ver los movimientos de CLA ADAPTACIÓN PESOS/);
+    // La prueba es que compartan padre: son la misma fila. Comparar contra el
+    // texto del total no serviría —en los datos de ejemplo el saldo es otro— y
+    // pasaría igual sin haber fusionado nada.
+    expect(nombre.parentElement).toBe(monto.parentElement);
+    expect(nombre.parentElement).not.toBeNull();
   });
 
   it("las proyecciones van en su propio bloque, no mezcladas con el banco", () => {
@@ -44,10 +60,14 @@ describe("Chrome", () => {
     // del modelo, no de la pantalla.
     montar(<Cuentas />);
     expect(screen.getByText("Proyecciones")).toBeDefined();
-    expect(screen.getByText("Egresos proyectados · CLP")).toBeDefined();
-    expect(screen.getByText("Egresos proyectados · USD")).toBeDefined();
-    expect(screen.getByText("Facturas por cobrar · CLP")).toBeDefined();
-    expect(screen.getByText("Proyectos aprobados · CLP")).toBeDefined();
+    // En pantalla va el nombre corto y la moneda como marca aparte: "Egresos
+    // proyectados · CLP" no cabía en el ancho de la barra. El nombre entero
+    // queda en el title, que es por donde se buscan.
+    expect(screen.getByTitle("Ver egresos proyectados en CLP")).toBeDefined();
+    expect(screen.getByTitle("Ver egresos proyectados en USD")).toBeDefined();
+    expect(screen.getByTitle("Ver facturas por cobrar en CLP")).toBeDefined();
+    expect(screen.getByTitle("Ver proyectos aprobados en CLP")).toBeDefined();
+    expect(screen.getAllByText("Egresos")).toHaveLength(2);
   });
 });
 
@@ -117,7 +137,7 @@ describe("Entrar a una cuenta desde el sidebar", () => {
 
   it("abrir egresos proyectados muestra solo compromisos futuros", () => {
     conSidebar();
-    fireEvent.click(screen.getByText("Egresos proyectados · CLP"));
+    fireEvent.click(screen.getByTitle("Ver egresos proyectados en CLP"));
     expect(screen.getByText(/Viendo solo/)).toBeDefined();
     const filas = document.querySelectorAll("tbody tr").length;
     expect(filas).toBeGreaterThan(0);
