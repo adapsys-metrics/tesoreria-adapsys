@@ -153,7 +153,10 @@
 */
 
 .sidebar {
-  width: 244px;
+  /* 272 y no 244: con el nombre entero de cada cuenta —"CLA CONSULTORES DÓLAR"—
+     y el monto en columna fija, 244 dejaba 120px para el nombre y recortaba los
+     dos más largos. Treinta píxeles de ancho valen menos que un nombre a medias. */
+  width: 272px;
   flex-shrink: 0;
   border-right: 1px solid var(--rule);
   background: var(--surface);
@@ -250,51 +253,6 @@
   margin-top: 5px;
 }
 
-/* ── Fila de empresa: nombre y saldo en pesos, fusionados ── */
-/*
-   Antes eran dos filas con el mismo número, una vez abreviado y otra entero. Y
-   después fueron dos botones en una fila, el nombre filtrando y el monto abriendo
-   la cuenta: el filtro se activaba sin querer y es global, así que apagaba las
-   otras empresas en todas las vistas. Ahora la fila entera abre la cuenta y nada
-   más. Filtrar es del selector de arriba.
-
-   Es `<button>` cuando hay una sola cuenta en pesos —el caso de siempre— y `<div>`
-   cuando hay dos o ninguna, porque entonces el número es un total que no abre nada.
-*/
-
-.filaEmpresa {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  width: 100%;
-  border: 0;
-  border-left: 2px solid transparent;
-  border-radius: 0 3px 3px 0;
-  background: none;
-  padding: 2px 10px 2px 16px;
-  text-align: left;
-}
-
-button.filaEmpresa:hover {
-  background: var(--fila-anidada);
-}
-
-button.filaEmpresa:hover .nombreEmpresa {
-  color: var(--teal);
-}
-
-.nombreEmpresa {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 /* ── Filas de registro ── */
 
 .fila {
@@ -310,13 +268,6 @@ button.filaEmpresa:hover .nombreEmpresa {
   background: none;
   text-align: left;
   color: var(--ink);
-}
-
-/* Las cuentas que cuelgan de una empresa van más adentro, para que se lea que
-   son suyas y no otro registro. */
-.filaSangria {
-  margin-left: 26px;
-  width: calc(100% - 26px);
 }
 
 .fila:hover {
@@ -338,9 +289,16 @@ button.filaEmpresa:hover .nombreEmpresa {
 }
 
 /* Tres letras en vez de " · CLP" pegado al nombre, que no cabía en el ancho y
-   envolvía la fila a dos líneas. */
+   envolvía la fila a dos líneas. Solo la llevan las proyecciones: las cuentas del
+   banco la traen en el nombre ("CLA ADAPTACIÓN PESOS").
+
+   El ancho fijo es lo que las pone en columna. Sin él cada marca queda pegada a
+   su monto, y como los montos miden distinto —`$−834.974.751` contra `US$−4.520`—
+   terminan a alturas distintas y la lista se ve desprolija. */
 .marcaMoneda {
   flex-shrink: 0;
+  width: 24px;
+  text-align: right;
   font-family: var(--font-sans);
   font-size: 8.5px;
   font-weight: 600;
@@ -348,15 +306,21 @@ button.filaEmpresa:hover .nombreEmpresa {
   color: var(--muted-claro);
 }
 
+/* Columna de ancho fijo por el mismo motivo, y alineada a la derecha para que las
+   unidades caigan una debajo de otra. 86px es `$−834.974.751`, el más largo que
+   puede aparecer. */
 .filaMonto {
   flex-shrink: 0;
+  min-width: 86px;
+  text-align: right;
   font-family: var(--font-cifras);
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
   color: inherit;
 }
 
-/* El saldo del banco es el número de la barra: va en teal y con peso. */
+/* El saldo en pesos es el número de la barra: va en teal y con peso. El de
+   dólares queda fuera del flujo (§4.5) y se lee más bajo, en gris. */
 .montoFuerte {
   font-size: 11.5px;
   font-weight: 600;
@@ -377,8 +341,7 @@ button.filaEmpresa:hover .nombreEmpresa {
 
 .filaActiva .filaNombre,
 .filaActiva .filaMonto,
-.filaActiva .marcaMoneda,
-.filaActiva .nombreEmpresa {
+.filaActiva .marcaMoneda {
   color: var(--teal);
   font-weight: 600;
 }

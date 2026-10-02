@@ -40,13 +40,17 @@ describe("Chrome", () => {
     expect(screen.getAllByText(/fuera del flujo/).length).toBeGreaterThan(0);
   });
 
-  it("la empresa y su cuenta en pesos son una sola fila, que abre la cuenta", () => {
-    // Son el mismo número —el total de la empresa es la suma de sus cuentas CLP y
-    // hay una sola—, así que estaba escrito dos veces. Fusionados, y el clic hace
-    // una sola cosa: abrir la cuenta.
+  it("cada cuenta del banco lleva su nombre entero", () => {
+    // Antes la fila de pesos tomaba el nombre de la empresa y la de dólares decía
+    // solo "USD", sangrada debajo: se leía como un encabezado de grupo con una
+    // cuenta adentro, cuando son dos cuentas hermanas.
     montar(<Cuentas />);
-    const fila = screen.getByTitle(/Ver los movimientos de CLA ADAPTACIÓN PESOS/);
-    expect(within(fila).getByText("CLA ADAPTACIÓN")).toBeDefined();
+    const lateral = within(document.querySelector("aside")!);
+    expect(lateral.getByText("CLA ADAPTACIÓN PESOS")).toBeDefined();
+    expect(lateral.getByText("CLA ADAPTACIÓN DÓLAR")).toBeDefined();
+    // Y el nombre de la empresa a secas ya no aparece: no era ninguna cuenta.
+    // ("USD" sí aparece, pero como marca de moneda de las proyecciones.)
+    expect(lateral.queryByText("CLA ADAPTACIÓN")).toBeNull();
   });
 
   it("la barra lateral no filtra por empresa", () => {
@@ -63,14 +67,15 @@ describe("Chrome", () => {
     // del modelo, no de la pantalla.
     montar(<Cuentas />);
     expect(screen.getByText("Proyecciones")).toBeDefined();
-    // En pantalla va el nombre corto y la moneda como marca aparte: "Egresos
-    // proyectados · CLP" no cabía en el ancho de la barra. El nombre entero
-    // queda en el title, que es por donde se buscan.
+    // La moneda va como marca aparte y no pegada al nombre: "Egresos proyectados
+    // · CLP" no cabía en el ancho y envolvía la fila a dos líneas.
     expect(screen.getByTitle("Ver egresos proyectados en CLP")).toBeDefined();
     expect(screen.getByTitle("Ver egresos proyectados en USD")).toBeDefined();
     expect(screen.getByTitle("Ver facturas por cobrar en CLP")).toBeDefined();
     expect(screen.getByTitle("Ver proyectos aprobados en CLP")).toBeDefined();
-    expect(screen.getAllByText("Egresos")).toHaveLength(2);
+    // El nombre va entero y la moneda aparte, en su propia columna.
+    expect(screen.getAllByText("Egresos proyectados")).toHaveLength(2);
+    expect(screen.getAllByText("CLP").length).toBeGreaterThan(0);
   });
 });
 
@@ -157,8 +162,8 @@ describe("Entrar a una cuenta desde el sidebar", () => {
     // …y las otras empresas siguen en la barra, que es lo que no pasaba cuando el
     // nombre cambiaba el filtro global.
     const lateral = within(document.querySelector("aside")!);
-    expect(lateral.getByText("CLA ADAPTACIÓN")).toBeDefined();
-    expect(lateral.getByText("CLA CONSULTORES")).toBeDefined();
+    expect(lateral.getByText("CLA ADAPTACIÓN PESOS")).toBeDefined();
+    expect(lateral.getByText("CLA CONSULTORES PESOS")).toBeDefined();
   });
 
   it("el encabezado toma el nombre del registro abierto y su saldo", () => {

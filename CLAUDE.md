@@ -420,16 +420,20 @@ tabla de tesorería.
 se mira todos los días: si hay que desplazarla, el número que importa queda fuera de la pantalla.
 Tres cosas la estiraban y ninguna decía nada nuevo, y conviene no volver a meterlas:
 
-- **La moneda, dos veces.** Iba en la etiqueta y en el signo del monto, y "Egresos proyectados ·
-  CLP" no entra en 244px: envolvía la fila a dos líneas. El nombre va corto y la moneda es una
-  marca de tres letras, con el nombre entero en el `title`.
+- **La moneda, pegada al nombre.** "Egresos proyectados · CLP" no entraba en el ancho y envolvía
+  la fila a dos líneas. Va como marca aparte, en **columna de ancho fijo** igual que el monto: sin
+  eso cada marca queda pegada a su número, y como los números miden distinto —`$−834.974.751`
+  contra `US$−4.520`— terminan en posiciones distintas y la lista se ve desprolija.
 - **Glosas de dos y tres líneas** explicando cada bloque. Se leen una vez en la vida; viven en el
   `title` del rótulo de su sección. La única que quedó en pantalla es la de §4.5, abajo y en una
   línea, porque explica por qué el saldo en dólares no cuadra con nada del flujo.
-- **El total de la empresa y su cuenta en pesos son el mismo número.** El total es la suma de las
-  cuentas CLP y hay una sola por empresa. Van fusionados en una fila: el nombre filtra por empresa
-  y el monto abre la cuenta. Si alguna llegara a tener dos cuentas en pesos se separan solas, que
-  es cuando el total vuelve a decir algo.
+- **El total de la empresa y su cuenta en pesos eran el mismo número.** El total es la suma de las
+  cuentas CLP y hay una sola por empresa, así que estaba escrito dos veces, una abreviado y otra
+  entero. Ya no está: la lista son las siete cuentas, **cada una con su nombre entero**, como en
+  Quicken. Hubo un paso intermedio en que la de pesos tomaba el nombre de la empresa y la de
+  dólares decía solo "USD", sangrada debajo, y se leía como un encabezado de grupo con una cuenta
+  adentro cuando son dos cuentas hermanas. Lo único que agrupa por empresa es el respiro entre una
+  y la siguiente.
 
 **El color estructura en vez de decorar.** Los rótulos de sección y los saldos del banco van en
 teal oscuro, el registro abierto lleva barra teal y fondo `#B6E6E6`, y el magenta queda reservado

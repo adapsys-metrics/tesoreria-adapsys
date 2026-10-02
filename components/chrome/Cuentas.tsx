@@ -16,16 +16,22 @@
 // llegar a los vencidos, que es justamente lo que se mira todos los días. Tres
 // cosas la estiraban y ninguna decía nada nuevo:
 //
-//   - La moneda iba dos veces, en la etiqueta y en el signo del monto, y
-//     "Egresos proyectados · CLP" no cabe en 244px: envolvía a dos líneas. Ahora
-//     el nombre va corto y la moneda es una marca de tres letras.
+//   - La moneda iba pegada al nombre y "Egresos proyectados · CLP" no entraba en
+//     el ancho: envolvía a dos líneas. Ahora es una marca aparte, en su propia
+//     columna de ancho fijo — si no, no cae alineada, porque el monto que tiene
+//     al lado mide distinto en cada fila.
 //   - Tres glosas explicativas de dos y tres líneas, que se leen una vez en la
 //     vida. Pasaron al title del rótulo de su sección.
-//   - El total de la empresa y su cuenta en pesos **son el mismo número**: el
-//     total es la suma de las cuentas CLP y hay una sola por empresa. Se fusionan
-//     en una fila, que abre la cuenta. Si alguna empresa llegara a tener dos
-//     cuentas en pesos, vuelven a separarse solas — ahí el total sí dice algo que
-//     ninguna fila dice, y entonces no es un botón.
+//   - El total de la empresa y su cuenta en pesos **eran el mismo número**: el
+//     total es la suma de las cuentas CLP y hay una sola por empresa, así que
+//     estaba escrito dos veces, una abreviado y otra entero. Ya no está: cada
+//     fila es una cuenta.
+//
+// **Cada fila lleva el nombre entero de su cuenta**, como en Quicken. Hubo un paso
+// intermedio en que la de pesos tomaba el nombre de la empresa y la de dólares
+// decía solo "USD", sangrada debajo: se leía como un encabezado de grupo con una
+// cuenta adentro, cuando son dos cuentas hermanas. Son siete y se nombran solas;
+// lo único que las agrupa es el respiro entre una empresa y la siguiente.
 //
 // **La barra no filtra por empresa.** El nombre abría la cuenta o cambiaba el
 // filtro global según dónde cayera el clic, y el filtro es global: apaga las otras
@@ -39,7 +45,7 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { clases } from "@/components/ui/primitivas";
 import type { CuentaConSaldo } from "@/components/estado/ProveedorTesoreria";
 import { REGISTROS_PROYECCION, claveDeCuenta, totalDeRegistro } from "@/lib/registros";
-import { clp, clpK } from "@/lib/formato";
+import { clp } from "@/lib/formato";
 import { HOY } from "@/lib/fechas";
 import { contarVencidos, totalVencido } from "@/lib/vencidos";
 import css from "./chrome.module.css";
@@ -95,19 +101,19 @@ function Fila({
   titulo,
   activa,
   tenue,
-  sangria,
+  fuerte,
   onClick,
 }: {
   izquierda: string;
-  /** "CLP"/"USD" cuando conviven las dos del mismo registro. En las cuentas del
-   *  banco no hace falta: el signo del monto ya las distingue. */
+  /** "CLP"/"USD" cuando el nombre no la trae. Las cuentas del banco sí la traen
+   *  —"CLA ADAPTACIÓN PESOS"— y repetirla sería decirla dos veces. */
   marca?: string;
   monto: number;
   moneda: "CLP" | "USD";
   titulo: string;
   activa: boolean;
   tenue?: boolean;
-  sangria?: boolean;
+  fuerte?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -116,16 +122,11 @@ function Fila({
       onClick={onClick}
       aria-pressed={activa}
       title={titulo}
-      className={clases(
-        css.fila,
-        tenue && css.filaTenue,
-        sangria && css.filaSangria,
-        activa && css.filaActiva
-      )}
+      className={clases(css.fila, tenue && css.filaTenue, activa && css.filaActiva)}
     >
       <span className={css.filaNombre}>{izquierda}</span>
       {marca && <span className={css.marcaMoneda}>{marca}</span>}
-      <Monto monto={monto} moneda={moneda} activa={activa} />
+      <Monto monto={monto} moneda={moneda} activa={activa} fuerte={fuerte} />
     </button>
   );
 }
@@ -211,11 +212,6 @@ export function Cuentas() {
     })),
   ];
 
-  // Con el nombre completo no entra la marca de moneda al lado. La primera palabra
-  // alcanza —"Egresos", "Facturas", "Proyectos" bajo el rótulo PROYECCIONES no se
-  // confunden con nada— y el nombre entero queda en el title.
-  const corto = (nombre: string) => nombre.split(" ")[0] ?? nombre;
-
   const nombreDelRegistro = (clave: string) =>
     registros.find((r) => r.clave === clave)?.nombre ??
     cuentas.find((c) => claveDeCuenta(c.id) === clave)?.nombre ??
@@ -256,57 +252,27 @@ export function Cuentas() {
       )}
 
       <div className={clases(css.bloque, css.bloquePrimero)}>
-        {porEmpresa.map(({ empresa, cuentas: cs }) => {
-          const enPesos = cs.filter((c) => c.moneda === "CLP");
-          const resto = cs.filter((c) => c.moneda !== "CLP");
-          // El caso normal: una sola cuenta en pesos, y entonces el total de la
-          // empresa es exactamente su saldo. Se fusionan.
-          // El `?? null` no es ruido: con noUncheckedIndexedAccess el índice es
-          // `CuentaConSaldo | undefined`, y sin él `unica !== null` no estrecha.
-          const unica = enPesos.length === 1 ? enPesos[0] ?? null : null;
-          const total = enPesos.reduce((s, c) => s + c.saldo, 0);
-          const activa = unica !== null && claveDeCuenta(unica.id) === registroSeleccionado;
-
-          return (
-            <div key={empresa.id} className={css.empresa}>
-              {unica ? (
-                <button
-                  type="button"
-                  onClick={() => alternar(claveDeCuenta(unica.id))}
-                  aria-pressed={activa}
-                  title={tituloDeCuenta(unica)}
-                  className={clases(css.filaEmpresa, activa && css.filaActiva)}
-                >
-                  <span className={css.nombreEmpresa}>{empresa.nombre}</span>
-                  <Monto monto={unica.saldo} moneda="CLP" activa={activa} fuerte />
-                </button>
-              ) : (
-                // Dos cuentas en pesos o ninguna: el total vuelve a decir algo que
-                // ninguna fila dice, y no abre nada — las cuentas van abajo.
-                <div className={css.filaEmpresa}>
-                  <span className={css.nombreEmpresa}>{empresa.nombre}</span>
-                  <span className={clases(css.filaMonto, css.montoFuerte)}>
-                    {clpK(total)}
-                  </span>
-                </div>
-              )}
-
-              {(unica ? resto : cs).map((c) => (
-                <Fila
-                  key={c.id}
-                  izquierda={unica ? c.moneda : `${c.moneda} · ${sinMoneda(c.nombre)}`}
-                  monto={c.saldo}
-                  moneda={c.moneda}
-                  tenue={c.moneda === "USD"}
-                  sangria
-                  activa={claveDeCuenta(c.id) === registroSeleccionado}
-                  titulo={tituloDeCuenta(c)}
-                  onClick={() => alternar(claveDeCuenta(c.id))}
-                />
-              ))}
-            </div>
-          );
-        })}
+        {porEmpresa.map(({ empresa, cuentas: cs }) => (
+          // El agrupador no dibuja nada: solo deja un respiro entre una empresa y
+          // la siguiente. Las cuentas ya dicen de quién son.
+          <div key={empresa.id} className={css.empresa}>
+            {cs.map((c) => (
+              <Fila
+                key={c.id}
+                izquierda={c.nombre}
+                monto={c.saldo}
+                moneda={c.moneda}
+                // El saldo en pesos es el número de la barra; el de dólares queda
+                // fuera del flujo (§4.5) y por eso se lee más bajo.
+                fuerte={c.moneda === "CLP"}
+                tenue={c.moneda === "USD"}
+                activa={claveDeCuenta(c.id) === registroSeleccionado}
+                titulo={tituloDeCuenta(c)}
+                onClick={() => alternar(claveDeCuenta(c.id))}
+              />
+            ))}
+          </div>
+        ))}
       </div>
 
       <div className={css.bloque}>
@@ -314,7 +280,7 @@ export function Cuentas() {
         {registros.map((r) => (
           <Fila
             key={r.clave}
-            izquierda={corto(r.nombre)}
+            izquierda={r.nombre}
             marca={r.moneda}
             monto={r.total}
             moneda={r.moneda}
@@ -336,7 +302,7 @@ export function Cuentas() {
           {controles.map((c) => (
             <Fila
               key={c.id}
-              izquierda={c.nombre.replace(/^CLA ADAPTACIÓN /, "")}
+              izquierda={c.nombre}
               monto={c.saldo}
               moneda={c.moneda}
               tenue
