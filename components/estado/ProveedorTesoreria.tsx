@@ -57,7 +57,7 @@ import {
   enCLP,
   lineaDeImpuesto,
 } from "@/lib/dominio";
-import { perteneceAlRegistro, saldoDeCuenta } from "@/lib/registros";
+import { perteneceAlRegistro, saldoDeCuenta, esDeControl } from "@/lib/registros";
 import { pasoDe } from "@/lib/cobranza";
 import { pct } from "@/lib/formato";
 import type {
@@ -908,10 +908,21 @@ export function ProveedorTesoreria({
     const enSeleccion = <T extends { empresa_id: string | null }>(xs: T[]) =>
       xs.filter((x) => x.empresa_id === null || empresasSeleccionadas.includes(x.empresa_id));
 
+    // Los registros de control quedan fuera de todo (§2): no son plata nuestra en
+    // ninguna parte, son la cuenta de lo que el otro país va generando. El neteo
+    // semestral sí llega al banco y ya está anotado en la cuenta dólar, así que
+    // dejarlos entrar contaría dos veces lo mismo. Se reemplaza acá, sobre lo que
+    // ve el contexto, y no en cada vista: el flujo, el presupuesto, el contador de
+    // vencidos y el de por conciliar salen todos de esta lista.
+    const delNegocio = movimientos.filter((m) => !esDeControl(m, cuentas));
+
     // El registro abierto se aplica sobre los movimientos, no sobre las cuentas: la
-    // barra lateral tiene que seguir mostrándolas todas para poder cambiarse.
-    const movimientosFiltrados = enSeleccion(movimientos).filter(
-      (m) => !registroSeleccionado || perteneceAlRegistro(m, registroSeleccionado, cuentas)
+    // barra lateral tiene que seguir mostrándolas todas para poder cambiarse. Y es
+    // la única forma de ver un registro de control: abriéndolo.
+    const movimientosFiltrados = enSeleccion(movimientos).filter((m) =>
+      registroSeleccionado
+        ? perteneceAlRegistro(m, registroSeleccionado, cuentas)
+        : !esDeControl(m, cuentas)
     );
     const cuentasFiltradas = enSeleccion(cuentas);
     const bancos = cuentasFiltradas.filter((c) => c.tipo === "banco");
@@ -919,6 +930,9 @@ export function ProveedorTesoreria({
     const suma = (xs: CuentaConSaldo[]) => xs.reduce((s, c) => s + c.saldo, 0);
     return {
       cuentas,
+      // Pisa el `movimientos` del estado: lo que las vistas llaman "todos los
+      // movimientos" es todo lo del negocio, no todo lo que hay en la tabla.
+      movimientos: delNegocio,
       movimientosFiltrados,
       cuentasFiltradas,
       efectivo: suma(bancos.filter((c) => c.moneda === "CLP")),

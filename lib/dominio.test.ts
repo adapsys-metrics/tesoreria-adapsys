@@ -222,7 +222,7 @@ describe("integridad del catálogo (§5)", () => {
   it("toda cuenta apunta a una empresa existente y tiene moneda válida", () => {
     for (const c of CUENTAS) {
       expect(["CLP", "USD"]).toContain(c.moneda);
-      expect(["banco", "cxc"]).toContain(c.tipo);
+      expect(["banco", "cxc", "control"]).toContain(c.tipo);
     }
   });
 });

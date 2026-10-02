@@ -28,12 +28,37 @@ export const REGISTROS_PROYECCION: Registro[] = [
 
 export const claveDeCuenta = (cuenta_id: string) => `cuenta:${cuenta_id}`;
 
-/** ¿La clave abre una cuenta bancaria? Es distinto de una cuenta de cobranza o de
- *  un registro de proyección, y cambia qué filtros tienen sentido encima. */
-export function esRegistroDeBanco(clave: string | null, cuentas: Cuenta[]): boolean {
+/**
+ * ¿Este movimiento vive en un registro de control?
+ *
+ * Los registros de control no entran a ninguna vista: ni al flujo, ni al
+ * presupuesto, ni a los saldos, ni al contador de vencidos. Es la cuenta corriente
+ * Perú-Chile, que lleva lo que el otro país genera a cuenta nuestra. Cada semestre
+ * se netea y el país que debe transfiere, y **esa** transferencia sí es un
+ * movimiento del banco que ya está anotado en la cuenta dólar. Si el registro
+ * entrara al flujo, cada peso estaría contado dos veces.
+ *
+ * Solo se ven abriendo su propio registro en la barra lateral.
+ */
+export const esDeControl = (m: Movimiento, cuentas: Cuenta[]): boolean =>
+  cuentas.find((c) => c.id === m.cuenta_id)?.tipo === "control";
+
+/**
+ * ¿La clave abre un registro de una sola cuenta donde lo anotado ya ocurrió?
+ *
+ * Son el banco y los de control, y cambia tres cosas: tiene sentido mostrar el
+ * saldo corriente —es el saldo DE esa cuenta—, el orden natural es del más
+ * reciente al más antiguo, y "solo pendiente" tiene que arrancar apagado. Ese
+ * último punto no es cosmético: en un registro donde todo ya ocurrió, el filtro
+ * de pendientes deja la tabla vacía y parece que la cuenta no tiene movimientos.
+ *
+ * La cartera no entra: ahí todo está por entrar por definición, así que un saldo
+ * acumulado de lo que no ha pasado no sería el saldo de nada.
+ */
+export function esRegistroConSaldo(clave: string | null, cuentas: Cuenta[]): boolean {
   if (!clave?.startsWith("cuenta:")) return false;
-  const id = clave.slice("cuenta:".length);
-  return cuentas.find((c) => c.id === id)?.tipo === "banco";
+  const tipo = cuentas.find((c) => c.id === clave.slice("cuenta:".length))?.tipo;
+  return tipo === "banco" || tipo === "control";
 }
 
 /**
@@ -58,6 +83,8 @@ export function perteneceAlRegistro(
     const id = clave.slice("cuenta:".length);
     if (m.cuenta_id !== id) return false;
     const cuenta = cuentas.find((c) => c.id === id);
+    // Solo el banco esconde los proyectados. La cobranza y los registros de
+    // control muestran todo lo suyo: no hay cartola contra la cual cuadrarlos.
     return cuenta?.tipo === "banco" ? m.estado !== "proyectado" : true;
   }
 

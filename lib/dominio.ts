@@ -193,13 +193,20 @@ export const descuadre = (m: Movimiento): number =>
  * Las cuentas auxiliares —facturas por cobrar, proyectos aprobados— son otra cosa: la
  * factura existe pero la plata no llegó, así que ahí siempre nace proyectado por más
  * que la fecha sea pasada.
+ *
+ * Un registro de **control** se comporta como el banco: lo que se anota ahí ya
+ * ocurrió en el otro país. No hay cartola contra la cual cuadrarlo, pero `conciliado`
+ * es el único estado que suma al saldo del registro sin dejarlo en la cola de "por
+ * conciliar", que cuenta los `pagado`.
  */
 export const estadoInicialDe = (
   cuenta: { tipo: string } | null,
   fecha: string,
   hoy: string
 ): EstadoMovimiento =>
-  cuenta?.tipo === "banco" && fecha <= hoy ? "conciliado" : "proyectado";
+  (cuenta?.tipo === "banco" || cuenta?.tipo === "control") && fecha <= hoy
+    ? "conciliado"
+    : "proyectado";
 
 /** Un movimiento afecta el saldo bancario solo desde que está pagado (§4.1). */
 export const afectaSaldo = (m: Movimiento): boolean => m.estado !== "proyectado";

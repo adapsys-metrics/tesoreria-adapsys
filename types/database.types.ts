@@ -14,7 +14,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 // reemplace por el output de `npm run db:types`.
 export type GrupoEmpresa = "Adapsys" | "Relacionadas";
 export type Moneda = "CLP" | "USD";
-export type TipoCuenta = "banco" | "cxc";
+export type TipoCuenta = "banco" | "cxc" | "control";
 export type Naturaleza = "ingreso" | "inversion" | "operativo";
 export type EstadoMovimiento = "proyectado" | "pagado" | "conciliado";
 export type DocTipo = "exento" | "afecta" | "honorario";

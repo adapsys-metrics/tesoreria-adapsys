@@ -53,6 +53,9 @@ Cinco entidades legales, agrupadas en dos:
 Además existen cuentas auxiliares en Quicken (`FACTURAS POR COBRAR`, `PROY. EGRESOS CLP/USD`,
 `PROYECTOS APROBADOS`) que **no deben replicarse como cuentas**. Ver §4.
 
+Y existe un **registro de control**, `CLA ADAPTACIÓN CC PERÚ`, que tampoco es una cuenta
+y además no entra a ninguna vista. Ver §10.
+
 **Dónde vive la empresa depende del tipo de cuenta**, y confundirlo mueve movimientos sin
 que nadie lo pida:
 
@@ -70,7 +73,7 @@ que nadie lo pida:
 ```sql
 empresas        (id, nombre, corto, grupo)              -- grupo: 'Adapsys' | 'Relacionadas'
 cuentas         (id, empresa_id, nombre, moneda, tipo, saldo_inicial, principal, numero)
-                -- moneda: 'CLP'|'USD'  tipo: 'banco'|'cxc'
+                -- moneda: 'CLP'|'USD'  tipo: 'banco'|'cxc'|'control'
                 -- numero: cuenta en el banco, para la nómina de pago. Nulo en las auxiliares
 proveedores     (id, nombre, rut, cod_banco, cuenta, correo, activo)
                 -- rut sin puntos ni guion; cod_banco es el código del portal, no el nombre
@@ -572,26 +575,47 @@ filtrar por egreso.
 
 ### El registro CC Perú: un control que no entra a ninguna parte
 
-Pedido por el equipo, **falta el export**. En Quicken vive como cuenta porque no había
-otra forma, pero no es una cuenta: es un registro de control de lo que se mueve con
-Adapsys Perú. Cada semestre se netea y el país que debe le paga al otro — **ese pago sí
-sale del banco** y se registra normal en la cuenta dólar de CLA ADAPTACIÓN.
+En Quicken vive como cuenta porque no había otra forma, pero no es una cuenta: es un
+registro de lo que se mueve con Adapsys Perú. Cada semestre se netea y el país que debe
+le paga al otro — **ese pago sí sale del banco** y se registra normal en la cuenta dólar
+de CLA ADAPTACIÓN.
 
 La regla, tal como la dio el equipo: **no se incluye en ninguna parte**. Ni en el flujo
 de caja, ni en el control presupuestario, ni en los saldos. Solo se mira para llevar la
 cuenta.
 
-Eso pide un tercer tipo de cuenta, distinto de los dos que hay:
+Eso pide un tercer tipo de cuenta, distinto de los dos que había:
 
 | tipo | Entra al flujo | Entra al presupuesto | Suma al saldo |
 |---|---|---|---|
 | `banco` | sí | sí | sí |
 | `cxc` (cartera, proyecciones) | sí, como proyectado | sí | no |
-| `control` (nuevo) | **no** | **no** | **no** |
+| `control` | **no** | **no** | **no** |
+
+La exclusión vive en **un solo lugar**: `ProveedorTesoreria` arma `movimientos` sin ellos,
+y solo los deja pasar cuando el registro abierto es el suyo. No está repartida por las
+vistas a propósito — el flujo, el presupuesto, el contador de vencidos y el de por
+conciliar salen todos de esa lista, y una vista nueva queda bien por omisión. La prueba
+está en `components/control.test.tsx`, porque es una regla que no se ve: un registro de
+más en el flujo no se delata, el flujo igual suma.
 
 Ojo al cargarlo: los movimientos que hoy están en `a1`/`a2` con la categoría "Cuenta
 corriente Perú-Chile" **son correctos y se quedan donde están** — son pagos y cobros
 reales del banco chileno. El registro nuevo es otra cosa y no hay que mezclarlos.
+
+**El export vino en dos mitades, y cada una traía bien algo distinto.** El CSV salió con
+los decimales ocultos: Quicken redondea cada fila para mostrarla pero totaliza los valores
+reales, así que las 140 filas sumaban 4.638 contra los 4.642 de su propio pie. El PDF sí
+trae los centavos, pero **recorta las columnas largas** con "…", así que ahí las glosas
+están incompletas. Las dos fuentes calzan fila a fila por fecha, contraparte y monto
+redondeado, y de cada una se tomó lo que traía bien. Total: **US$ 4.641,69 en 140
+movimientos**, de enero 2022 a agosto 2025.
+
+Leer el PDF tiene tres trampas, por si hay que repetirlo
+(`scripts/leer-pdf-quicken.py`): la posición de cada celda es `CTM × Tm` compuestas —
+Quicken usa las dos y mirando solo una, media tabla aterriza en el origen—; las fuentes
+van en **MacRomanEncoding** y leerlas como latin-1 se come las tildes; y el `$` viene en
+una fuente aparte de un solo glifo donde el byte `0x21` mapea a `U+0024`.
 
 ### La proyección se genera del presupuesto, no de reglas por proveedor
 

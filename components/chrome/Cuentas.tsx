@@ -3,8 +3,9 @@
 // Barra lateral. Además de mostrar saldos, navega: al abrir un registro las vistas
 // pasan a mostrar solo sus movimientos.
 //
-// Dos bloques, y la separación es el punto: arriba las cuentas del banco, que
-// muestran únicamente lo que ya pasó por la cartola, y abajo las proyecciones.
+// Tres bloques, y la separación es el punto: arriba las cuentas del banco, que
+// muestran únicamente lo que ya pasó por la cartola, después las proyecciones, y
+// al final los registros de control, que no son plata nuestra en ninguna parte.
 // En Quicken son registros distintos y así se trabajan. Que en la base sean el
 // mismo movimiento cambiando de estado (§4.1) es un detalle del modelo, no algo
 // que deba verse en pantalla: quien concilia necesita la cuenta tal cual llega del
@@ -40,9 +41,15 @@ export function Cuentas() {
   // de empresas la haría desaparecer cuando alguien mira una sola.
   const cobranzas = cuentas.filter((c) => c.tipo === "cxc");
 
+  // Los registros de control sí siguen el filtro de empresas: a diferencia de la
+  // cartera, que es de las cuatro sociedades, la cuenta corriente con Perú es de
+  // CLA ADAPTACIÓN y de nadie más.
+  const controles = cuentasFiltradas.filter((c) => c.tipo === "control");
+
   // Sobre todos los movimientos, no sobre el registro abierto: el contador de la
   // barra lateral tiene que decir cuántos hay en total, o entrar a una cuenta lo
-  // haría bajar y parecería que se resolvieron.
+  // haría bajar y parecería que se resolvieron. `movimientos` ya viene sin los
+  // registros de control, que no tienen vencidos que mirar.
   const vencidos = contarVencidos(movimientos, HOY);
   const montoVencido = totalVencido(movimientos, HOY);
 
@@ -190,6 +197,33 @@ export function Cuentas() {
           />
         ))}
       </div>
+
+      {controles.length > 0 && (
+        <div className={css.bloqueProyecciones}>
+          <div className={css.encabezadoSidebar}>
+            <Rotulo texto="Registros de control" />
+          </div>
+          <div className={css.glosaProyecciones}>
+            No entran al flujo, al presupuesto ni a ningún saldo. El neteo semestral
+            sí llega al banco y está anotado en la cuenta dólar.
+          </div>
+          {controles.map((c) => (
+            <Fila
+              key={c.id}
+              clave={claveDeCuenta(c.id)}
+              izquierda={c.nombre.replace(/^CLA ADAPTACIÓN /, "")}
+              monto={c.saldo}
+              moneda={c.moneda}
+              tenue
+              titulo={
+                claveDeCuenta(c.id) === registroSeleccionado
+                  ? `Salir de ${c.nombre}`
+                  : `Ver ${c.nombre} — solo para llevar la cuenta, no entra a ninguna vista`
+              }
+            />
+          ))}
+        </div>
+      )}
 
       {/* Vencidos primero: es la lista que se mira todos los días. "Por conciliar"
           cuenta otra cosa —lo que pasó por el banco y nadie cuadró contra la

@@ -9,7 +9,7 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import type { Movimiento } from "@/lib/tipos";
 import { ConfirmarMovida } from "./ConfirmarMovida";
 import { descuadre, enCLP } from "@/lib/dominio";
-import { claveDeCuenta, esRegistroDeBanco } from "@/lib/registros";
+import { claveDeCuenta, esRegistroConSaldo } from "@/lib/registros";
 import { saldosCorrientes } from "@/lib/saldos";
 import { diasDeAtraso, estaVencido } from "@/lib/vencidos";
 import { pasoDe } from "@/lib/cobranza";
@@ -65,7 +65,6 @@ export function Registro() {
     pagar,
     avanzarCobranza,
     registroSeleccionado,
-    movimientos,
     catalogo,
   } = useTesoreria();
 
@@ -84,21 +83,24 @@ export function Registro() {
   // Abrir una cuenta del banco apaga "solo pendiente". Esa vista es la cartola —
   // exactamente lo ya conciliado— así que los dos filtros juntos se anulan y la
   // tabla queda vacía, que es lo peor que puede hacer: parece que la cuenta no
-  // tiene movimientos.
-  const enBanco = esRegistroDeBanco(registroSeleccionado, cuentas);
+  // tiene movimientos. Lo mismo vale para un registro de control, donde todo lo
+  // anotado ya ocurrió en el otro país.
+  const conSaldo = esRegistroConSaldo(registroSeleccionado, cuentas);
 
-  // El saldo corriente solo aparece con una cuenta bancaria abierta: es el saldo
+  // El saldo corriente solo aparece con una de esas cuentas abierta: es el saldo
   // DE esa cuenta. Sobre movimientos de varias cuentas no sería el saldo de nada.
-  const cuentaAbierta = enBanco
+  const cuentaAbierta = conSaldo
     ? cuentas.find((c) => claveDeCuenta(c.id) === registroSeleccionado)
     : undefined;
 
-  // Se calcula sobre TODOS los movimientos, no sobre los que se ven: hacerlo con
-  // la lista filtrada daría un saldo que cambia según lo escrito en el buscador,
-  // y se vería igual de correcto.
+  // Sobre todos los movimientos del registro abierto, no sobre los que se ven: con
+  // la lista del buscador el saldo cambiaría con lo que uno escribe y se vería
+  // igual de correcto. Y tiene que ser ésta y no `movimientos`, que deja fuera los
+  // registros de control (§10): con esa lista el saldo del registro de Perú daría
+  // cero por más movimientos que tuviera.
   const saldos = useMemo(
-    () => (cuentaAbierta ? saldosCorrientes(cuentaAbierta, movimientos) : null),
-    [cuentaAbierta, movimientos]
+    () => (cuentaAbierta ? saldosCorrientes(cuentaAbierta, movimientosFiltrados) : null),
+    [cuentaAbierta, movimientosFiltrados]
   );
 
   const COLUMNAS = useMemo(() => columnas(saldos !== null), [saldos]);
@@ -110,9 +112,9 @@ export function Registro() {
     [movimientosFiltrados]
   );
   useEffect(() => {
-    setSoloPendiente(!enBanco);
-    setOrden(ordenDeEntrada(enBanco));
-  }, [enBanco, registroSeleccionado]);
+    setSoloPendiente(!conSaldo);
+    setOrden(ordenDeEntrada(conSaldo));
+  }, [conSaldo, registroSeleccionado]);
 
   const [soloVencidos, setSoloVencidos] = useState(false);
   const [nuevo, setNuevo] = useState(false);

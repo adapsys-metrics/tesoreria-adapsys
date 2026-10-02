@@ -46,6 +46,7 @@ const ALIAS: Record<string, string> = {
   cobranza: "bhp-billiton",
   cobranza2: "consalud",
   cobranza3: "codelco",
+  "cc-peru": "cuenta-corriente-peru-chile",
 };
 
 const sub = (id: string): string => ALIAS[id] ?? id;
@@ -324,4 +325,26 @@ const PROYECTADO: Movimiento[] = [
   crear(fecha(ANIO, 9, 3), "cons", "STATKRAFT", "FA274 Actividades julio 2026", "cobranza2", 11876, { cuenta_id: "x2", ...usd() }),
 ];
 
-export const MOVIMIENTOS_EJEMPLO: Movimiento[] = [...HISTORICO, ...PROYECTADO];
+/**
+ * El registro de control: la cuenta corriente con CLA Perú (§10).
+ *
+ * Va en su propio arreglo y no entre los proyectados porque no es ni lo uno ni lo
+ * otro: no entra al flujo, al presupuesto ni a ningún saldo. No es plata nuestra
+ * en ninguna parte, es la cuenta de lo que el otro país va generando. Lo que sí
+ * llega al banco es el neteo semestral, y ése se anota como un movimiento más de
+ * la cuenta dólar.
+ *
+ * Nacen `conciliado` porque ya ocurrieron allá, y es el único estado que suma al
+ * saldo del registro.
+ *
+ * Van en el ejemplo porque la regla hay que poder probarla: un movimiento de este
+ * registro que se colara en el flujo estaría contado dos veces, y nada en la
+ * pantalla lo delataría.
+ */
+const CONTROL: Movimiento[] = [
+  crear(fecha(ANIO, 7, 8), "adap", "Lucía Colunga", "B203 Honorarios Perú julio", "cc-peru", -392, { cuenta_id: "p1", estado: "conciliado", ...usd() }),
+  crear(fecha(ANIO, 8, 13), "adap", "Veronica Vargas", "B90 Honorarios agosto", "cc-peru", 528.43, { cuenta_id: "p1", estado: "conciliado", ...usd() }),
+  crear(fecha(ANIO, 8, 26), "adap", "Adapsys Perú", "Licencias GSuite", "cc-peru", 950.41, { cuenta_id: "p1", estado: "conciliado", ...usd() }),
+];
+
+export const MOVIMIENTOS_EJEMPLO: Movimiento[] = [...HISTORICO, ...PROYECTADO, ...CONTROL];

@@ -57,6 +57,11 @@ export const CUENTAS: Cuenta[] = [
   { id: "x2", empresa_id: "adap", nombre: "Facturas por cobrar USD", moneda: "USD", tipo: "cxc", saldo_inicial: 0, principal: false, numero: null },
   { id: "x3", empresa_id: "adap", nombre: "Proyectos aprobados CLP", moneda: "CLP", tipo: "cxc", saldo_inicial: 0, principal: false, numero: null },
   { id: "x4", empresa_id: "adap", nombre: "Proyectos aprobados USD", moneda: "USD", tipo: "cxc", saldo_inicial: 0, principal: false, numero: null },
+  // Registro de control: lo que CLA Perú genera a cuenta nuestra y al revés. No es
+  // plata nuestra en ninguna parte y no entra a ninguna vista. Cada semestre se
+  // netea y el país que debe transfiere, y ese movimiento —que sí sale del banco—
+  // vive en la cuenta dólar de CLA ADAPTACIÓN, no acá.
+  { id: "p1", empresa_id: "adap", nombre: "CLA ADAPTACIÓN CC PERÚ", moneda: "USD", tipo: "control", saldo_inicial: 0, principal: false, numero: null },
 ];
 
 /**

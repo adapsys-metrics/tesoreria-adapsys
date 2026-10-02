@@ -67,6 +67,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0014_maestros.sql"));
   await db.exec(leer("migrations/0015_naturaleza_en_la_subcategoria.sql"));
   await db.exec(leer("migrations/0016_doc_tipo_por_linea.sql"));
+  await db.exec(leer("migrations/0017_registro_de_control.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -131,6 +132,7 @@ describe("migraciones y seed", () => {
       "migrations/0014_maestros.sql",
       "migrations/0015_naturaleza_en_la_subcategoria.sql",
       "migrations/0016_doc_tipo_por_linea.sql",
+      "migrations/0017_registro_de_control.sql",
     ]) {
       await expect(db.exec(leer(archivo))).resolves.toBeDefined();
     }
@@ -785,5 +787,52 @@ describe("dominios cerrados", () => {
          values ('z', '4-impuestos', 'Z', 'inventada')`
       )
     ).toMatch(/naturaleza_check/);
+  });
+});
+
+describe("el registro de control", () => {
+  it("existe como cuenta, en dólares y de CLA ADAPTACIÓN", async () => {
+    const r = await db.query<{ tipo: string; moneda: string; empresa_id: string; numero: string | null }>(
+      `select tipo, moneda, empresa_id, numero from cuentas where id = 'p1'`
+    );
+    expect(r.rows[0]).toEqual({
+      tipo: "control",
+      moneda: "USD",
+      empresa_id: "adap",
+      // No existe en ningún banco: no puede pagar una nómina (§10).
+      numero: null,
+    });
+  });
+
+  it("no es principal de nadie: la principal determina dónde nace un movimiento", async () => {
+    const r = await db.query<{ n: number }>(
+      `select count(*)::int as n from cuentas where tipo = 'control' and principal`
+    );
+    expect(r.rows[0]!.n).toBe(0);
+  });
+
+  it("el tipo sigue siendo un dominio cerrado", async () => {
+    // Ampliar el check es exactamente donde se cuela un tipo escrito a mano que
+    // después ninguna vista sabe tratar.
+    expect(
+      await intentar(
+        `insert into cuentas (id, empresa_id, nombre, moneda, tipo, saldo_inicial)
+         values ('zz', 'adap', 'Z', 'CLP', 'inventado', 0)`
+      )
+    ).toMatch(/cuentas_tipo_check/);
+  });
+
+  it("los neteos ya cargados en la cuenta dólar se quedan donde están", async () => {
+    // Son la transferencia, no el registro. Si la migración los hubiera movido a
+    // 'p1' desaparecerían del flujo, y esa plata sí salió del banco.
+    const r = await db.query<{ n: number }>(
+      `select count(*)::int as n
+         from movimiento_lineas l
+         join movimientos m on m.id = l.movimiento_id
+         join cuentas c on c.id = m.cuenta_id
+        where l.categoria_id = 'cuenta-corriente-peru-chile'
+          and c.tipo = 'control'`
+    );
+    expect(r.rows[0]!.n).toBe(0);
   });
 });

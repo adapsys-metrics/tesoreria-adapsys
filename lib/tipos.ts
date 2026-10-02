@@ -3,7 +3,19 @@
 // filas entran directo, sin capa de traducción.
 
 export type Moneda = "CLP" | "USD";
-export type TipoCuenta = "banco" | "cxc";
+/**
+ * Qué hace cada tipo de cuenta:
+ *
+ *   banco    cuenta real. Entra al flujo, al presupuesto y al saldo.
+ *   cxc      cartera y proyecciones. Entra al flujo como proyectado y al
+ *            presupuesto, pero no suma al saldo: no ha pasado por el banco.
+ *   control  registro que no entra a ninguna vista ni suma a ningún saldo. Es la
+ *            cuenta corriente Perú-Chile: lo que el otro país genera a cuenta
+ *            nuestra, que cada semestre se netea y se transfiere. Esa
+ *            transferencia sí es un movimiento del banco y vive en la cuenta
+ *            dólar; el registro solo lleva la cuenta de cuánto va.
+ */
+export type TipoCuenta = "banco" | "cxc" | "control";
 export type Naturaleza = "ingreso" | "inversion" | "operativo";
 export type EstadoMovimiento = "proyectado" | "pagado" | "conciliado";
 export type DocTipo = "exento" | "afecta" | "honorario";
