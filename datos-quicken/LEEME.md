@@ -101,3 +101,33 @@ delete from movimientos where origen is not null;
 Las líneas se van solas por el `on delete cascade`. La columna `origen` guarda de
 qué archivo vino cada movimiento, así que también se puede rehacer un solo
 registro sin tocar el resto.
+
+---
+
+## El registro CC Perú
+
+`Cta cte Perú.csv` y `Cta cte Perú.pdf` son el mismo reporte *Transactions by
+Account* de la cuenta `1.1 CLA ADAPTACIÓN CC PERÚ`: 140 movimientos en dólares,
+de enero 2022 a agosto 2025. No se carga con el flujo de arriba —no hay saldos
+que cuadrar ni Tags que interpretar— sino con `supabase/carga/4_cc_peru.sql`,
+que ya trae los datos adentro y se pega directo en el SQL Editor.
+
+**Hay que tener las dos mitades, y por qué.** El CSV salió con los decimales
+ocultos: Quicken redondea cada fila para mostrarla pero totaliza los valores
+reales, así que las 140 filas suman 4.638 contra los 4.642 que el propio archivo
+imprime al pie. El PDF sí trae los centavos, pero recorta las columnas largas
+con "…" y ahí las glosas quedan incompletas. Las dos fuentes calzan fila a fila
+por fecha, contraparte y monto redondeado:
+
+```
+python3 scripts/leer-pdf-quicken.py "datos-quicken/Cta cte Perú.pdf" > /tmp/peru.txt
+python3 scripts/cruzar-pdf-csv.py /tmp/peru.txt "datos-quicken/Cta cte Perú.csv" /tmp/peru.json
+```
+
+El cruce no escribe nada si alguna fila queda sin par. Total: **US$ 4.641,69**,
+que es lo que dice Quicken.
+
+**La regla de lectura vale para cualquier export futuro:** si un CSV no trae ni
+una coma decimal en todo el archivo pero su total al pie no cuadra con la suma
+de las filas, son los decimales ocultos. Se arregla reexportando con los
+decimales visibles, o cruzando contra el PDF.

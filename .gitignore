@@ -23,6 +23,11 @@
 /datos-quicken/*
 !/datos-quicken/LEEME.md
 
+# Scripts de carga generados a partir de esos exports. Llevan los datos adentro
+# —nombres, glosas y montos reales— así que valen lo mismo que el export: se
+# generan, se pegan en el editor de Supabase y no se versionan.
+/supabase/carga/4_cc_peru.sql
+
 # Capturas de pantalla dejadas para consultar algo puntual. Traen cifras reales
 # —presupuestos, ventas, saldos— y no son activos del proyecto: se miran y se
 # descartan. Los logos y el kit de marca sí se versionan, por eso la regla apunta
