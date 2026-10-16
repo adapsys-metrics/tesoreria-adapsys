@@ -8,6 +8,19 @@ import css from "./primitivas.module.css";
 
 const clases = (...xs: (string | false | undefined)[]) => xs.filter(Boolean).join(" ");
 
+/**
+ * Un hueco con la forma de lo que todavía no llegó.
+ *
+ * No es decoración. Mientras los movimientos cargan, **todos los números de la
+ * pantalla están mal**: los saldos valen su saldo inicial, los contadores valen
+ * cero y el gasto a la fecha vale cero. Son números plausibles y equivocados, que
+ * es la peor clase: un cartel arriba no alcanza cuando lo de abajo se lee como un
+ * dato. Así que mientras carga no se muestra ningún número, se muestra su hueco.
+ */
+export function Hueco({ ancho = 70 }: { ancho?: number }) {
+  return <span className={css.hueco} style={{ width: ancho }} aria-hidden="true" />;
+}
+
 export function Chip({
   activo,
   onClick,
@@ -72,16 +85,20 @@ export function SaldoCabecera({
   rotulo,
   texto,
   negativo,
+  cargando,
 }: {
   rotulo: string;
   texto: string;
   negativo?: boolean;
+  cargando?: boolean;
 }) {
   return (
     <>
       <span className={css.cabeceraRotulo}>{rotulo}</span>
-      <div className={clases(css.cabeceraMonto, negativo && css.cabeceraMontoNegativo)}>
-        {texto}
+      <div
+        className={clases(css.cabeceraMonto, negativo && !cargando && css.cabeceraMontoNegativo)}
+      >
+        {cargando ? <Hueco ancho={140} /> : texto}
       </div>
     </>
   );
@@ -115,27 +132,52 @@ export function Rotulo({ texto, pad }: { texto: string; pad?: boolean }) {
   return <div className={clases(css.rotulo, pad && css.rotuloPad)}>{texto}</div>;
 }
 
+/**
+ * El lugar de una tabla que todavía no llegó.
+ *
+ * Va en vez del "no hay nada": durante la carga, una tabla vacía con su mensaje
+ * dice que la empresa no tiene movimientos, que es exactamente lo contrario de
+ * lo que pasa.
+ */
+export function TablaFantasma({ filas = 8, columnas = 5 }: { filas?: number; columnas?: number }) {
+  return (
+    <div className={css.fantasma} aria-busy="true" aria-label="Cargando movimientos">
+      {Array.from({ length: filas }, (_, f) => (
+        <div key={f} className={css.filaFantasma}>
+          {Array.from({ length: columnas }, (_, c) => (
+            // Anchos desparejos y estables: una grilla perfecta se lee como una
+            // tabla de verdad con los datos en blanco.
+            <Hueco key={c} ancho={[120, 86, 150, 70, 64][c % 5]} />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Cifra({
   rotulo,
   valor,
   tono,
   fuerte,
   texto,
+  cargando,
 }: {
   rotulo: string;
   valor?: number;
   tono?: string;
   fuerte?: boolean;
   texto?: string;
+  cargando?: boolean;
 }) {
   return (
     <div>
       <div className={css.cifraRotulo}>{rotulo}</div>
       <div
         className={clases(css.cifraValor, fuerte && css.cifraFuerte)}
-        style={tono ? { color: tono } : undefined}
+        style={tono && !cargando ? { color: tono } : undefined}
       >
-        {texto ?? "$" + clp(valor ?? 0)}
+        {cargando ? <Hueco ancho={fuerte ? 130 : 100} /> : (texto ?? "$" + clp(valor ?? 0))}
       </div>
     </div>
   );

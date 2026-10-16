@@ -42,7 +42,7 @@ import { clave, partesDeClave } from "@/lib/catalogo-indices";
 import { PanelDetalle, type Detalle } from "@/components/flujo/PanelDetalle";
 import type { LineaExpandida } from "@/lib/tipos";
 import { clp, mag, pct } from "@/lib/formato";
-import { Cabecera, Rotulo, clases } from "@/components/ui/primitivas";
+import { Cabecera, Rotulo, TablaFantasma, clases } from "@/components/ui/primitivas";
 import tabla from "@/components/ui/tabla.module.css";
 import css from "./presupuesto.module.css";
 
@@ -79,7 +79,16 @@ const sinMeses = (): Meses => Array<number>(MESES_DEL_ANIO).fill(0);
 
 
 export function Presupuesto() {
-  const { movimientos, tc, editarLinea, editarMovimiento, catalogo } = useTesoreria();
+  const {
+    movimientos,
+    tc,
+    editarLinea,
+    editarMovimiento,
+    catalogo,
+    // El gasto a la fecha sale de los movimientos: mientras cargan, toda la
+    // columna vale cero y la tabla diría que no se gastó nada en el año.
+    cargando: cargandoMovimientos,
+  } = useTesoreria();
   // Por clave, no por categoría: una subcategoría puede sobrescribir la naturaleza
   // de su madre (§4.2) y generar lo operativo mirando solo la categoría metería
   // sus líneas de inversión en la sección equivocada.
@@ -388,7 +397,9 @@ export function Presupuesto() {
       )}
       {cargando && <div className={css.bandaCarga}>Cargando presupuesto…</div>}
 
-      <div className={tabla.envoltorio}>
+      {cargandoMovimientos && <TablaFantasma filas={12} columnas={5} />}
+
+      <div className={tabla.envoltorio} hidden={cargandoMovimientos}>
         <table className={tabla.tabla}>
           <thead>
             <tr>
@@ -506,7 +517,7 @@ export function Presupuesto() {
         />
       )}
 
-      {!cargando && totalGeneral.anual === 0 && (
+      {!cargando && !cargandoMovimientos && totalGeneral.anual === 0 && (
         <div className={css.vacio}>
           Todavía no hay presupuesto para {anio}. Con <strong>Generar operativo</strong> se arma la
           parte operativa desde los movimientos que ya cargaste; las líneas de inversión se

@@ -29,7 +29,7 @@ const VISTAS = [
 
 export function Encabezado() {
   const ruta = usePathname();
-  const { efectivo, saldoUsd, porCobrar, porCobrarUsd, comprometido, reiniciar } =
+  const { efectivo, saldoUsd, porCobrar, porCobrarUsd, comprometido, reiniciar, cargando } =
     useTesoreria();
 
   const posicion = efectivo + comprometido;
@@ -63,16 +63,35 @@ export function Encabezado() {
         <Sesion />
 
         <div className={css.cifras}>
-          <Cifra rotulo="Efectivo CLP" valor={efectivo} tono="var(--teal)" />
-          <Cifra rotulo="Comprometido CLP" valor={comprometido} tono="var(--brick)" />
+          {/* Mientras carga, cada uno de estos números vale lo que valdría una
+              empresa sin movimientos: el efectivo es el saldo inicial y el resto
+              es cero. Son plausibles y están mal, así que no se muestran. */}
+          <Cifra rotulo="Efectivo CLP" valor={efectivo} tono="var(--teal)" cargando={cargando} />
+          <Cifra
+            rotulo="Comprometido CLP"
+            valor={comprometido}
+            tono="var(--brick)"
+            cargando={cargando}
+          />
           <Cifra
             rotulo="Posición proyectada CLP"
             valor={posicion}
             tono={posicion < 0 ? "var(--brick)" : "var(--ink)"}
             fuerte
+            cargando={cargando}
           />
-          <Cifra rotulo="Saldo USD" texto={"US$" + clp(saldoUsd)} tono="var(--muted)" />
-          <Cifra rotulo="Por cobrar" texto={porCobrarTexto} tono="var(--muted)" />
+          <Cifra
+            rotulo="Saldo USD"
+            texto={"US$" + clp(saldoUsd)}
+            tono="var(--muted)"
+            cargando={cargando}
+          />
+          <Cifra
+            rotulo="Por cobrar"
+            texto={porCobrarTexto}
+            tono="var(--muted)"
+            cargando={cargando}
+          />
         </div>
 
         {/* El nombre importa: con Supabase conectado esto recarga desde la base,

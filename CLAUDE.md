@@ -516,6 +516,23 @@ Lo mismo vale para cualquier campo de texto que se agregue a futuro.
 Y por las dudas: un `<input type="date">` **nunca** debe escribir su vacío al estado.
 Un movimiento sin fecha no existe — no está en ninguna cartola ni en ninguna proyección.
 
+### Mientras carga no se muestra ningún número
+
+Hasta que los movimientos llegan de la base, **todos los números de la pantalla están
+mal**: el saldo de cada cuenta vale su saldo inicial, el comprometido y los vencidos
+valen cero, y el gasto a la fecha del presupuesto vale cero. Son números **plausibles y
+equivocados**, que es la peor clase — nadie sospecha de un saldo con la forma de un
+saldo. La banda de "Cargando movimientos…" no alcanza: lo de abajo se lee como un dato.
+
+Así que mientras `cargando` está en true se muestra el hueco y no el número
+(`Hueco` y `TablaFantasma` en `components/ui/primitivas.tsx`). El rótulo sí se muestra,
+para que la pantalla no cambie de forma al llegar el dato. Y una tabla vacía no dice "no
+hay movimientos" mientras carga: sería afirmar lo contrario de lo que pasa, con el mismo
+aspecto que el caso real.
+
+Vale para cualquier cifra que se agregue: **si el número sale de los movimientos, mientras
+cargan no se muestra.**
+
 ### Verificación obligatoria
 **Compilar no basta.** El bundler valida sintaxis pero no detecta referencias a variables usadas
 antes de su declaración ni identificadores inexistentes — un error real de este proyecto fue una

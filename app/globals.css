@@ -127,3 +127,11 @@ a {
 tbody tr.fila:hover {
   background: var(--teal-soft);
 }
+
+/* El navegador le da `display: none` a `[hidden]`, pero cualquier regla que fije
+   `display` lo pisa sin avisar y el elemento vuelve a aparecer. Se refuerza acá
+   porque las vistas lo usan para esconder la tabla mientras los movimientos
+   cargan, y que reaparezca sería mostrar justo los ceros que se quieren evitar. */
+[hidden] {
+  display: none !important;
+}

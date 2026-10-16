@@ -42,7 +42,7 @@
 
 import type { ReactNode } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
-import { clases } from "@/components/ui/primitivas";
+import { Hueco, clases } from "@/components/ui/primitivas";
 import type { CuentaConSaldo } from "@/components/estado/ProveedorTesoreria";
 import { REGISTROS_PROYECCION, claveDeCuenta, totalDeRegistro } from "@/lib/registros";
 import { clp } from "@/lib/formato";
@@ -102,6 +102,7 @@ function Fila({
   activa,
   tenue,
   fuerte,
+  cargando,
   onClick,
 }: {
   izquierda: string;
@@ -114,6 +115,7 @@ function Fila({
   activa: boolean;
   tenue?: boolean;
   fuerte?: boolean;
+  cargando?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -126,7 +128,7 @@ function Fila({
     >
       <span className={css.filaNombre}>{izquierda}</span>
       {marca && <span className={css.marcaMoneda}>{marca}</span>}
-      <Monto monto={monto} moneda={moneda} activa={activa} fuerte={fuerte} />
+      <Monto monto={monto} moneda={moneda} activa={activa} fuerte={fuerte} cargando={cargando} />
     </button>
   );
 }
@@ -136,11 +138,15 @@ function Monto({
   moneda,
   activa,
   fuerte,
+  cargando,
 }: {
   monto: number;
   moneda: "CLP" | "USD";
   activa?: boolean;
   fuerte?: boolean;
+  /** Mientras los movimientos cargan, el saldo de una cuenta vale su saldo
+   *  inicial: un número creíble y equivocado. Se muestra el hueco. */
+  cargando?: boolean;
 }) {
   return (
     <span
@@ -149,11 +155,17 @@ function Monto({
         fuerte && css.montoFuerte,
         // El magenta queda para los negativos y los vencidos, así el color dice
         // algo. En una fila abierta no: ahí manda el teal del fondo.
-        monto < 0 && !activa && css.montoNegativo
+        monto < 0 && !activa && !cargando && css.montoNegativo
       )}
     >
-      {moneda === "USD" ? "US$" : "$"}
-      {clp(monto)}
+      {cargando ? (
+        <Hueco ancho={fuerte ? 78 : 62} />
+      ) : (
+        <>
+          {moneda === "USD" ? "US$" : "$"}
+          {clp(monto)}
+        </>
+      )}
     </span>
   );
 }
@@ -167,6 +179,7 @@ export function Cuentas() {
     seleccionarRegistro,
     porConciliar,
     empresas,
+    cargando,
   } = useTesoreria();
 
   const porEmpresa = empresas
@@ -267,6 +280,7 @@ export function Cuentas() {
                 fuerte={c.moneda === "CLP"}
                 tenue={c.moneda === "USD"}
                 activa={claveDeCuenta(c.id) === registroSeleccionado}
+                cargando={cargando}
                 titulo={tituloDeCuenta(c)}
                 onClick={() => alternar(claveDeCuenta(c.id))}
               />
@@ -285,6 +299,7 @@ export function Cuentas() {
             monto={r.total}
             moneda={r.moneda}
             tenue={r.moneda === "USD"}
+            cargando={cargando}
             activa={r.clave === registroSeleccionado}
             titulo={
               r.clave === registroSeleccionado
@@ -306,6 +321,7 @@ export function Cuentas() {
               monto={c.saldo}
               moneda={c.moneda}
               tenue
+              cargando={cargando}
               activa={claveDeCuenta(c.id) === registroSeleccionado}
               titulo={
                 claveDeCuenta(c.id) === registroSeleccionado
@@ -328,14 +344,18 @@ export function Cuentas() {
           title="Fecha pasada y todavía proyectado: o ya ocurrió y falta registrarlo, o hay que mover la fecha."
         >
           <span className={css.rotuloSeccion}>Vencidos</span>
-          <span
-            className={css.conteo}
-            style={{ color: vencidos ? "var(--brick)" : "var(--tenue)" }}
-          >
-            {vencidos}
-          </span>
+          {cargando ? (
+            <Hueco ancho={26} />
+          ) : (
+            <span
+              className={css.conteo}
+              style={{ color: vencidos ? "var(--brick)" : "var(--tenue)" }}
+            >
+              {vencidos}
+            </span>
+          )}
           <span className={css.empuje} />
-          {vencidos > 0 && <Monto monto={montoVencido} moneda="CLP" />}
+          {!cargando && vencidos > 0 && <Monto monto={montoVencido} moneda="CLP" />}
         </div>
 
         {porConciliar > 0 && (

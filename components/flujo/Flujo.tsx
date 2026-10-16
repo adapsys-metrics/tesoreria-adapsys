@@ -22,7 +22,7 @@ import {
   sumarDias,
 } from "@/lib/fechas";
 import type { EstadoMovimiento, LineaExpandida, Naturaleza } from "@/lib/tipos";
-import { Aviso, BotonFantasma, Cabecera, Chip, Nota, clases } from "@/components/ui/primitivas";
+import { Aviso, BotonFantasma, Cabecera, Chip, Nota, clases, TablaFantasma } from "@/components/ui/primitivas";
 import { PanelDetalle, type Detalle } from "./PanelDetalle";
 import tabla from "@/components/ui/tabla.module.css";
 import css from "./flujo.module.css";
@@ -42,6 +42,7 @@ export function Flujo() {
     editarMovimiento,
     editarLinea,
     catalogo,
+    cargando,
   } = useTesoreria();
 
   const [granularidad, setGranularidad] = useState<"semana" | "mes">("semana");
@@ -359,7 +360,11 @@ export function Flujo() {
         </Aviso>
       )}
 
-      <div className={tabla.envoltorio}>
+      {/* Mientras los movimientos cargan, el flujo entero vale cero: cada celda
+          sería un cero creíble y equivocado. */}
+      {cargando && <TablaFantasma filas={12} columnas={5} />}
+
+      <div className={tabla.envoltorio} hidden={cargando}>
         <table className={clases(tabla.tabla, tabla.tablaAncha)}>
           <thead>
             <tr>

@@ -21,7 +21,15 @@ import {
 } from "@/lib/orden";
 import { clp } from "@/lib/formato";
 import { HOY, fechaCorta } from "@/lib/fechas";
-import { Cabecera, Nota, Pill, SaldoCabecera, Vacio, clases } from "@/components/ui/primitivas";
+import {
+  Cabecera,
+  Nota,
+  Pill,
+  SaldoCabecera,
+  TablaFantasma,
+  Vacio,
+  clases,
+} from "@/components/ui/primitivas";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { EditorMovimiento } from "./EditorMovimiento";
 import { FormaNuevo } from "./FormaNuevo";
@@ -66,6 +74,7 @@ export function Registro() {
     avanzarCobranza,
     registroSeleccionado,
     catalogo,
+    cargando,
   } = useTesoreria();
 
   const cuentasBanco = useMemo(() => cuentas.filter((c) => c.tipo === "banco"), [cuentas]);
@@ -223,6 +232,7 @@ export function Registro() {
               rotulo={cabecera.rotulo}
               texto={`${cabecera.moneda === "USD" ? "US$" : "$"}${clp(cabecera.monto)}`}
               negativo={cabecera.monto < 0}
+              cargando={cargando}
             />
           )
         }
@@ -324,7 +334,11 @@ export function Registro() {
         />
       )}
 
-      {lista.length === 0 ? (
+      {/* Mientras carga no se dice "no hay movimientos": sería afirmar justo lo
+          contrario de lo que pasa, y con el mismo aspecto que el caso real. */}
+      {cargando ? (
+        <TablaFantasma filas={10} />
+      ) : lista.length === 0 ? (
         <Vacio>
           No hay movimientos que coincidan.
           {soloPendiente && " Prueba desactivando «Solo pendiente y futuro»."}

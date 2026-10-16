@@ -257,3 +257,62 @@
   background: var(--paper);
   color: var(--muted);
 }
+
+
+/* ── Huecos mientras carga ── */
+/*
+   Toman el lugar de un número que todavía no se sabe. La animación es lenta y de
+   bajo contraste a propósito: tiene que leerse como "esto está viniendo" sin
+   competir con el dato que sí está. Quien pidió menos movimiento ve una barra
+   quieta, que dice lo mismo.
+*/
+
+.hueco {
+  display: inline-block;
+  height: 0.75em;
+  vertical-align: middle;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--rule-soft) 25%,
+    var(--rule) 37%,
+    var(--rule-soft) 63%
+  );
+  background-size: 400% 100%;
+  animation: huecoLatido 1.6s ease-in-out infinite;
+}
+
+@keyframes huecoLatido {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hueco {
+    animation: none;
+    background: var(--rule-soft);
+  }
+}
+
+.fantasma {
+  border: 1px solid var(--rule-soft);
+  border-radius: 4px;
+  background: var(--surface);
+  padding: 4px 0;
+}
+
+.filaFantasma {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.filaFantasma:last-child {
+  border-bottom: 0;
+}
