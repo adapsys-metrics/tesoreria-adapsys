@@ -85,7 +85,7 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
     // Venía en la columna Action de Quicken y se había perdido en la importación:
     // esa columna trae la empresa en unos registros y el número de hito en otros.
     conCartera("cuenta:x3");
-    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
     const campo = screen.getAllByLabelText("Número de hito")[0]!;
     fireEvent.change(campo, { target: { value: "3" } });
     expect(screen.getAllByText("hito 3").length).toBeGreaterThan(0);
@@ -101,7 +101,7 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
     // una factura emitida a un cliente ninguno aplica, y tenerlos ahí es una vía
     // para clasificar un ingreso como IVA compras.
     conCartera("cuenta:x1");
-    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
     expect(screen.getByText("+ línea")).toBeDefined();
     expect(screen.queryByText(/\+ IVA/)).toBeNull();
     expect(screen.queryByText(/− Retención/)).toBeNull();
@@ -109,7 +109,7 @@ describe("Cobrar recorre la cadena, no salta al banco", () => {
 
   it("una cuenta del banco sí los ofrece", () => {
     conCartera("cuenta:b1");
-    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
     expect(screen.getByText(/\+ IVA/)).toBeDefined();
     expect(screen.getByText(/− Retención/)).toBeDefined();
   });

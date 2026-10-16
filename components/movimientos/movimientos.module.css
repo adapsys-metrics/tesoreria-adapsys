@@ -198,19 +198,45 @@
   font-weight: 400;
 }
 
+/* La puerta al editor del movimiento.
+   Era una flecha sola en una caja de 11px y no se leía como un control: había que
+   apuntarle para descubrir que desplegaba algo. Ahora lleva la palabra, el mismo
+   trato que el chip de split —que nadie duda que se abre— y una flecha que gira
+   en vez de cambiar de carácter, para que el giro se vea. */
 .botonEditar {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--font-sans);
-  font-size: 11px;
-  padding: 3px 7px;
-  border: 1px solid var(--rule);
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 3px 8px 3px 6px;
+  border: 1px solid var(--teal-soft);
   border-radius: 3px;
-  background: var(--paper);
-  color: var(--muted);
+  background: var(--surface);
+  color: var(--teal);
+  white-space: nowrap;
 }
 
 .botonEditar:hover {
-  border-color: var(--muted);
-  color: var(--ink);
+  border-color: var(--teal-claro);
+  background: var(--teal-soft);
+}
+
+.botonEditarAbierto {
+  background: var(--teal-soft);
+  border-color: var(--teal-claro);
+}
+
+.flechaEditar {
+  display: inline-block;
+  font-size: 9px;
+  line-height: 1;
+  transition: transform 0.12s ease;
+}
+
+.botonEditarAbierto .flechaEditar {
+  transform: rotate(90deg);
 }
 
 /* ── Editor de movimiento (fila expandida) ── */

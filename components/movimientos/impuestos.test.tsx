@@ -129,7 +129,7 @@ describe("La fila de un split", () => {
     );
     // Se abre el editor de cada movimiento hasta dar con uno que tenga split: los
     // datos de ejemplo tienen varios, pero cuál es el primero depende del orden.
-    for (const boton of screen.getAllByTitle("Editar el movimiento")) {
+    for (const boton of screen.getAllByTitle("Abrir el detalle")) {
       fireEvent.click(boton);
       if (screen.queryAllByLabelText("Monto de la línea").length > 1) return;
       fireEvent.click(boton);

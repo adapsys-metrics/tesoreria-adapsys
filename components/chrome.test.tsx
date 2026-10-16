@@ -89,8 +89,13 @@ describe("Vista de entrada", () => {
       </ProveedorTesoreria>
     );
     expect(screen.getByText(/Viendo solo/)).toBeDefined();
+    // Todas las filas son proyectados, y se comprueba por la acción que ofrecen:
+    // "Marcar pagado" solo aparece en un proyectado. Buscar la palabra
+    // "conciliado" no probaría nada — la pastilla no se dibuja cuando todos los
+    // movimientos del registro comparten estado.
     const cuerpo = within(document.querySelector("tbody")!);
-    expect(cuerpo.queryAllByText("conciliado")).toHaveLength(0);
+    const filas = document.querySelectorAll("tbody tr").length;
+    expect(cuerpo.getAllByText("Marcar pagado")).toHaveLength(filas);
   });
 });
 
@@ -138,9 +143,19 @@ describe("Entrar a una cuenta desde el sidebar", () => {
     conSidebar();
     fireEvent.click(screen.getByTitle(/Ver los movimientos de CLA CONSULTORES PESOS/));
     expect(document.querySelectorAll("tbody tr").length).toBeGreaterThan(0);
-    // Se mira dentro de la tabla: fuera de ella la palabra aparece en leyendas.
+    // Por la acción y no por la pastilla, que no se dibuja cuando todas las filas
+    // comparten estado: "Marcar pagado" solo lo ofrece un proyectado, así que si
+    // se hubiera colado uno, acá estaría.
     const cuerpo = within(document.querySelector("tbody")!);
-    expect(cuerpo.queryAllByText("proyectado")).toHaveLength(0);
+    expect(cuerpo.queryAllByText("Marcar pagado")).toHaveLength(0);
+  });
+
+  it("y por eso no muestra la columna de estado: diría lo mismo en cada fila", () => {
+    // Si en la cuenta hay algo que no corresponde, lo que no cuadra es el saldo
+    // contra la cartola. Repetir "conciliado" doscientas veces no lo delata.
+    conSidebar();
+    fireEvent.click(screen.getByTitle(/Ver los movimientos de CLA CONSULTORES PESOS/));
+    expect(screen.queryByText("Estado")).toBeNull();
   });
 
   it("abrir egresos proyectados muestra solo compromisos futuros", () => {
@@ -150,7 +165,15 @@ describe("Entrar a una cuenta desde el sidebar", () => {
     const filas = document.querySelectorAll("tbody tr").length;
     expect(filas).toBeGreaterThan(0);
     const cuerpo = within(document.querySelector("tbody")!);
-    expect(cuerpo.queryAllByText("conciliado")).toHaveLength(0);
+    expect(cuerpo.getAllByText("Marcar pagado")).toHaveLength(filas);
+  });
+
+  it("ahí la columna sí aparece: trae la acción que avanza cada movimiento", () => {
+    // La columna lleva dos cosas, la pastilla y el botón. Desaparece cuando no
+    // tendría ninguna de las dos, no cuando los estados coinciden.
+    conSidebar();
+    fireEvent.click(screen.getByTitle("Ver egresos proyectados en CLP"));
+    expect(screen.getByText("Estado")).toBeDefined();
   });
 
   it("hacer click en la empresa abre su cuenta en pesos, sin tocar el filtro", () => {

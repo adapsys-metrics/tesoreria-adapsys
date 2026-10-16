@@ -33,7 +33,7 @@ describe("Movimientos", () => {
 
   it("la fila se expande al editor completo del movimiento", () => {
     montar(<Registro />);
-    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
 
     // Los campos de cabecera del movimiento, no solo sus líneas.
     expect(screen.getByLabelText("Monto del movimiento")).toBeDefined();
@@ -47,7 +47,7 @@ describe("Movimientos", () => {
 
   it("no hay campo de moneda: la determina la cuenta", () => {
     montar(<Registro />);
-    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
     // La moneda no se elige por movimiento — sale de la cuenta y no cambia nunca.
     expect(screen.queryByText("Moneda")).toBeNull();
     expect(screen.getAllByLabelText("Cuenta").length).toBeGreaterThan(0);
@@ -55,7 +55,7 @@ describe("Movimientos", () => {
 
   it("editar la glosa desde el editor se refleja en la fila", () => {
     montar(<Registro />);
-    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
     const glosas = screen.getAllByText("Glosa");
     expect(glosas.length).toBeGreaterThan(0);
 
@@ -69,7 +69,7 @@ describe("Movimientos", () => {
 
   it("mover el movimiento a una cuenta en dólares le pone el TC (§4.5)", () => {
     montar(<Registro />);
-    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
     // Cambiar de cuenta cambia la moneda: es la misma decisión.
     fireEvent.change(screen.getAllByLabelText("Cuenta")[0]!, { target: { value: "a2" } });
     // El TC aparece y queda seteado: la base no acepta USD sin tipo de cambio.
@@ -79,7 +79,7 @@ describe("Movimientos", () => {
 
   it("cambiar de cuenta arrastra empresa y moneda juntas", () => {
     montar(<Registro />);
-    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
     // b2 es CLA CONSULTORES DÓLAR: cambia la empresa y la moneda de una vez, así no
     // queda un estado intermedio imposible.
     fireEvent.change(screen.getAllByLabelText("Cuenta")[0]!, { target: { value: "b2" } });
@@ -309,7 +309,7 @@ describe("Columna de saldo (el «Balance» de Quicken)", () => {
 describe("Borrar un movimiento", () => {
   const abrirEditor = () => {
     montar(<Registro />);
-    fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+    fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
   };
 
   it("pide confirmación antes de borrar", () => {

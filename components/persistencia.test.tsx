@@ -57,7 +57,7 @@ const abrir = async () => {
     await vi.advanceTimersByTimeAsync(1500);
   });
   guardado.mockClear();
-  fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+  fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
 };
 
 const esperar = async () => {

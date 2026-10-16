@@ -13,7 +13,7 @@ prepararEntorno();
 
 const abrirEditor = () => {
   montar(<Registro />);
-  fireEvent.click(screen.getAllByTitle("Editar el movimiento")[0]!);
+  fireEvent.click(screen.getAllByTitle("Abrir el detalle")[0]!);
   return screen.getByLabelText("Fecha") as HTMLInputElement;
 };
 

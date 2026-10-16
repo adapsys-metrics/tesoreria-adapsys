@@ -34,7 +34,7 @@ import tabla from "@/components/ui/tabla.module.css";
 // acción y no tiene encabezado.
 type Columna = { titulo: string; orden: ColumnaOrden | null; num?: boolean };
 
-const columnas = (conSaldo: boolean): Columna[] => [
+const columnas = (conSaldo: boolean, conEstado: boolean): Columna[] => [
   { titulo: "", orden: null },
   { titulo: "Fecha", orden: "fecha" },
   { titulo: "Empresa", orden: "cuenta" },
@@ -45,7 +45,7 @@ const columnas = (conSaldo: boolean): Columna[] => [
   // El saldo no se ordena: es el saldo DESPUÉS de ese movimiento, un dato del
   // punto en el tiempo. Ordenarlo por su valor no significaría nada.
   ...(conSaldo ? [{ titulo: "Saldo", orden: null, num: true } as Columna] : []),
-  { titulo: "Estado", orden: null },
+  ...(conEstado ? [{ titulo: "Estado", orden: null } as Columna] : []),
   { titulo: "", orden: null },
 ];
 
@@ -103,7 +103,36 @@ export function Registro() {
     [cuentaAbierta, movimientosFiltrados]
   );
 
-  const COLUMNAS = useMemo(() => columnas(saldos !== null), [saldos]);
+  /**
+   * La columna de estado solo aparece cuando dice algo.
+   *
+   * Lleva dos cosas distintas: la pastilla con el estado y el botón que avanza la
+   * cobranza —facturar, cobrar, marcar pagado—. En un registro los movimientos
+   * comparten estado casi siempre: una cuenta del banco es toda `conciliado` y la
+   * cartera es toda `proyectado`, así que la pastilla repite la misma palabra en
+   * doscientas filas sin distinguir ninguna.
+   *
+   * No hace falta: si en la cuenta hay algo que no corresponde, el saldo no cuadra
+   * contra la cartola, que es donde de verdad se nota.
+   *
+   * Así que la pastilla aparece cuando los estados **difieren** —y entonces sí
+   * señala cuál es cuál— y la columna entera desaparece cuando además no hay
+   * ninguna acción que ofrecer. Es derivado, no una opción: si un `pagado` se
+   * cuela en una cuenta del banco, la columna vuelve sola y esa fila resalta.
+   */
+  const { conEstado, conPastilla } = useMemo(() => {
+    const estados = new Set(movimientosFiltrados.map((m) => m.estado));
+    const hayAcciones = movimientosFiltrados.some((m) => {
+      const p = pasoDe(m, cuentas);
+      return p.accion !== "ninguna" || p.motivo !== null;
+    });
+    return { conEstado: estados.size > 1 || hayAcciones, conPastilla: estados.size > 1 };
+  }, [movimientosFiltrados, cuentas]);
+
+  const COLUMNAS = useMemo(
+    () => columnas(saldos !== null, conEstado),
+    [saldos, conEstado]
+  );
 
   const cabecera = useMemo(
     () =>
@@ -546,7 +575,8 @@ export function Registro() {
                         </td>
                       )}
 
-                      <td className={tabla.td}>
+                      {conEstado && (
+                        <td className={tabla.td}>
                         {/* La acción depende de dónde esté el movimiento: un
                             proyecto aprobado se factura, una factura se cobra y un
                             egreso proyectado se marca pagado. Ver lib/cobranza.ts. */}
@@ -555,9 +585,9 @@ export function Registro() {
                             <span className={css.sinAccion} title={paso.motivo}>
                               {paso.motivo}
                             </span>
-                          ) : (
+                          ) : conPastilla ? (
                             <Pill estado={m.estado} />
-                          )
+                          ) : null
                         ) : (
                           <button
                             type="button"
@@ -581,17 +611,23 @@ export function Registro() {
                             {paso.etiqueta}
                           </button>
                         )}
-                      </td>
+                        </td>
+                      )}
 
                       <td className={tabla.td}>
+                        {/* Con la flecha sola no se leía como un control: la misma
+                            forma que el chip de split, que ya se entiende que
+                            despliega. La palabra cuesta ancho y lo vale — es la
+                            puerta a todo lo que no cabe en la fila. */}
                         <button
                           type="button"
                           onClick={() => alternar(m.id)}
                           aria-expanded={abierto}
-                          title={abierto ? "Cerrar el editor" : "Editar el movimiento"}
-                          className={css.botonEditar}
+                          title={abierto ? "Cerrar el detalle" : "Abrir el detalle"}
+                          className={clases(css.botonEditar, abierto && css.botonEditarAbierto)}
                         >
-                          {abierto ? "▾" : "▸"}
+                          <span className={css.flechaEditar}>▸</span>
+                          {abierto ? "Cerrar" : "Detalle"}
                         </button>
                       </td>
                     </tr>

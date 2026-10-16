@@ -43,9 +43,15 @@ describe("Seleccionar y sumar", () => {
 
     // El total es exactamente la suma de los montos de esas dos filas.
     const filas = document.querySelectorAll('tr[data-fila="movimiento"]');
+    // Por encabezado y no contando desde el final: las columnas Saldo y Estado
+    // aparecen y desaparecen según el registro abierto, así que un índice fijo
+    // acaba leyendo otra columna sin que nada falle.
+    const encabezados = Array.from(document.querySelectorAll("thead th"));
+    const iMonto = encabezados.findIndex((th) => th.textContent?.trim().startsWith("Monto"));
+    expect(iMonto).toBeGreaterThan(-1);
     const monto = (tr: Element) => {
       const celdas = tr.querySelectorAll("td");
-      const texto = celdas[celdas.length - 3]?.textContent ?? "";
+      const texto = celdas[iMonto]?.textContent ?? "";
       return Number(texto.replace(/[^\d,-]/g, "").replace(/\./g, "").replace(",", "."));
     };
     const esperado = Math.abs(monto(filas[0]!) + monto(filas[1]!));
