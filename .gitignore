@@ -23,6 +23,12 @@
 /datos-quicken/*
 !/datos-quicken/LEEME.md
 
+# Libro de remuneraciones. Trae el sueldo de cada persona con nombre y RUT: son
+# datos personales de gente identificable, no solo cifras de la empresa. Vale lo
+# mismo que los exports de Quicken y un poco más — nunca al repo.
+/datos-rrhh/*
+!/datos-rrhh/LEEME.md
+
 # Scripts de carga generados a partir de esos exports. Llevan los datos adentro
 # —nombres, glosas y montos reales— así que valen lo mismo que el export: se
 # generan, se pegan en el editor de Supabase y no se versionan.
