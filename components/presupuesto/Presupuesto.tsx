@@ -13,13 +13,16 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import { supabaseConfigurado } from "@/lib/supabase/estado";
 import {
+  aprobarPresupuesto,
   cargarPresupuesto,
   guardarLineaPresupuesto,
   type PresupuestoDelAnio,
 } from "@/lib/supabase/presupuesto";
+import { Bitacora, CuadroAjuste, type EnAjuste } from "./Ajustes";
 import {
   MESES_DEL_ANIO,
   SECCIONES,
+  anualDe,
   distribucionOperativa,
   distribuirLineal,
   ejecutadoPorCategoria,
@@ -33,7 +36,7 @@ import {
   type FilaPresupuesto,
   type Meses,
 } from "@/lib/presupuesto";
-import { HOY } from "@/lib/fechas";
+import { HOY, fechaCorta } from "@/lib/fechas";
 import { expandir } from "@/lib/dominio";
 import { PanelDetalle, type Detalle } from "@/components/flujo/PanelDetalle";
 import type { LineaExpandida } from "@/lib/tipos";
@@ -48,6 +51,21 @@ const NOMBRES_MES = [
 ];
 
 const LINEA_VACIA = { monto: 0, monto_anterior: 0, responsable: "", nota: "" };
+
+/**
+ * Lo que una fila necesita saber del estado del año.
+ *
+ * Va en un objeto y no en cuatro props sueltas porque atraviesa dos niveles
+ * —sección y grupo— que no lo usan: solo lo pasan.
+ */
+type Control = {
+  /** Con el año aprobado, editar el anual deja de ser escribir un número. */
+  aprobado: boolean;
+  /** Cuánto se movió la línea respecto de lo aprobado. 0 si no se tocó. */
+  ajusteDe: (categoria_id: string) => number;
+  pedirAjuste: (categoria_id: string, nombre: string, meses: Meses, propuesto: number) => void;
+  verCambios: (categoria_id: string, nombre: string) => void;
+};
 const sinMeses = (): Meses => Array<number>(MESES_DEL_ANIO).fill(0);
 
 
@@ -60,8 +78,14 @@ export function Presupuesto() {
   const [mes, setMes] = useState(() => Number(HOY.slice(5, 7)));
   const [datos, setDatos] = useState<PresupuestoDelAnio>({
     meses: new Map(),
+    inicial: new Map(),
     metadata: new Map(),
+    aprobado: null,
+    cambios: [],
   });
+  /** La línea que se está ajustando, y la bitácora que se está mirando. */
+  const [ajustando, setAjustando] = useState<EnAjuste | null>(null);
+  const [bitacora, setBitacora] = useState<{ titulo: string; de: string | null } | null>(null);
   const [cargando, setCargando] = useState(supabaseConfigurado);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,17 +102,58 @@ export function Presupuesto() {
     };
   }, [anio]);
 
+  /** Vuelve a leer el año. Se usa después de aprobar y después de un ajuste: las
+   *  dos cosas las escribe la base y no se pueden deducir desde acá. */
+  const recargar = () => {
+    if (!supabaseConfigurado) return;
+    cargarPresupuesto(crearClienteNavegador(), anio)
+      .then(setDatos)
+      .catch((e: Error) => setError(e.message));
+  };
+
   /** Guarda una línea y la refleja en pantalla. El estado se actualiza primero:
    *  si falla, la banda de error avisa que lo que se ve no es lo que hay. */
-  const guardar = (sub: string, meses: Meses, linea = datos.metadata.get(sub) ?? LINEA_VACIA) => {
+  const guardar = (
+    sub: string,
+    meses: Meses,
+    linea = datos.metadata.get(sub) ?? LINEA_VACIA,
+    motivo?: string
+  ) => {
     setDatos((p) => ({
+      ...p,
       meses: new Map(p.meses).set(sub, meses),
       metadata: new Map(p.metadata).set(sub, linea),
     }));
     if (!supabaseConfigurado) return;
-    guardarLineaPresupuesto(crearClienteNavegador(), anio, sub, linea, meses).catch(
-      (e: Error) => setError(e.message)
-    );
+    guardarLineaPresupuesto(crearClienteNavegador(), anio, sub, linea, meses, motivo)
+      // Al ajustar, la bitácora la escribe la base: hay que releerla para que el
+      // panel muestre lo que acaba de pasar.
+      .then(() => motivo && recargar())
+      .catch((e: Error) => setError(e.message));
+  };
+
+  const aprobar = () => {
+    if (!supabaseConfigurado) return;
+    aprobarPresupuesto(crearClienteNavegador(), anio)
+      .then(recargar)
+      .catch((e: Error) => setError(e.message));
+  };
+
+  /** Cuánto se movió una línea respecto de lo aprobado. 0 si no se tocó. */
+  const ajusteDe = (categoria_id: string): number => {
+    if (!datos.aprobado) return 0;
+    const base = datos.inicial.get(categoria_id);
+    if (!base) return 0;
+    return anualDe(datos.meses.get(categoria_id) ?? sinMeses()) - anualDe(base);
+  };
+
+  const control: Control = {
+    aprobado: datos.aprobado !== null,
+    ajusteDe,
+    pedirAjuste: (categoria_id, nombre, meses, propuesto) =>
+      setAjustando({ categoria_id, nombre, meses, propuesto }),
+    verCambios: (categoria_id, nombre) =>
+      setBitacora({ titulo: `Ajustes de ${nombre}`, de: categoria_id }),
   };
 
   // Solo las cuatro del grupo Adapsys (§4.6). SANTA MARÍA comparte el sistema pero
@@ -243,6 +308,35 @@ export function Presupuesto() {
         >
           Generar operativo desde los movimientos
         </button>
+
+        <span className={css.empujeBarra} />
+
+        {/* Aprobar es un acto explícito y no "la primera vez que alguien edita":
+            mientras el año se arma, editar es construir. Desde acá en adelante
+            editar es ajustar, y cada ajuste tiene que decir por qué. */}
+        {datos.aprobado ? (
+          <button
+            type="button"
+            onClick={() =>
+              setBitacora({ titulo: `Ajustes del presupuesto ${anio}`, de: null })
+            }
+            title={`Aprobado el ${fechaCorta(datos.aprobado.slice(0, 10))}. Acá está todo lo que se ajustó desde entonces.`}
+            className={css.botonAjustes}
+          >
+            Ajustes del año
+            {datos.cambios.length > 0 && ` · ${datos.cambios.length}`}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={aprobar}
+            disabled={datos.meses.size === 0}
+            title="Congela estos doce meses como el presupuesto aprobado. Desde acá, cada cambio queda anotado con su motivo."
+            className={css.botonAprobar}
+          >
+            Aprobar el presupuesto {anio}
+          </button>
+        )}
       </div>
 
       {error && (
@@ -275,6 +369,7 @@ export function Presupuesto() {
                 metadata={datos.metadata}
                 guardar={guardar}
                 abrir={abrir}
+                control={control}
               />
             ))}
 
@@ -323,6 +418,33 @@ export function Presupuesto() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {ajustando && (
+        <CuadroAjuste
+          linea={ajustando}
+          // Desde el mes en curso: lo anterior ya se midió contra el plan que
+          // tenía, y reescribirlo cambiaría el % utilizado de meses cerrados.
+          desde={Number(HOY.slice(5, 7))}
+          cancelar={() => setAjustando(null)}
+          confirmar={(meses, motivo) => {
+            guardar(ajustando.categoria_id, meses, undefined, motivo);
+            setAjustando(null);
+          }}
+        />
+      )}
+
+      {bitacora && (
+        <Bitacora
+          titulo={bitacora.titulo}
+          cambios={
+            bitacora.de
+              ? datos.cambios.filter((c) => c.categoria_id === bitacora.de)
+              : datos.cambios
+          }
+          nombreDe={(id) => catalogo.categoriaDe(id).nombre}
+          cerrar={() => setBitacora(null)}
+        />
       )}
 
       {detalle && (
@@ -397,6 +519,7 @@ function SeccionFilas({
   metadata,
   guardar,
   abrir,
+  control,
 }: {
   seccion: {
     titulo: string;
@@ -408,6 +531,7 @@ function SeccionFilas({
   metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
   guardar: (sub: string, meses: Meses, linea?: FilaPresupuesto | typeof LINEA_VACIA) => void;
   abrir: (titulo: string, subs: Set<string>) => void;
+  control: Control;
 }) {
   return (
     <>
@@ -428,6 +552,7 @@ function SeccionFilas({
           metadata={metadata}
           guardar={guardar}
           abrir={abrir}
+          control={control}
         />
       ))}
 
@@ -458,6 +583,7 @@ function FilasDeGrupo({
   metadata,
   guardar,
   abrir,
+  control,
 }: {
   grupo: { id: string; nombre: string };
   filas: FilaPresupuesto[];
@@ -467,6 +593,7 @@ function FilasDeGrupo({
   metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
   guardar: (sub: string, meses: Meses, linea?: never) => void;
   abrir: (titulo: string, subs: Set<string>) => void;
+  control: Control;
 }) {
   return (
     <>
@@ -489,6 +616,7 @@ function FilasDeGrupo({
           guardar={guardar}
           metadata={metadata}
           abrir={abrir}
+          control={control}
         />
       ))}
     </>
@@ -501,6 +629,7 @@ function Fila({
   guardar,
   metadata,
   abrir,
+  control,
 }: {
   fila: FilaPresupuesto;
   mes: number;
@@ -508,8 +637,12 @@ function Fila({
   guardar: (sub: string, meses: Meses, linea?: never) => void;
   metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
   abrir: (titulo: string, subs: Set<string>) => void;
+  control: Control;
 }) {
   const { catalogo } = useTesoreria();
+  // Para devolver el campo a su valor cuando el cuadro de ajuste se cancela: el
+  // input es no controlado y si no, queda mostrando un número que no se guardó.
+  const [reset, setReset] = useState(0);
   const nombre = catalogo.categoriaDe(fila.categoria_id).nombre;
 
   // Dos avisos distintos, y la diferencia importa. "Sobre presupuesto" dice que va
@@ -527,10 +660,22 @@ function Fila({
   const cambiarAnual = (texto: string) => {
     const nuevo = Number(texto.replace(/\D/g, ""));
     if (Number.isNaN(nuevo) || nuevo === fila.anual) return;
+
+    // Con el año aprobado, escribir el anual ya no es escribir un número: es un
+    // ajuste, que mueve solo lo que queda del año y tiene que decir por qué. El
+    // número escrito viaja al cuadro, así que el gesto no se pierde.
+    if (control.aprobado) {
+      control.pedirAjuste(fila.categoria_id, nombre, mesesActuales, nuevo);
+      setReset((n) => n + 1);
+      return;
+    }
+
     // Reescalar y no repartir parejo: si la línea tiene forma —un aguinaldo en
     // diciembre— subirle el total no debe aplanarla.
     guardar(fila.categoria_id, nuevo === 0 ? sinMeses() : reescalar(mesesActuales, nuevo));
   };
+
+  const ajuste = control.ajusteDe(fila.categoria_id);
 
   const cambiarMeta = (campo: "responsable" | "nota", valor: string) => {
     const actual = metadata.get(fila.categoria_id) ?? LINEA_VACIA;
@@ -568,7 +713,7 @@ function Fila({
 
       <td className={clases(tabla.td, tabla.tdNum)}>
         <input
-          key={fila.anual}
+          key={`${fila.anual}-${reset}`}
           defaultValue={fila.anual ? mag(fila.anual) : ""}
           aria-label={`Presupuesto de ${nombre}`}
           onBlur={(e) => cambiarAnual(e.target.value)}
@@ -576,6 +721,19 @@ function Fila({
           placeholder="0"
           className={css.entradaMonto}
         />
+        {/* Dónde se está ajustando el año, línea por línea. Abre la bitácora de
+            ésta: el número solo dice cuánto, y lo que hace falta saber es por qué. */}
+        {ajuste !== 0 && (
+          <button
+            type="button"
+            onClick={() => control.verCambios(fila.categoria_id, nombre)}
+            title={`Ajustada ${clp(ajuste)} respecto del presupuesto aprobado. Ver por qué.`}
+            className={css.marcaAjuste}
+          >
+            {ajuste > 0 ? "+" : ""}
+            {clp(ajuste)}
+          </button>
+        )}
       </td>
 
       <td className={clases(tabla.td, tabla.tdNum)}>{mag(fila.ytd)}</td>

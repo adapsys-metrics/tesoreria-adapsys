@@ -222,3 +222,267 @@
   color: var(--teal);
   border-bottom-color: var(--teal);
 }
+
+/* ── Ajustar el presupuesto, y la bitácora ── */
+
+.velo {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 28%);
+}
+
+.cuadro {
+  width: min(480px, 92vw);
+  background: var(--surface);
+  border-radius: 5px;
+  padding: 18px 20px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 22%);
+}
+
+/* La bitácora puede traer muchas filas: crece y se desplaza ella sola. */
+.cuadroAlto {
+  width: min(560px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.tituloCuadro {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.filaCuadro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.etiquetaCuadro {
+  flex: 0 0 96px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.cifraCuadro {
+  font-family: var(--font-cifras);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.entradaCuadro,
+.entradaMotivo {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--borde-control);
+  border-radius: 3px;
+  padding: 5px 8px;
+  font-size: 12px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.entradaCuadro {
+  font-family: var(--font-cifras);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.entradaCuadro:focus,
+.entradaMotivo:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+
+/* El reparto se muestra antes de confirmar: bajar el anual en octubre puede dejar
+   los meses que quedan en cero, y eso no se adivina del número que uno escribe. */
+.repartoCuadro {
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  background: var(--seccion);
+  border-radius: 3px;
+}
+
+.notaCuadro {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.mesesCuadro {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 8px;
+}
+
+.mesCuadro {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-cifras);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.nombreMesCuadro {
+  font-family: var(--font-sans);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-claro);
+}
+
+/* No alcanza para bajar tanto. No es un error de quien escribe: es que el pasado
+   no se reescribe, y hay que decirlo sin gritar. */
+.avisoCuadro {
+  margin: 0 0 12px;
+  padding: 9px 11px;
+  background: var(--amber-soft);
+  border-left: 2px solid var(--amber);
+  border-radius: 0 3px 3px 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.accionesCuadro {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.botonAjustar {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 14px;
+  border: 1px solid var(--teal);
+  border-radius: 3px;
+  background: var(--teal);
+  color: var(--surface);
+}
+
+.botonAjustar:disabled {
+  border-color: var(--rule);
+  background: var(--rule-soft);
+  color: var(--tenue);
+}
+
+.listaCambios {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cambio {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.cabezaCambio {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lineaCambio {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.deltaCambio {
+  font-family: var(--font-cifras);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cuandoCambio {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--muted-claro);
+}
+
+/* El dato por el que existe la bitácora. */
+.motivoCambio {
+  margin-top: 3px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Marca de que una línea se ajustó. Va al lado del anual, que es el número que
+   cambió, y abre la bitácora de esa línea. */
+.marcaAjuste {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid var(--teal-soft);
+  border-radius: 3px;
+  background: var(--surface);
+  font-family: var(--font-cifras);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--teal);
+}
+
+.marcaAjuste:hover {
+  background: var(--teal-soft);
+}
+
+.empujeBarra {
+  flex: 1;
+}
+
+/* Aprobar el año: congela el presupuesto y cambia lo que significa editarlo. Es
+   una acción de una vez al año, así que se ve pero no compite con el trabajo. */
+.botonAprobar {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border: 1px solid var(--teal);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--teal);
+  white-space: nowrap;
+}
+
+.botonAprobar:hover:not(:disabled) {
+  background: var(--teal-soft);
+}
+
+.botonAprobar:disabled {
+  border-color: var(--rule);
+  color: var(--tenue);
+}
+
+.botonAjustes {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  padding: 5px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.botonAjustes:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}

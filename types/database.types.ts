@@ -272,6 +272,57 @@ export type Database = {
           },
         ];
       };
+      /** El presupuesto tal como se aprobó, congelado (0018). */
+      presupuesto_inicial: {
+        Row: { anio: number; categoria_id: string; mes: number; monto: number };
+        Insert: { anio: number; categoria_id: string; mes: number; monto?: number };
+        Update: Partial<Database["public"]["Tables"]["presupuesto_inicial"]["Insert"]>;
+        Relationships: [];
+      };
+      /** Una fila por mes que cambió después de aprobado el año (0018). */
+      presupuesto_cambios: {
+        Row: {
+          id: number;
+          anio: number;
+          categoria_id: string;
+          mes: number;
+          antes: number;
+          despues: number;
+          motivo: string;
+          usuario_id: string | null;
+          cuando: string;
+        };
+        Insert: {
+          id?: number;
+          anio: number;
+          categoria_id: string;
+          mes: number;
+          antes: number;
+          despues: number;
+          motivo: string;
+          usuario_id?: string | null;
+          cuando?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["presupuesto_cambios"]["Insert"]>;
+        Relationships: [];
+      };
+      /** Un año con fila acá está aprobado y su presupuesto congelado (0018). */
+      presupuesto_anios: {
+        Row: {
+          anio: number;
+          aprobado_en: string;
+          aprobado_por: string | null;
+          nota: string | null;
+        };
+        Insert: {
+          anio: number;
+          aprobado_en?: string;
+          aprobado_por?: string | null;
+          nota?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["presupuesto_anios"]["Insert"]>;
+        Relationships: [];
+      };
       presupuesto: {
         Row: {
           id: number;
@@ -383,6 +434,12 @@ export type Database = {
        *  redefinida en 0012 sobre categoria_id). */
       fn_guardar_presupuesto: {
         Args: { p: Json };
+        Returns: undefined;
+      };
+      /** Congela los doce meses del año y lo marca aprobado (0018). Desde ahí,
+       *  todo cambio exige motivo y queda anotado. */
+      fn_aprobar_presupuesto: {
+        Args: { p_anio: number; p_nota?: string | null };
         Returns: undefined;
       };
     };

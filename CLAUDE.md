@@ -292,6 +292,33 @@ como vinieron.
 - Líneas fuera del control presupuestario (retiros de socios, préstamos, inversiones) se excluyen
   pero se muestran en una banda aparte para que nadie olvide que existen.
 
+### El presupuesto se aprueba, y desde ahí se ajusta dejando registro
+
+Antes de aprobar, editar el anual es **construir**: se reparte sobre los doce meses y no hay
+nada que anotar. **Aprobar el año es un acto explícito** —no "la primera vez que alguien
+edita"— y congela una copia de los doce meses en `presupuesto_inicial`. Desde ahí, editar es
+**ajustar**, y cambian tres cosas:
+
+- **Los meses que ya pasaron no se tocan.** Son el plan contra el que se midió el gasto de esos
+  meses: reescribirlos haría que el % utilizado de marzo cambie en octubre. Un ajuste mueve el
+  cupo de aquí en adelante (`ajustarDesde` en `lib/presupuesto.ts`), conservando la forma del
+  tramo igual que `reescalar` — bajar el anual no debe aplanar el aguinaldo de diciembre.
+- **Puede no haber nada que repartir, y no se tapa.** Si el nuevo anual queda por debajo de lo
+  ya presupuestado hasta el mes en curso, no hay reparto posible sin reescribir el pasado o
+  poner meses en negativo. Se dice cuál es el mínimo alcanzable; quien de verdad quiera bajar
+  más edita los meses a mano y lo deja dicho en el motivo.
+- **Hay que decir por qué**, y lo exige la base. Cada mes que cambia deja una fila en
+  `presupuesto_cambios` con el antes, el después, quién y el motivo. Un mes que no cambió no
+  deja fila: si anotara los doce siempre, la bitácora diría que se ajustó el año entero cada
+  vez que alguien corrige un mes.
+
+El respaldo es **una copia y no la bitácora reproducida al revés**: la bitácora puede tener
+huecos —una carga directa por SQL, una fila borrada— y el inicial es justamente lo que no puede
+depender de eso. Son 3.600 filas al año.
+
+En pantalla: la línea ajustada lleva su delta al lado del anual, y ese delta abre la bitácora de
+esa línea. "Dónde se está ajustando" se lee, no se calcula.
+
 **TC presupuestario fijo.** El presupuesto usa un tipo de cambio fijo definido al armar el año.
 Si el TC flota, la desviación por gasto y la desviación por dólar se mezclan y ninguna se explica.
 
@@ -513,8 +540,6 @@ ejecutaron. El número entre paréntesis es el que importa.
 **Definidos, sin implementar**
 - Cierre de período: bloquear meses ya reportados para que nadie "arregle" marzo en julio.
 - Auditoría: quién cambió qué y cuándo. Nada se borra, se anula con contraasiento.
-- Distribución mensual del presupuesto anual: hoy la comparación contra el avance del año es
-  lineal, y las líneas estacionales (retiros de socios en marzo/junio/agosto) dan falsa alarma.
 - Autoclasificación por diccionario de proveedores. Ya existe uno construido para la conciliación
   de la tarjeta corporativa; reutilizarlo.
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ajustarDesde,
   anualDe,
   reescalar,
   distribucionOperativa,
@@ -13,6 +14,7 @@ import {
   totalizar,
   ytdDe,
 } from "./presupuesto";
+import type { Meses } from "./presupuesto";
 import type { LineaPresupuesto, Movimiento } from "./tipos";
 
 const mov = (p: Partial<Movimiento>): Movimiento => ({
@@ -420,5 +422,83 @@ describe("totalizar", () => {
 
   it("sin filas da ceros y avance nulo, no NaN", () => {
     expect(totalizar([])).toEqual({ anual: 0, ytd: 0, real: 0, variacion: 0, avance: null });
+  });
+});
+
+
+describe("ajustarDesde", () => {
+  // Doce meses de 400.000: 4,8M al año.
+  const PAREJO = Array(12).fill(400_000) as Meses;
+
+  it("no toca los meses que ya pasaron", () => {
+    // Bajar el anual en octubre no puede cambiar lo que decía marzo: es el plan
+    // contra el que se midió el gasto de marzo.
+    const r = ajustarDesde(PAREJO, 4_200_000, 10);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.meses.slice(0, 9)).toEqual(Array(9).fill(400_000));
+  });
+
+  it("el anual queda exactamente en el número que se pidió", () => {
+    const r = ajustarDesde(PAREJO, 4_200_000, 10);
+    expect(r.ok && anualDe(r.meses)).toBe(4_200_000);
+  });
+
+  it("reparte entre los meses que quedan", () => {
+    // 4,2M − 3,6M ya presupuestados a septiembre = 600.000 para tres meses.
+    const r = ajustarDesde(PAREJO, 4_200_000, 10);
+    expect(r.ok && r.meses.slice(9)).toEqual([200_000, 200_000, 200_000]);
+  });
+
+  it("puede dejar los meses que quedan en cero", () => {
+    // Bajar a 3,6M en octubre consume todo el cupo restante. No es un error:
+    // es exactamente lo que significa no tener más presupuesto en el año.
+    const r = ajustarDesde(PAREJO, 3_600_000, 10);
+    expect(r.ok && r.meses.slice(9)).toEqual([0, 0, 0]);
+    expect(r.ok && anualDe(r.meses)).toBe(3_600_000);
+  });
+
+  it("avisa cuando el nuevo anual no alcanza, en vez de inventar meses negativos", () => {
+    // A septiembre ya hay 3,6M presupuestados: pedir 3M es pedir que el pasado
+    // valga menos, y eso solo se hace a mano y dejándolo dicho.
+    const r = ajustarDesde(PAREJO, 3_000_000, 10);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.minimo).toBe(3_600_000);
+  });
+
+  it("conserva la forma del tramo: un aguinaldo en diciembre no se aplana", () => {
+    // Sueldos: once meses iguales y diciembre al doble.
+    const sueldos = [...Array(11).fill(1_000_000), 2_000_000] as Meses;
+    const r = ajustarDesde(sueldos, 11_500_000, 11);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const [nov, dic] = [r.meses[10]!, r.meses[11]!];
+    // Quedan 1,5M para noviembre y diciembre, repartidos 1:2 como estaban.
+    expect(nov + dic).toBe(1_500_000);
+    expect(dic).toBeGreaterThan(nov);
+  });
+
+  it("si el tramo venía en cero reparte parejo: no hay forma que conservar", () => {
+    const sinCola = [...Array(9).fill(300_000), 0, 0, 0] as Meses;
+    const r = ajustarDesde(sinCola, 3_000_000, 10);
+    expect(r.ok && r.meses.slice(9)).toEqual([100_000, 100_000, 100_000]);
+  });
+
+  it("desde enero mueve el año entero", () => {
+    const r = ajustarDesde(PAREJO, 2_400_000, 1);
+    expect(r.ok && anualDe(r.meses)).toBe(2_400_000);
+    expect(r.ok && r.meses.every((m) => m === 200_000)).toBe(true);
+  });
+
+  it("el redondeo no se pierde: la suma de los doce da el anual pedido", () => {
+    // 1.000.001 entre tres meses no es divisible: el resto tiene que caer en
+    // algún mes, no evaporarse.
+    const r = ajustarDesde(PAREJO, 3_600_000 + 1_000_001, 10);
+    expect(r.ok && anualDe(r.meses)).toBe(4_600_001);
+  });
+
+  it("toma el anual en magnitud: el presupuesto se escribe sin signo (§4.6)", () => {
+    const r = ajustarDesde(PAREJO, -4_200_000, 10);
+    expect(r.ok && anualDe(r.meses)).toBe(4_200_000);
   });
 });

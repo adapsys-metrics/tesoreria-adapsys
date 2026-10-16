@@ -198,6 +198,75 @@ export function reescalar(meses: Meses, nuevoAnual: number): Meses {
   return escalados;
 }
 
+/**
+ * Reparte un total entre un tramo de meses, conservando su forma.
+ *
+ * Es la misma cuenta que hace `reescalar` sobre los doce, y vive aparte porque un
+ * ajuste de mitad de año toca solo la cola. No están unificadas todavía a
+ * propósito: `reescalar` está probada y en uso, y tocarla sin poder correr los
+ * tests sería cambiar algo que funciona a ciegas.
+ */
+function repartirTramo(tramo: number[], total: number): number[] {
+  if (tramo.length === 0) return [];
+
+  const actual = tramo.reduce((s, m) => s + m, 0);
+  if (actual === 0) {
+    // Sin forma previa no hay nada que conservar: parejo es lo único razonable.
+    const base = Math.floor(total / tramo.length);
+    const resto = total - base * tramo.length;
+    return tramo.map((_, i) => base + (i < resto ? 1 : 0));
+  }
+
+  const factor = total / actual;
+  const escalados = tramo.map((m) => Math.round(m * factor));
+  // El redondeo de cada mes desvía el total; la diferencia se corrige en el mes
+  // que más pesa, que es donde menos se nota.
+  const desvio = total - escalados.reduce((s, m) => s + m, 0);
+  if (desvio !== 0) {
+    const mayor = escalados.indexOf(Math.max(...escalados));
+    escalados[mayor] = (escalados[mayor] ?? 0) + desvio;
+  }
+  return escalados;
+}
+
+/** El resultado de intentar ajustar: o los doce meses nuevos, o por qué no se puede. */
+export type Ajuste =
+  | { ok: true; meses: Meses; repartido: number; desde: number }
+  | { ok: false; minimo: number; desde: number };
+
+/**
+ * Ajusta el anual de una línea moviendo solo los meses que quedan.
+ *
+ * **Ajustar lo que queda del año no es cambiar el número anual.** Los meses que ya
+ * pasaron se quedan como estaban: son el plan contra el que se midió el gasto de
+ * esos meses, y reescribirlos haría que el % utilizado de marzo cambie en octubre.
+ * Lo que se mueve es el cupo de `desde` en adelante.
+ *
+ * La forma del tramo se conserva, igual que en `reescalar` y por lo mismo: si
+ * "Sueldos" tiene un aguinaldo en diciembre, bajar el anual no debe aplanarlo
+ * contra noviembre.
+ *
+ * **Puede no haber nada que repartir, y eso no es un error a tapar.** Si el nuevo
+ * anual queda por debajo de lo ya presupuestado hasta `desde`, no hay reparto
+ * posible sin reescribir el pasado o poner meses en negativo, que no significa
+ * nada. Se devuelve el mínimo alcanzable para poder decirlo, y quien de verdad
+ * quiera bajar más tiene que editar los meses a mano y dejarlo dicho en el motivo.
+ *
+ * @param desde Primer mes que puede moverse, 1 = enero.
+ */
+export function ajustarDesde(meses: Meses, nuevoAnual: number, desde: number): Ajuste {
+  const corte = Math.min(Math.max(desde, 1), MESES_DEL_ANIO);
+  const congelado = ytdDe(meses, corte - 1);
+  const objetivo = Math.round(Math.abs(nuevoAnual));
+  const disponible = objetivo - congelado;
+
+  if (disponible < 0) return { ok: false, minimo: congelado, desde: corte };
+
+  const cola = repartirTramo(meses.slice(corte - 1), disponible);
+  const nuevos = [...meses.slice(0, corte - 1), ...cola] as Meses;
+  return { ok: true, meses: nuevos, repartido: disponible, desde: corte };
+}
+
 /** Arma la fila de una categoría con sus columnas calculadas. */
 export function filaDe(
   categoria_id: string,

@@ -68,6 +68,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0015_naturaleza_en_la_subcategoria.sql"));
   await db.exec(leer("migrations/0016_doc_tipo_por_linea.sql"));
   await db.exec(leer("migrations/0017_registro_de_control.sql"));
+  await db.exec(leer("migrations/0018_presupuesto_linea_base.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -133,6 +134,7 @@ describe("migraciones y seed", () => {
       "migrations/0015_naturaleza_en_la_subcategoria.sql",
       "migrations/0016_doc_tipo_por_linea.sql",
       "migrations/0017_registro_de_control.sql",
+      "migrations/0018_presupuesto_linea_base.sql",
     ]) {
       await expect(db.exec(leer(archivo))).resolves.toBeDefined();
     }
@@ -834,5 +836,89 @@ describe("el registro de control", () => {
           and c.tipo = 'control'`
     );
     expect(r.rows[0]!.n).toBe(0);
+  });
+});
+
+
+describe("el presupuesto se ajusta dejando registro", () => {
+  // Un año propio y lejano: estos tests se encadenan —cargan, aprueban, ajustan—
+  // y compartir año con otro los haría depender del orden en que corran.
+  const LINEA = (motivo: string | null, monto: number) =>
+    JSON.stringify({
+      anio: 2099,
+      categoria_id: "arriendo-oficina",
+      meses: Array(12).fill(monto),
+      ...(motivo === null ? {} : { motivo }),
+    });
+
+  it("mientras el año no está aprobado se edita sin pedir nada", async () => {
+    await db.exec(`select fn_guardar_presupuesto('${LINEA(null, 100)}'::jsonb)`);
+    const r = await db.query<{ n: number }>(
+      `select count(*)::int as n from presupuesto_meses where anio = 2099`
+    );
+    expect(r.rows[0]!.n).toBe(12);
+    // Y no anota nada: no hay contra qué comparar todavía.
+    const c = await db.query<{ n: number }>(
+      `select count(*)::int as n from presupuesto_cambios where anio = 2099`
+    );
+    expect(c.rows[0]!.n).toBe(0);
+  });
+
+  it("aprobar congela los doce meses", async () => {
+    await db.exec(`select fn_aprobar_presupuesto(2099)`);
+    const r = await db.query<{ n: number; total: number }>(
+      `select count(*)::int as n, sum(monto)::int as total
+         from presupuesto_inicial where anio = 2099`
+    );
+    expect(r.rows[0]).toEqual({ n: 12, total: 1200 });
+  });
+
+  it("no se aprueba dos veces: la línea base dejaría de ser la aprobada", async () => {
+    expect(await intentar(`select fn_aprobar_presupuesto(2099)`)).toMatch(/ya está aprobado/);
+  });
+
+  it("con el año aprobado, un cambio sin motivo se rechaza", async () => {
+    expect(await intentar(`select fn_guardar_presupuesto('${LINEA(null, 200)}'::jsonb)`))
+      .toMatch(/necesita decir por qué/);
+  });
+
+  it("con motivo, anota una fila por mes que cambió", async () => {
+    await db.exec(
+      `select fn_guardar_presupuesto('${LINEA("GTD renegociado", 200)}'::jsonb)`
+    );
+    const r = await db.query<{ n: number; antes: number; despues: number }>(
+      `select count(*)::int as n, min(antes)::int as antes, min(despues)::int as despues
+         from presupuesto_cambios where anio = 2099`
+    );
+    expect(r.rows[0]).toEqual({ n: 12, antes: 100, despues: 200 });
+  });
+
+  it("y el inicial sigue diciendo lo que se aprobó", async () => {
+    // Es la razón de existir de la tabla: el ajuste no puede borrar el respaldo.
+    const r = await db.query<{ total: number }>(
+      `select sum(monto)::int as total from presupuesto_inicial where anio = 2099`
+    );
+    expect(r.rows[0]!.total).toBe(1200);
+  });
+
+  it("un mes que no cambió no deja fila", async () => {
+    // Si anotara los doce siempre, la bitácora diría que se ajustó todo el año
+    // cada vez que alguien corrige un mes.
+    const antes = await db.query<{ n: number }>(
+      `select count(*)::int as n from presupuesto_cambios where anio = 2099`
+    );
+    const meses = [...Array(11).fill(200), 500];
+    await db.exec(
+      `select fn_guardar_presupuesto('${JSON.stringify({
+        anio: 2099,
+        categoria_id: "arriendo-oficina",
+        meses,
+        motivo: "Aguinaldo de diciembre",
+      })}'::jsonb)`
+    );
+    const despues = await db.query<{ n: number }>(
+      `select count(*)::int as n from presupuesto_cambios where anio = 2099`
+    );
+    expect(despues.rows[0]!.n - antes.rows[0]!.n).toBe(1);
   });
 });
