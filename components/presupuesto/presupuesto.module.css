@@ -486,3 +486,32 @@
   border-color: var(--teal);
   color: var(--teal);
 }
+
+/* ── Categoría con subcategorías ── */
+/*
+   Cuando una categoría tiene subcategorías, su total es la suma de ellas y deja
+   de ser editable: el número se escribe abajo, donde se decide. La fila de la
+   categoría es entonces un encabezado con cifras, más liviano que el del grupo
+   —que está por encima— y más marcado que una línea suelta.
+*/
+
+.filaCategoria td {
+  background: var(--fila-anidada);
+  border-top: 1px solid var(--rule-soft);
+}
+
+.nombreCategoria {
+  font-weight: 600;
+  padding-left: 22px;
+}
+
+.nombreAnidado {
+  padding-left: 38px;
+}
+
+/* La línea de la categoría en sí: lo clasificado sin precisar subcategoría. No
+   tiene nombre propio, así que se marca como lo que es y no como una más. */
+.sinPrecisar {
+  font-style: italic;
+  color: var(--muted-claro);
+}

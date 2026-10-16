@@ -7,10 +7,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 import type { LineaPresupuesto } from "@/lib/tipos";
 import { MESES_DEL_ANIO, type Meses } from "@/lib/presupuesto";
+import { clave } from "@/lib/catalogo-indices";
 
 /** Un mes que cambió después de aprobado el año (§4.6). */
 export type CambioPresupuesto = {
   categoria_id: string;
+  subcategoria_id: string | null;
   mes: number;
   antes: number;
   despues: number;
@@ -18,8 +20,14 @@ export type CambioPresupuesto = {
   cuando: string;
 };
 
+/**
+ * Todo va indexado por **clave de reporte** —`categoria` o `categoria>subcategoria`—
+ * y no por categoría a secas. Antes se agrupaba por `categoria_id` y las líneas de
+ * subcategoría se plegaban dentro de su categoría **en silencio**: el presupuesto
+ * de las hijas se sumaba al de la madre y no fallaba nada, solo daba otro número.
+ */
 export type PresupuestoDelAnio = {
-  /** Los doce meses vigentes de cada categoría presupuestada. */
+  /** Los doce meses vigentes de cada línea presupuestada. */
   meses: Map<string, Meses>;
   /** Los doce meses tal como se aprobaron. Vacío mientras el año no esté
    *  aprobado: ahí no hay "inicial" todavía, se está construyendo. */
@@ -40,15 +48,21 @@ export async function cargarPresupuesto(
   anio: number
 ): Promise<PresupuestoDelAnio> {
   const [porMes, meta, base, bitacora, aprobacion] = await Promise.all([
-    supabase.from("presupuesto_meses").select("categoria_id,mes,monto").eq("anio", anio),
+    supabase
+      .from("presupuesto_meses")
+      .select("categoria_id,subcategoria_id,mes,monto")
+      .eq("anio", anio),
     supabase
       .from("presupuesto")
-      .select("categoria_id,monto_anterior,responsable,nota")
+      .select("categoria_id,subcategoria_id,monto_anterior,responsable,nota")
       .eq("anio", anio),
-    supabase.from("presupuesto_inicial").select("categoria_id,mes,monto").eq("anio", anio),
+    supabase
+      .from("presupuesto_inicial")
+      .select("categoria_id,subcategoria_id,mes,monto")
+      .eq("anio", anio),
     supabase
       .from("presupuesto_cambios")
-      .select("categoria_id,mes,antes,despues,motivo,cuando")
+      .select("categoria_id,subcategoria_id,mes,antes,despues,motivo,cuando")
       .eq("anio", anio)
       .order("cuando", { ascending: false }),
     supabase.from("presupuesto_anios").select("aprobado_en").eq("anio", anio).maybeSingle(),
@@ -58,24 +72,32 @@ export async function cargarPresupuesto(
     if (r.error) throw new Error(`No se pudo cargar el presupuesto: ${r.error.message}`);
   }
 
-  /** Los doce meses por categoría, a partir de filas (categoria, mes, monto). */
-  const porCategoria = (filas: { categoria_id: string; mes: number; monto: number }[]) => {
+  /** Los doce meses por clave de reporte. */
+  const porClave = (
+    filas: {
+      categoria_id: string;
+      subcategoria_id: string | null;
+      mes: number;
+      monto: number;
+    }[]
+  ) => {
     const mapa = new Map<string, Meses>();
     for (const fila of filas) {
-      const actuales = mapa.get(fila.categoria_id) ?? vacios();
+      const k = clave(fila.categoria_id, fila.subcategoria_id);
+      const actuales = mapa.get(k) ?? vacios();
       // La base garantiza que el mes está entre 1 y 12; el índice es mes − 1.
       actuales[fila.mes - 1] = aNumero(fila.monto);
-      mapa.set(fila.categoria_id, actuales);
+      mapa.set(k, actuales);
     }
     return mapa;
   };
 
-  const meses = porCategoria(porMes.data ?? []);
-  const inicial = porCategoria(base.data ?? []);
+  const meses = porClave(porMes.data ?? []);
+  const inicial = porClave(base.data ?? []);
 
   const metadata = new Map<string, LineaPresupuesto>();
   for (const fila of meta.data ?? []) {
-    metadata.set(fila.categoria_id, {
+    metadata.set(clave(fila.categoria_id, fila.subcategoria_id), {
       monto: 0, // el anual sale de los meses, no se guarda aparte
       monto_anterior: aNumero(fila.monto_anterior),
       responsable: fila.responsable ?? "",
@@ -85,6 +107,7 @@ export async function cargarPresupuesto(
 
   const cambios: CambioPresupuesto[] = (bitacora.data ?? []).map((c) => ({
     categoria_id: c.categoria_id,
+    subcategoria_id: c.subcategoria_id,
     mes: c.mes,
     antes: aNumero(c.antes),
     despues: aNumero(c.despues),
@@ -131,6 +154,8 @@ export async function guardarLineaPresupuesto(
   supabase: SupabaseClient<Database>,
   anio: number,
   categoria_id: string,
+  /** Null es la línea de la categoría en sí, el "(Other)" de Quicken (§3). */
+  subcategoria_id: string | null,
   linea: LineaPresupuesto,
   meses: Meses,
   /** Por qué se ajusta. Con el año aprobado la base lo exige: sin motivo, la
@@ -141,6 +166,7 @@ export async function guardarLineaPresupuesto(
     p: {
       anio,
       categoria_id,
+      subcategoria_id: subcategoria_id ?? "",
       monto_anterior: linea.monto_anterior,
       responsable: linea.responsable,
       nota: linea.nota,

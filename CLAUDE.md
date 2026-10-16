@@ -123,13 +123,26 @@ Quicken los llama `Grupo:Categoría:Subcategoría` y así los piensa el equipo:
 y el que agrupan el flujo, el presupuesto y los reportes. La naturaleza vive ahí
 (§4.2) y por eso un grupo puede ser mixto.
 
-**La subcategoría es detalle, no nivel de reporte.** Es opcional, no lleva naturaleza
-—la hereda— y no abre una fila propia en el flujo ni en el presupuesto: se ve al
-abrir el detalle de un monto. Esto no es una simplificación provisoria sino cómo
-funcionan los datos: en seis años hay 15.649 clasificaciones de dos niveles y 21 de
-tres, y las dos conviven —"Jornadas y eventos organización" tiene 342 movimientos
-propios además de los 6 de su subcategoría—. Si la subcategoría fuera un nivel de
-reporte, esos 342 quedarían en una fila "sin subcategoría" que no significa nada.
+**La subcategoría es detalle en el flujo, y nivel propio en el presupuesto.** Es
+opcional y no lleva naturaleza —la hereda—. En el flujo no abre fila: se ve al abrir
+el detalle de un monto. **En el presupuesto sí**, porque es ahí donde se decide el
+número y el equipo lo decide en la subcategoría: *"en la totalidad de los casos son
+las subcategorías las que representan el total de las categorías"*. Una categoría con
+subcategorías muestra la suma y deja de ser editable; el monto se escribe abajo.
+
+**Y la fila "sin subcategoría" existe y hay que mostrarla.** En seis años hay 15.649
+clasificaciones de dos niveles y 21 de tres, y las dos conviven — "Jornadas y eventos
+organización" tiene 342 movimientos propios además de los 6 de su subcategoría. Si esa
+fila se escondiera, ese gasto quedaría dentro de un total sin línea contra la cual
+compararse. Mostrarla además delata lo que importa: gasto ahí sin presupuesto significa
+que alguien clasificó sin elegir subcategoría.
+
+**Todo esto se indexa por la clave de reporte** —`categoria` o `categoria>subcategoria`—,
+que tiene **una sola definición** (`clave` en `lib/catalogo-indices.ts`, con su inversa
+`partesDeClave`). Si la carga arma la clave de una forma y el cálculo del ejecutado de
+otra, el presupuesto y el gasto dejan de encontrarse: la línea aparece con gasto y sin
+presupuesto y nada falla. Ese fue un bug real — `cargarPresupuesto` agrupaba solo por
+`categoria_id` y plegaba las líneas de subcategoría dentro de su madre en silencio.
 
 Consecuencia práctica: agregarle subcategorías a una categoría **no invalida nada de
 lo ya clasificado** en ella, y no hay que migrar nada al abrir una nueva.
@@ -283,7 +296,7 @@ como vinieron.
   empresas no aplica a esta vista.
 - Se fija a fines del año anterior y se compara contra el real durante todo el año.
 - Estructura: Ingresos / Gastos de Inversión / Gastos Operativos → grupo → categoría.
-- Campos por línea (una línea = una categoría): presupuesto del año, presupuesto del año anterior, **responsable**, **notas**.
+- Campos por línea (una línea = una categoría, o una subcategoría suya — §3.1): presupuesto del año, presupuesto del año anterior, **responsable**, **notas**.
   La variación nominal y porcentual se calculan.
 - Montos en magnitud (sin signo), como en la planilla.
 - **% utilizado se compara contra el avance del año, no contra el mes.** Una línea al 80% en

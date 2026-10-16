@@ -23,6 +23,7 @@
 // cualquiera de los doce se puede corregir a mano.
 
 import { enCLP, expandir } from "@/lib/dominio";
+import { clave } from "@/lib/catalogo-indices";
 import type { LineaPresupuesto, Movimiento, Naturaleza } from "@/lib/tipos";
 
 /** Los doce meses del año, índice 0 = enero. */
@@ -30,6 +31,11 @@ export type Meses = number[];
 
 export type FilaPresupuesto = LineaPresupuesto & {
   categoria_id: string;
+  /** Null cuando la fila es la categoría en sí: lo que se clasifica en ella sin
+   *  precisar subcategoría, el "(Other)" de Quicken (§3). */
+  subcategoria_id: string | null;
+  /** `categoria` o `categoria>subcategoria`. Es por lo que se busca el ejecutado. */
+  clave: string;
   meses: Meses;
   /** Suma de los doce. Es lo comprometido para el año. */
   anual: number;
@@ -101,7 +107,7 @@ export const ytdDe = (meses: Meses, mes: number): number =>
 export const anualDe = (meses: Meses): number => meses.reduce((s, m) => s + m, 0);
 
 /**
- * Ejecutado por categoría hasta el final del mes indicado.
+ * Ejecutado por clave de reporte hasta el final del mes indicado.
  *
  * Se cuenta sobre las LÍNEAS y no sobre los movimientos (§3): un split reparte su
  * monto entre varias categorías, y sumar por movimiento le adjudicaría el total
@@ -115,7 +121,7 @@ export const anualDe = (meses: Meses): number => meses.reduce((s, m) => s + m, 0
  * bajar el gasto de la línea, no subirlo. Tomando magnitud línea por línea, devolver
  * plata gastaba más.
  */
-export function ejecutadoPorCategoria(
+export function ejecutadoPorClave(
   movimientos: Movimiento[],
   anio: number,
   mes: number,
@@ -129,9 +135,14 @@ export function ejecutadoPorCategoria(
     if (fila.estado === "proyectado") continue;
     if (fila.fecha < desde || fila.fecha > hasta) continue;
     if (!fila.categoria_id) continue;
-    total.set(fila.categoria_id, (total.get(fila.categoria_id) ?? 0) + enCLP(fila, tc));
+    // Por clave de reporte y no por categoría (§4.2): si la línea precisa
+    // subcategoría, su gasto tiene que ir contra el presupuesto de esa
+    // subcategoría y no contra el de la categoría, o la categoría aparecería
+    // gastando lo de sus hijas además de lo propio.
+    const k = clave(fila.categoria_id, fila.subcategoria_id);
+    total.set(k, (total.get(k) ?? 0) + enCLP(fila, tc));
   }
-  for (const [sub, monto] of total) total.set(sub, Math.abs(monto));
+  for (const [k, monto] of total) total.set(k, Math.abs(monto));
   return total;
 }
 
@@ -154,7 +165,7 @@ export function ejecutadoPorCategoria(
 export function distribucionOperativa(
   movimientos: Movimiento[],
   anio: number,
-  esOperativa: (categoria_id: string) => boolean,
+  esOperativa: (categoria_id: string, subcategoria_id: string | null) => boolean,
   tc: number
 ): Map<string, Meses> {
   const desde = `${anio}-01-01`;
@@ -163,11 +174,14 @@ export function distribucionOperativa(
 
   for (const fila of expandir(movimientos)) {
     if (fila.fecha < desde || fila.fecha > hasta) continue;
-    if (!fila.categoria_id || !esOperativa(fila.categoria_id)) continue;
-    const meses = porSub.get(fila.categoria_id) ?? vacios();
+    if (!fila.categoria_id || !esOperativa(fila.categoria_id, fila.subcategoria_id)) continue;
+    // Por clave y no por categoría, para que lo que se genera caiga en las mismas
+    // líneas contra las que después se compara.
+    const k = clave(fila.categoria_id, fila.subcategoria_id);
+    const meses = porSub.get(k) ?? vacios();
     const i = mesDe(fila.fecha) - 1;
     meses[i] = (meses[i] ?? 0) + enCLP(fila, tc);
-    porSub.set(fila.categoria_id, meses);
+    porSub.set(k, meses);
   }
   // La magnitud se toma por mes, ya con las devoluciones descontadas.
   for (const [sub, meses] of porSub) porSub.set(sub, meses.map(Math.abs));
@@ -270,6 +284,7 @@ export function ajustarDesde(meses: Meses, nuevoAnual: number, desde: number): A
 /** Arma la fila de una categoría con sus columnas calculadas. */
 export function filaDe(
   categoria_id: string,
+  subcategoria_id: string | null,
   linea: LineaPresupuesto,
   meses: Meses,
   ejecutado: number,
@@ -280,6 +295,8 @@ export function filaDe(
   return {
     ...linea,
     categoria_id,
+    subcategoria_id,
+    clave: clave(categoria_id, subcategoria_id),
     meses,
     anual,
     ytd,

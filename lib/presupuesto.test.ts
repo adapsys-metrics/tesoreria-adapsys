@@ -5,7 +5,7 @@ import {
   reescalar,
   distribucionOperativa,
   distribuirLineal,
-  ejecutadoPorCategoria,
+  ejecutadoPorClave,
   entraAlPresupuesto,
   filaDe,
   finDeMes,
@@ -106,7 +106,7 @@ describe("el control presupuestario, de punta a punta", () => {
   // porque el error que importa es olvidar el filtro, no equivocarse en la suma.
   const ADAPSYS = ["adap", "cons", "clting", "ctria"];
   const ejecutadoDelGrupo = (ms: Movimiento[], mes: number) =>
-    ejecutadoPorCategoria(
+    ejecutadoPorClave(
       ms.filter((m) => entraAlPresupuesto(m, ADAPSYS)),
       2026,
       mes
@@ -138,6 +138,7 @@ describe("el control presupuestario, de punta a punta", () => {
 
 describe("distribucionOperativa", () => {
   const esOperativa = (id: string) => id !== "equipos-computacionales";
+
 
   it("pone cada movimiento en el mes de su fecha", () => {
     // Es la diferencia con el prorrateo lineal: los retiros de socios de marzo
@@ -250,14 +251,14 @@ describe("reescalar", () => {
   });
 });
 
-describe("ejecutadoPorCategoria", () => {
+describe("ejecutadoPorClave", () => {
   it("suma en magnitud: el presupuesto se muestra sin signo (§4.6)", () => {
-    const e = ejecutadoPorCategoria([gasto("1", "2026-01-05", "arriendo-oficina", -8_814_748)], 2026, 3, TC);
+    const e = ejecutadoPorClave([gasto("1", "2026-01-05", "arriendo-oficina", -8_814_748)], 2026, 3, TC);
     expect(e.get("arriendo-oficina")).toBe(8_814_748);
   });
 
   it("reparte los splits entre sus categorías, no al movimiento entero", () => {
-    const e = ejecutadoPorCategoria(
+    const e = ejecutadoPorClave(
       [
         mov({
           monto: -365026,
@@ -278,7 +279,7 @@ describe("ejecutadoPorCategoria", () => {
     // Caso real: la tarjeta en dólares paga casi todas las suscripciones. Sin
     // convertir, un cargo de US$67,5 entraba al presupuesto como 68 pesos y el
     // gasto en sistemas digitales desaparecía de la vista.
-    const e = ejecutadoPorCategoria(
+    const e = ejecutadoPorClave(
       [gasto("1", "2026-01-16", "sistop", -67.5, { moneda: "USD" })],
       2026,
       3,
@@ -288,7 +289,7 @@ describe("ejecutadoPorCategoria", () => {
   });
 
   it("usa el TC del propio movimiento cuando la operación lo tuvo", () => {
-    const e = ejecutadoPorCategoria(
+    const e = ejecutadoPorClave(
       [gasto("1", "2026-01-16", "sistop", -100, { moneda: "USD", tipo_cambio: 900 })],
       2026,
       3,
@@ -300,7 +301,7 @@ describe("ejecutadoPorCategoria", () => {
   it("una devolución baja el gasto de la línea, no lo sube", () => {
     // Tomando magnitud línea por línea, que un proveedor devuelva plata gastaba
     // más. La magnitud va al final, con las devoluciones ya descontadas.
-    const e = ejecutadoPorCategoria(
+    const e = ejecutadoPorClave(
       [
         gasto("1", "2026-02-10", "sistop", -1_000_000),
         gasto("2", "2026-02-20", "sistop", 300_000),
@@ -313,7 +314,7 @@ describe("ejecutadoPorCategoria", () => {
   });
 
   it("no cuenta lo proyectado: el real es lo que ocurrió", () => {
-    const e = ejecutadoPorCategoria(
+    const e = ejecutadoPorClave(
       [gasto("1", "2026-02-01", "sueldos", -900, { estado: "proyectado" })],
       2026,
       3
@@ -323,12 +324,12 @@ describe("ejecutadoPorCategoria", () => {
 
   it("corta en el último día del mes elegido", () => {
     const movs = [gasto("1", "2026-03-31", "sueldos", -100), gasto("2", "2026-04-01", "sueldos", -100)];
-    expect(ejecutadoPorCategoria(movs, 2026, 3, TC).get("sueldos")).toBe(100);
-    expect(ejecutadoPorCategoria(movs, 2026, 4, TC).get("sueldos")).toBe(200);
+    expect(ejecutadoPorClave(movs, 2026, 3, TC).get("sueldos")).toBe(100);
+    expect(ejecutadoPorClave(movs, 2026, 4, TC).get("sueldos")).toBe(200);
   });
 
   it("ignora lo que no está clasificado", () => {
-    expect(ejecutadoPorCategoria([mov({ monto: -5000 })], 2026, 12, TC).size).toBe(0);
+    expect(ejecutadoPorClave([mov({ monto: -5000 })], 2026, 12, TC).size).toBe(0);
   });
 });
 
@@ -337,7 +338,7 @@ describe("filaDe", () => {
     // Desarrollo organizacional: 500.000 al año, a julio.
     // La planilla dice 291.667: calcula anual × 7/12 sin pasar por los meses. Acá
     // la diferencia es de dos pesos por el reparto en enteros, y es irrelevante.
-    const f = filaDe("x", { ...LINEA }, distribuirLineal(500_000), 0, 7);
+    const f = filaDe("x", null, { ...LINEA }, distribuirLineal(500_000), 0, 7);
     expect(f.anual).toBe(500_000);
     expect(f.ytd).toBeCloseTo(291_667, -1);
     expect(f.variacion).toBeCloseTo(-291_667, -1);
@@ -345,14 +346,14 @@ describe("filaDe", () => {
 
   it("la variación positiva es haber gastado de más", () => {
     // "Desarrollo y mejoras sistemas": 1.500.000 al año, 476.965 a marzo.
-    const f = filaDe("x", LINEA, distribuirLineal(1_500_000), 476_965, 3);
+    const f = filaDe("x", null, LINEA, distribuirLineal(1_500_000), 476_965, 3);
     expect(f.ytd).toBe(375_000);
     expect(f.variacion).toBe(101_965);
   });
 
   it("una línea sin presupuesto no tiene avance", () => {
     // Gastar sobre cero no es 0% ni infinito: es una línea sin presupuestar.
-    expect(filaDe("x", LINEA, distribuirLineal(0), 50_000, 6).avance).toBeNull();
+    expect(filaDe("x", null, LINEA, distribuirLineal(0), 50_000, 6).avance).toBeNull();
   });
 });
 
@@ -362,13 +363,13 @@ describe("sobreRitmo", () => {
     // eso sea sobregasto. Con la regla vieja —avance mayor que mes/12— habría
     // saltado la alarma en todas las líneas estacionales.
     const enMarzo = [0, 0, 60_000_000, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    expect(sobreRitmo(filaDe("x", LINEA, enMarzo, 60_000_000, 3))).toBe(false);
-    expect(sobreRitmo(filaDe("x", LINEA, enMarzo, 61_000_000, 3))).toBe(true);
+    expect(sobreRitmo(filaDe("x", null, LINEA, enMarzo, 60_000_000, 3))).toBe(false);
+    expect(sobreRitmo(filaDe("x", null, LINEA, enMarzo, 61_000_000, 3))).toBe(true);
   });
 
   it("una línea sin presupuesto a la fecha no dispara la alarma", () => {
     // Todavía no le tocaba gastar: la desviación se ve en la variación, no acá.
-    expect(sobreRitmo(filaDe("x", LINEA, distribuirLineal(0), 999_999, 3))).toBe(false);
+    expect(sobreRitmo(filaDe("x", null, LINEA, distribuirLineal(0), 999_999, 3))).toBe(false);
   });
 });
 
@@ -378,25 +379,25 @@ describe("presupuestoAgotado", () => {
   it("marca la línea que ya usó todo lo del año", () => {
     // Aunque el acumulado a la fecha esté lejos: lo que importa es que no queda
     // nada para lo que resta y cualquier gasto nuevo ya es sobregasto.
-    expect(presupuestoAgotado(filaDe("x", LINEA, anual, 1_200_000, 3))).toBe(true);
+    expect(presupuestoAgotado(filaDe("x", null, LINEA, anual, 1_200_000, 3))).toBe(true);
   });
 
   it("también cuando se pasó del anual", () => {
-    expect(presupuestoAgotado(filaDe("x", LINEA, anual, 1_500_000, 3))).toBe(true);
+    expect(presupuestoAgotado(filaDe("x", null, LINEA, anual, 1_500_000, 3))).toBe(true);
   });
 
   it("no marca la que todavía tiene saldo", () => {
-    expect(presupuestoAgotado(filaDe("x", LINEA, anual, 1_199_999, 12))).toBe(false);
+    expect(presupuestoAgotado(filaDe("x", null, LINEA, anual, 1_199_999, 12))).toBe(false);
   });
 
   it("una línea sin presupuesto no está agotada: nunca tuvo", () => {
     // Su desviación se ve en el gasto sin presupuestar, no acá.
-    expect(presupuestoAgotado(filaDe("x", LINEA, distribuirLineal(0), 500_000, 3))).toBe(false);
+    expect(presupuestoAgotado(filaDe("x", null, LINEA, distribuirLineal(0), 500_000, 3))).toBe(false);
   });
 
   it("es distinto de ir sobre ritmo", () => {
     // Gastó de más para marzo pero le queda presupuesto para el año.
-    const apurada = filaDe("x", LINEA, anual, 400_000, 3);
+    const apurada = filaDe("x", null, LINEA, anual, 400_000, 3);
     expect(sobreRitmo(apurada)).toBe(true);
     expect(presupuestoAgotado(apurada)).toBe(false);
   });
@@ -405,10 +406,10 @@ describe("presupuestoAgotado", () => {
 describe("totalizar", () => {
   it("reproduce los totales de la sección de inversión de la planilla", () => {
     const filas = [
-      filaDe("a", LINEA, distribuirLineal(7_200_000), 0, 3),
-      filaDe("b", LINEA, distribuirLineal(500_000), 0, 3),
-      filaDe("c", LINEA, distribuirLineal(1_500_000), 0, 3),
-      filaDe("d", LINEA, distribuirLineal(3_850_000), 497_568, 3),
+      filaDe("a", null, LINEA, distribuirLineal(7_200_000), 0, 3),
+      filaDe("b", null, LINEA, distribuirLineal(500_000), 0, 3),
+      filaDe("c", null, LINEA, distribuirLineal(1_500_000), 0, 3),
+      filaDe("d", null, LINEA, distribuirLineal(3_850_000), 497_568, 3),
     ];
     const t = totalizar(filas);
     // El anual sí es exacto: es lo que se comprometió y no puede bailar.
@@ -500,5 +501,39 @@ describe("ajustarDesde", () => {
   it("toma el anual en magnitud: el presupuesto se escribe sin signo (§4.6)", () => {
     const r = ajustarDesde(PAREJO, -4_200_000, 10);
     expect(r.ok && anualDe(r.meses)).toBe(4_200_000);
+  });
+});
+
+
+describe("el presupuesto distingue la subcategoría", () => {
+  // Antes todo se agrupaba por categoría y las líneas de subcategoría se plegaban
+  // dentro de su madre en silencio: no fallaba nada, solo daba otro número.
+  const conSub = (sub: string | null, monto: number): Movimiento =>
+    mov({
+      estado: "conciliado",
+      fecha: "2026-02-10",
+      monto,
+      lineas: [
+        { categoria_id: "jornadas-y-eventos-organizacion", subcategoria_id: sub, doc_tipo: null, monto, glosa: null },
+      ],
+    });
+
+  it("el gasto de una subcategoría no se suma al de su categoría", () => {
+    const e = ejecutadoPorClave(
+      [conSub(null, -100), conSub("offsite-internacional", -40)],
+      2026,
+      12,
+      TC
+    );
+    expect(e.get("jornadas-y-eventos-organizacion")).toBe(100);
+    expect(e.get("jornadas-y-eventos-organizacion>offsite-internacional")).toBe(40);
+  });
+
+  it("la fila lleva su clave, que es por donde se busca el ejecutado", () => {
+    const propia = filaDe("cat", null, LINEA, distribuirLineal(0), 0, 3);
+    const hija = filaDe("cat", "sub", LINEA, distribuirLineal(0), 0, 3);
+    expect(propia.clave).toBe("cat");
+    expect(hija.clave).toBe("cat>sub");
+    expect(hija.subcategoria_id).toBe("sub");
   });
 });

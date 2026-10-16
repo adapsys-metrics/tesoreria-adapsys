@@ -7,7 +7,7 @@
 // Es consolidado para las cuatro empresas Adapsys y NO usa el filtro global de
 // empresas — por eso lee `movimientos` y no `movimientosFiltrados`.
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { IDS_ADAPSYS, RESPONSABLES } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { crearClienteNavegador } from "@/lib/supabase/client";
@@ -25,7 +25,7 @@ import {
   anualDe,
   distribucionOperativa,
   distribuirLineal,
-  ejecutadoPorCategoria,
+  ejecutadoPorClave,
   entraAlPresupuesto,
   filaDe,
   finDeMes,
@@ -38,6 +38,7 @@ import {
 } from "@/lib/presupuesto";
 import { HOY, fechaCorta } from "@/lib/fechas";
 import { expandir } from "@/lib/dominio";
+import { clave, partesDeClave } from "@/lib/catalogo-indices";
 import { PanelDetalle, type Detalle } from "@/components/flujo/PanelDetalle";
 import type { LineaExpandida } from "@/lib/tipos";
 import { clp, mag, pct } from "@/lib/formato";
@@ -58,20 +59,32 @@ const LINEA_VACIA = { monto: 0, monto_anterior: 0, responsable: "", nota: "" };
  * Va en un objeto y no en cuatro props sueltas porque atraviesa dos niveles
  * —sección y grupo— que no lo usan: solo lo pasan.
  */
+/** Una categoría con las filas que le corresponden en esta sección: la suya —lo
+ *  clasificado sin precisar subcategoría— y las de sus subcategorías. */
+type CategoriaConFilas = {
+  categoria: { id: string; nombre: string };
+  filas: FilaPresupuesto[];
+  conHijas: boolean;
+};
+
 type Control = {
   /** Con el año aprobado, editar el anual deja de ser escribir un número. */
   aprobado: boolean;
   /** Cuánto se movió la línea respecto de lo aprobado. 0 si no se tocó. */
-  ajusteDe: (categoria_id: string) => number;
-  pedirAjuste: (categoria_id: string, nombre: string, meses: Meses, propuesto: number) => void;
-  verCambios: (categoria_id: string, nombre: string) => void;
+  ajusteDe: (clave: string) => number;
+  pedirAjuste: (clave: string, nombre: string, meses: Meses, propuesto: number) => void;
+  verCambios: (clave: string, nombre: string) => void;
 };
 const sinMeses = (): Meses => Array<number>(MESES_DEL_ANIO).fill(0);
 
 
 export function Presupuesto() {
   const { movimientos, tc, editarLinea, editarMovimiento, catalogo } = useTesoreria();
-  const esOperativa = (id: string) => catalogo.categoriaDe(id).naturaleza === "operativo";
+  // Por clave, no por categoría: una subcategoría puede sobrescribir la naturaleza
+  // de su madre (§4.2) y generar lo operativo mirando solo la categoría metería
+  // sus líneas de inversión en la sección equivocada.
+  const esOperativa = (categoria_id: string, subcategoria_id: string | null) =>
+    catalogo.naturalezaDe(categoria_id, subcategoria_id) === "operativo";
   const [detalle, setDetalle] = useState<Detalle | null>(null);
 
   const [anio, setAnio] = useState(() => Number(HOY.slice(0, 4)));
@@ -113,19 +126,30 @@ export function Presupuesto() {
 
   /** Guarda una línea y la refleja en pantalla. El estado se actualiza primero:
    *  si falla, la banda de error avisa que lo que se ve no es lo que hay. */
+  /** `k` es la clave de reporte: `categoria` o `categoria>subcategoria`. Se parte
+   *  recién acá, porque la base guarda las dos columnas por separado. */
   const guardar = (
-    sub: string,
+    k: string,
     meses: Meses,
-    linea = datos.metadata.get(sub) ?? LINEA_VACIA,
+    linea = datos.metadata.get(k) ?? LINEA_VACIA,
     motivo?: string
   ) => {
     setDatos((p) => ({
       ...p,
-      meses: new Map(p.meses).set(sub, meses),
-      metadata: new Map(p.metadata).set(sub, linea),
+      meses: new Map(p.meses).set(k, meses),
+      metadata: new Map(p.metadata).set(k, linea),
     }));
     if (!supabaseConfigurado) return;
-    guardarLineaPresupuesto(crearClienteNavegador(), anio, sub, linea, meses, motivo)
+    const { categoria_id, subcategoria_id } = partesDeClave(k);
+    guardarLineaPresupuesto(
+      crearClienteNavegador(),
+      anio,
+      categoria_id,
+      subcategoria_id,
+      linea,
+      meses,
+      motivo
+    )
       // Al ajustar, la bitácora la escribe la base: hay que releerla para que el
       // panel muestre lo que acaba de pasar.
       .then(() => motivo && recargar())
@@ -140,20 +164,19 @@ export function Presupuesto() {
   };
 
   /** Cuánto se movió una línea respecto de lo aprobado. 0 si no se tocó. */
-  const ajusteDe = (categoria_id: string): number => {
+  const ajusteDe = (k: string): number => {
     if (!datos.aprobado) return 0;
-    const base = datos.inicial.get(categoria_id);
+    const base = datos.inicial.get(k);
     if (!base) return 0;
-    return anualDe(datos.meses.get(categoria_id) ?? sinMeses()) - anualDe(base);
+    return anualDe(datos.meses.get(k) ?? sinMeses()) - anualDe(base);
   };
 
   const control: Control = {
     aprobado: datos.aprobado !== null,
     ajusteDe,
-    pedirAjuste: (categoria_id, nombre, meses, propuesto) =>
-      setAjustando({ categoria_id, nombre, meses, propuesto }),
-    verCambios: (categoria_id, nombre) =>
-      setBitacora({ titulo: `Ajustes de ${nombre}`, de: categoria_id }),
+    pedirAjuste: (k, nombre, meses, propuesto) =>
+      setAjustando({ clave: k, nombre, meses, propuesto }),
+    verCambios: (k, nombre) => setBitacora({ titulo: `Ajustes de ${nombre}`, de: k }),
   };
 
   // Solo las cuatro del grupo Adapsys (§4.6). SANTA MARÍA comparte el sistema pero
@@ -166,14 +189,14 @@ export function Presupuesto() {
   );
 
   const ejecutado = useMemo(
-    () => ejecutadoPorCategoria(delPresupuesto, anio, mes, tc),
+    () => ejecutadoPorClave(delPresupuesto, anio, mes, tc),
     [delPresupuesto, anio, mes, tc]
   );
 
   /** Las líneas que componen un monto de la columna "gasto a la fecha".
-   *  Se filtra igual que ejecutadoPorCategoria —mismo rango, mismos estados—
-   *  para que lo que se abre sume exactamente lo que se ve. */
-  const lineasDe = (subs: Set<string>): LineaExpandida[] => {
+   *  Se filtra igual que ejecutadoPorClave —mismo rango, mismos estados, misma
+   *  clave— para que lo que se abre sume exactamente lo que se ve. */
+  const lineasDe = (claves: Set<string>): LineaExpandida[] => {
     const desde = `${anio}-01-01`;
     const hasta = finDeMes(anio, mes);
     return expandir(delPresupuesto).filter(
@@ -182,7 +205,7 @@ export function Presupuesto() {
         f.fecha >= desde &&
         f.fecha <= hasta &&
         f.categoria_id !== null &&
-        subs.has(f.categoria_id)
+        claves.has(clave(f.categoria_id, f.subcategoria_id))
     );
   };
 
@@ -220,20 +243,39 @@ export function Presupuesto() {
         // préstamos y socios no son gasto que se decida presupuestar: salen de lo
         // que se factura, de lo que se mueve o de una decisión de los dueños.
         const grupos = catalogo.grupos.filter((c) => c.controlado).map((grupo) => {
-          const filas = catalogo
-            .categoriasDe(grupo.id, naturaleza)
-            .map((s) =>
-              filaDe(
-                s.id,
-                datos.metadata.get(s.id) ?? LINEA_VACIA,
-                datos.meses.get(s.id) ?? sinMeses(),
-                ejecutado.get(s.id) ?? 0,
-                mes
-              )
-            )
-            .filter((f) => f.anual > 0 || f.real > 0);
-          return { grupo, filas, total: totalizar(filas) };
-        }).filter((c) => c.filas.length > 0);
+          // Se recorren TODAS las categorías del grupo, no solo las de esta
+          // naturaleza: una categoría operativa puede tener una subcategoría de
+          // inversión, y esa fila va en la sección de inversión (§4.2). De eso
+          // se encarga `clavesDe`, que devuelve solo las que caen de este lado.
+          const categorias = catalogo
+            .categoriasDe(grupo.id)
+            .map((s) => {
+              const hijas = catalogo.subcategoriasDe(s.id);
+              const filas = catalogo
+                .clavesDe(s.id, naturaleza)
+                .map((k) => {
+                  // La clave es `cat` o `cat>sub`; la parte de la derecha es la
+                  // subcategoría, y su ausencia es la línea de la categoría en sí.
+                  const sub = k.includes(">") ? k.slice(k.indexOf(">") + 1) : null;
+                  return filaDe(
+                    s.id,
+                    sub,
+                    datos.metadata.get(k) ?? LINEA_VACIA,
+                    datos.meses.get(k) ?? sinMeses(),
+                    ejecutado.get(k) ?? 0,
+                    mes
+                  );
+                })
+                // Las líneas sin presupuesto ni gasto no se muestran: el catálogo
+                // tiene 293 categorías y el control quedaría enterrado en ceros.
+                .filter((f) => f.anual > 0 || f.real > 0);
+              return { categoria: s, filas, conHijas: hijas.length > 0 };
+            })
+            .filter((c) => c.filas.length > 0);
+
+          const filas = categorias.flatMap((c) => c.filas);
+          return { grupo, categorias, filas, total: totalizar(filas) };
+        }).filter((c) => c.categorias.length > 0);
 
         return {
           naturaleza,
@@ -247,7 +289,7 @@ export function Presupuesto() {
 
   const generarOperativo = () => {
     const distribucion = distribucionOperativa(delPresupuesto, anio, esOperativa, tc);
-    for (const [sub, meses] of distribucion) guardar(sub, meses);
+    for (const [k, meses] of distribucion) guardar(k, meses);
   };
 
   const totalGeneral = totalizar(secciones.flatMap((s) => s.grupos.flatMap((c) => c.filas)));
@@ -428,7 +470,7 @@ export function Presupuesto() {
           desde={Number(HOY.slice(5, 7))}
           cancelar={() => setAjustando(null)}
           confirmar={(meses, motivo) => {
-            guardar(ajustando.categoria_id, meses, undefined, motivo);
+            guardar(ajustando.clave, meses, undefined, motivo);
             setAjustando(null);
           }}
         />
@@ -439,10 +481,17 @@ export function Presupuesto() {
           titulo={bitacora.titulo}
           cambios={
             bitacora.de
-              ? datos.cambios.filter((c) => c.categoria_id === bitacora.de)
+              ? datos.cambios.filter(
+                  (c) => clave(c.categoria_id, c.subcategoria_id) === bitacora.de
+                )
               : datos.cambios
           }
-          nombreDe={(id) => catalogo.categoriaDe(id).nombre}
+          nombreDe={(k) => {
+            const { categoria_id, subcategoria_id } = partesDeClave(k);
+            const cat = catalogo.categoriaDe(categoria_id).nombre;
+            const sub = catalogo.nombreSubcategoria(subcategoria_id);
+            return sub ? `${cat} · ${sub}` : cat;
+          }}
           cerrar={() => setBitacora(null)}
         />
       )}
@@ -523,7 +572,12 @@ function SeccionFilas({
 }: {
   seccion: {
     titulo: string;
-    grupos: { grupo: { id: string; nombre: string }; filas: FilaPresupuesto[]; total: ReturnType<typeof totalizar> }[];
+    grupos: {
+      grupo: { id: string; nombre: string };
+      categorias: CategoriaConFilas[];
+      filas: FilaPresupuesto[];
+      total: ReturnType<typeof totalizar>;
+    }[];
     total: ReturnType<typeof totalizar>;
   };
   mes: number;
@@ -541,10 +595,11 @@ function SeccionFilas({
         </td>
       </tr>
 
-      {seccion.grupos.map(({ grupo, filas, total }) => (
+      {seccion.grupos.map(({ grupo, categorias, filas, total }) => (
         <FilasDeGrupo
           key={grupo.id}
           grupo={grupo}
+          categorias={categorias}
           filas={filas}
           total={total}
           mes={mes}
@@ -576,6 +631,7 @@ function SeccionFilas({
 
 function FilasDeGrupo({
   grupo,
+  categorias,
   filas,
   total,
   mes,
@@ -586,6 +642,7 @@ function FilasDeGrupo({
   control,
 }: {
   grupo: { id: string; nombre: string };
+  categorias: CategoriaConFilas[];
   filas: FilaPresupuesto[];
   total: ReturnType<typeof totalizar>;
   mes: number;
@@ -603,22 +660,61 @@ function FilasDeGrupo({
         </td>
         <Numeros
           total={total}
-          abrir={() => abrir(grupo.nombre, new Set(filas.map((f) => f.categoria_id)))}
+          abrir={() => abrir(grupo.nombre, new Set(filas.map((f) => f.clave)))}
         />
       </tr>
 
-      {filas.map((f) => (
-        <Fila
-          key={f.categoria_id}
-          fila={f}
-          mes={mes}
-          mesesActuales={meses.get(f.categoria_id) ?? sinMeses()}
-          guardar={guardar}
-          metadata={metadata}
-          abrir={abrir}
-          control={control}
-        />
-      ))}
+      {categorias.map(({ categoria, filas: suyas, conHijas }) => {
+        // Una categoría sin subcategorías es una fila y nada más: así se vio
+        // siempre y no hay nada que agrupar. Con subcategorías, el total de la
+        // categoría es la suma de sus hijas y deja de ser editable: el número se
+        // escribe abajo, donde se decide.
+        const enArbol = conHijas && (suyas.length > 1 || suyas[0]?.subcategoria_id !== null);
+        if (!enArbol) {
+          const f = suyas[0];
+          if (!f) return null;
+          return (
+            <Fila
+              key={f.clave}
+              fila={f}
+              mes={mes}
+              mesesActuales={meses.get(f.clave) ?? sinMeses()}
+              guardar={guardar}
+              metadata={metadata}
+              abrir={abrir}
+              control={control}
+            />
+          );
+        }
+
+        const total = totalizar(suyas);
+        return (
+          <Fragment key={categoria.id}>
+            <tr className={css.filaCategoria}>
+              <td className={clases(tabla.td, css.nombreCategoria)} colSpan={2}>
+                {categoria.nombre}
+              </td>
+              <Numeros
+                total={total}
+                abrir={() => abrir(categoria.nombre, new Set(suyas.map((f) => f.clave)))}
+              />
+            </tr>
+            {suyas.map((f) => (
+              <Fila
+                key={f.clave}
+                fila={f}
+                mes={mes}
+                mesesActuales={meses.get(f.clave) ?? sinMeses()}
+                guardar={guardar}
+                metadata={metadata}
+                abrir={abrir}
+                control={control}
+                anidada
+              />
+            ))}
+          </Fragment>
+        );
+      })}
     </>
   );
 }
@@ -630,6 +726,7 @@ function Fila({
   metadata,
   abrir,
   control,
+  anidada,
 }: {
   fila: FilaPresupuesto;
   mes: number;
@@ -638,12 +735,21 @@ function Fila({
   metadata: Map<string, { monto: number; monto_anterior: number; responsable: string; nota: string }>;
   abrir: (titulo: string, subs: Set<string>) => void;
   control: Control;
+  /** Cuelga de una categoría que ya se nombró arriba. */
+  anidada?: boolean;
 }) {
   const { catalogo } = useTesoreria();
   // Para devolver el campo a su valor cuando el cuadro de ajuste se cancela: el
   // input es no controlado y si no, queda mostrando un número que no se guardó.
   const [reset, setReset] = useState(0);
-  const nombre = catalogo.categoriaDe(fila.categoria_id).nombre;
+
+  // Anidada, la fila es una subcategoría o la categoría en sí. Esta última no
+  // tiene nombre propio: es "lo que se clasificó acá sin precisar más", el
+  // "(Other)" de Quicken, y llamarla igual que la madre confundiría las dos.
+  const nombre = anidada
+    ? (catalogo.nombreSubcategoria(fila.subcategoria_id) ?? "Sin subcategoría")
+    : catalogo.categoriaDe(fila.categoria_id).nombre;
+  const sinPrecisar = anidada && fila.subcategoria_id === null;
 
   // Dos avisos distintos, y la diferencia importa. "Sobre presupuesto" dice que va
   // más rápido de lo previsto para esta altura del año, y puede corregirse solo.
@@ -665,27 +771,34 @@ function Fila({
     // ajuste, que mueve solo lo que queda del año y tiene que decir por qué. El
     // número escrito viaja al cuadro, así que el gesto no se pierde.
     if (control.aprobado) {
-      control.pedirAjuste(fila.categoria_id, nombre, mesesActuales, nuevo);
+      control.pedirAjuste(fila.clave, nombre, mesesActuales, nuevo);
       setReset((n) => n + 1);
       return;
     }
 
     // Reescalar y no repartir parejo: si la línea tiene forma —un aguinaldo en
     // diciembre— subirle el total no debe aplanarla.
-    guardar(fila.categoria_id, nuevo === 0 ? sinMeses() : reescalar(mesesActuales, nuevo));
+    guardar(fila.clave, nuevo === 0 ? sinMeses() : reescalar(mesesActuales, nuevo));
   };
 
-  const ajuste = control.ajusteDe(fila.categoria_id);
+  const ajuste = control.ajusteDe(fila.clave);
 
   const cambiarMeta = (campo: "responsable" | "nota", valor: string) => {
-    const actual = metadata.get(fila.categoria_id) ?? LINEA_VACIA;
-    guardar(fila.categoria_id, mesesActuales, { ...actual, [campo]: valor } as never);
+    const actual = metadata.get(fila.clave) ?? LINEA_VACIA;
+    guardar(fila.clave, mesesActuales, { ...actual, [campo]: valor } as never);
   };
 
   return (
     <tr className="fila">
-      <td className={clases(tabla.td, css.nombreSub)}>
-        {nombre}
+      <td
+        className={clases(tabla.td, css.nombreSub, anidada && css.nombreAnidado)}
+        title={
+          sinPrecisar
+            ? "Lo clasificado en la categoría sin elegir subcategoría. Si acá hay gasto sin presupuesto, es que alguien no precisó."
+            : undefined
+        }
+      >
+        <span className={clases(sinPrecisar && css.sinPrecisar)}>{nombre}</span>
         {aviso && (
           <span
             className={clases(css.alerta, agotado && css.alertaAgotado)}
@@ -726,7 +839,7 @@ function Fila({
         {ajuste !== 0 && (
           <button
             type="button"
-            onClick={() => control.verCambios(fila.categoria_id, nombre)}
+            onClick={() => control.verCambios(fila.clave, nombre)}
             title={`Ajustada ${clp(ajuste)} respecto del presupuesto aprobado. Ver por qué.`}
             className={css.marcaAjuste}
           >
@@ -740,7 +853,7 @@ function Fila({
       <td className={clases(tabla.td, tabla.tdNum)}>
         <Gasto
           valor={fila.real}
-          abrir={() => abrir(nombre, new Set([fila.categoria_id]))}
+          abrir={() => abrir(nombre, new Set([fila.clave]))}
         />
       </td>
       <td

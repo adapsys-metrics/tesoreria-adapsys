@@ -17,6 +17,7 @@ import { useState } from "react";
 import { ajustarDesde, anualDe, type Meses } from "@/lib/presupuesto";
 import type { CambioPresupuesto } from "@/lib/supabase/presupuesto";
 import { clp, mag } from "@/lib/formato";
+import { clave } from "@/lib/catalogo-indices";
 import { fechaCorta } from "@/lib/fechas";
 import { BotonFantasma, clases } from "@/components/ui/primitivas";
 import css from "./presupuesto.module.css";
@@ -26,9 +27,10 @@ const NOMBRES_MES = [
   "jul", "ago", "sep", "oct", "nov", "dic",
 ];
 
-/** Qué línea se está ajustando. */
+/** Qué línea se está ajustando. Se identifica por su clave de reporte —categoría
+ *  o par categoría-subcategoría—, que es como está indexado todo el presupuesto. */
 export type EnAjuste = {
-  categoria_id: string;
+  clave: string;
   nombre: string;
   meses: Meses;
   /** El anual que ya se escribió en la fila. El cuadro abre con ese número para
@@ -164,14 +166,17 @@ export function Bitacora({
   cerrar,
 }: {
   cambios: CambioPresupuesto[];
-  nombreDe: (categoria_id: string) => string;
+  /** El nombre que corresponde a una clave: el de la subcategoría cuando la hay. */
+  nombreDe: (clave: string) => string;
   titulo: string;
   cerrar: () => void;
 }) {
+  // Agrupado por momento y línea: un ajuste toca varios meses de una vez, y
+  // listarlos sueltos convierte un cambio en seis filas que dicen lo mismo.
   const porAjuste = new Map<string, CambioPresupuesto[]>();
   for (const c of cambios) {
-    const clave = `${c.cuando}|${c.categoria_id}|${c.motivo}`;
-    porAjuste.set(clave, [...(porAjuste.get(clave) ?? []), c]);
+    const k = `${c.cuando}|${clave(c.categoria_id, c.subcategoria_id)}|${c.motivo}`;
+    porAjuste.set(k, [...(porAjuste.get(k) ?? []), c]);
   }
 
   return (
@@ -190,9 +195,14 @@ export function Bitacora({
               const delta = grupo.reduce((t, c) => t + (c.despues - c.antes), 0);
               const meses = grupo.map((c) => NOMBRES_MES[c.mes - 1]).join(", ");
               return (
-                <li key={`${primero.cuando}-${primero.categoria_id}`} className={css.cambio}>
+                <li
+                  key={`${primero.cuando}-${clave(primero.categoria_id, primero.subcategoria_id)}`}
+                  className={css.cambio}
+                >
                   <div className={css.cabezaCambio}>
-                    <span className={css.lineaCambio}>{nombreDe(primero.categoria_id)}</span>
+                    <span className={css.lineaCambio}>
+                      {nombreDe(clave(primero.categoria_id, primero.subcategoria_id))}
+                    </span>
                     <span
                       className={css.deltaCambio}
                       style={{ color: delta < 0 ? "var(--brick)" : "var(--teal)" }}

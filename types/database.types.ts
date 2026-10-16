@@ -259,8 +259,20 @@ export type Database = {
         ];
       };
       presupuesto_meses: {
-        Row: { anio: number; categoria_id: string; mes: number; monto: number };
-        Insert: { anio: number; categoria_id: string; mes: number; monto?: number };
+        Row: {
+          anio: number;
+          categoria_id: string;
+          subcategoria_id: string | null;
+          mes: number;
+          monto: number;
+        };
+        Insert: {
+          anio: number;
+          categoria_id: string;
+          subcategoria_id?: string | null;
+          mes: number;
+          monto?: number;
+        };
         Update: Partial<Database["public"]["Tables"]["presupuesto_meses"]["Insert"]>;
         Relationships: [
           {
@@ -274,8 +286,20 @@ export type Database = {
       };
       /** El presupuesto tal como se aprobó, congelado (0018). */
       presupuesto_inicial: {
-        Row: { anio: number; categoria_id: string; mes: number; monto: number };
-        Insert: { anio: number; categoria_id: string; mes: number; monto?: number };
+        Row: {
+          anio: number;
+          categoria_id: string;
+          subcategoria_id: string | null;
+          mes: number;
+          monto: number;
+        };
+        Insert: {
+          anio: number;
+          categoria_id: string;
+          subcategoria_id?: string | null;
+          mes: number;
+          monto?: number;
+        };
         Update: Partial<Database["public"]["Tables"]["presupuesto_inicial"]["Insert"]>;
         Relationships: [];
       };
@@ -285,6 +309,7 @@ export type Database = {
           id: number;
           anio: number;
           categoria_id: string;
+          subcategoria_id: string | null;
           mes: number;
           antes: number;
           despues: number;
@@ -296,6 +321,7 @@ export type Database = {
           id?: number;
           anio: number;
           categoria_id: string;
+          subcategoria_id?: string | null;
           mes: number;
           antes: number;
           despues: number;
@@ -328,6 +354,7 @@ export type Database = {
           id: number;
           anio: number;
           categoria_id: string;
+          subcategoria_id: string | null;
           monto_anterior: number;
           responsable: string | null;
           nota: string | null;
@@ -336,6 +363,7 @@ export type Database = {
           id?: number;
           anio: number;
           categoria_id: string;
+          subcategoria_id?: string | null;
           monto_anterior?: number;
           responsable?: string | null;
           nota?: string | null;

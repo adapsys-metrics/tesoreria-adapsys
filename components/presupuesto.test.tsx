@@ -154,3 +154,70 @@ describe("Presupuesto anual", () => {
     ).not.toBe(antes);
   });
 });
+
+
+describe("Las subcategorías en el presupuesto", () => {
+  // "Sistemas Analítica avanzada, IA y R" es la única categoría del ejemplo con
+  // tercer nivel: el estado de cuenta de la tarjeta trae Zapier clasificado en
+  // "Automatización y metrics" y el resto en la categoría a secas. Es además la
+  // línea donde apareció el descuadre que dio origen a todo esto.
+  const CATEGORIA = "Sistemas Analítica avanzada, IA y R";
+  const SUB = "Automatización y metrics";
+
+  const conPresupuesto = () => {
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+  };
+
+  it("la categoría con subcategorías abre en árbol", () => {
+    conPresupuesto();
+    expect(screen.getByText(CATEGORIA)).toBeDefined();
+    expect(screen.getByText(SUB)).toBeDefined();
+  });
+
+  it("la subcategoría se presupuesta sola; la categoría ya no", () => {
+    // Son las subcategorías las que forman el total de la categoría, así que el
+    // número se escribe abajo. Arriba es una suma, y una suma no se edita.
+    conPresupuesto();
+    expect(screen.getByLabelText(`Presupuesto de ${SUB}`)).toBeDefined();
+    expect(screen.queryByLabelText(`Presupuesto de ${CATEGORIA}`)).toBeNull();
+  });
+
+  it("lo clasificado sin precisar subcategoría tiene su propia fila", () => {
+    // En el histórico existe y es casi todo: una categoría puede tener gasto
+    // propio además del de sus hijas. Si no se mostrara, ese gasto quedaría
+    // dentro de un total sin línea contra la cual compararlo.
+    conPresupuesto();
+    expect(screen.getByText("Sin subcategoría")).toBeDefined();
+  });
+
+  it("una categoría sin subcategorías sigue siendo una sola fila", () => {
+    // La forma de siempre no cambia para las 290 que no tienen tercer nivel.
+    conPresupuesto();
+    expect(screen.getByLabelText("Presupuesto de Arriendo oficina")).toBeDefined();
+  });
+
+  it("el gasto de la subcategoría no se cuenta también en su categoría", () => {
+    // Es el bug que esto destapa: agrupando por categoría, el gasto de la hija se
+    // sumaba al de la madre y la madre aparecía gastando de más.
+    conPresupuesto();
+    const fila = (texto: string) =>
+      screen.getByText(texto).closest("tr")!.querySelectorAll("td");
+    const num = (celda: Element | undefined) =>
+      Number((celda?.textContent ?? "0").replace(/\./g, "").replace(/[^\d-]/g, "")) || 0;
+
+    // La columna del gasto a la fecha es la quinta: grupo, responsable,
+    // presupuesto, a la fecha, gasto.
+    const celdasMadre = fila(CATEGORIA);
+    const celdasHija = fila(SUB);
+    const celdasPropias = fila("Sin subcategoría");
+
+    const madre = num(celdasMadre[celdasMadre.length - 3]);
+    const hija = num(celdasHija[celdasHija.length - 3]);
+    const propias = num(celdasPropias[celdasPropias.length - 3]);
+
+    // La madre es exactamente la suma de sus filas, ni más ni menos.
+    expect(madre).toBe(hija + propias);
+    expect(hija).toBeGreaterThan(0);
+  });
+});

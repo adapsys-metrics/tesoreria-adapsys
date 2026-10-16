@@ -23,6 +23,34 @@ export const GRUPO_SIN_CLASIFICAR: Grupo = {
 /** Clave de las líneas que no están clasificadas en ninguna categoría. */
 export const SIN_CLASIFICAR = "__sin_clasificar";
 
+/**
+ * La clave de reporte de una línea (§4.2): su categoría, o el par
+ * categoría-subcategoría cuando hay subcategoría.
+ *
+ * Va suelta y no solo como método de los índices porque la usan también la carga
+ * del presupuesto y el cálculo del ejecutado, que no tienen el catálogo a mano. Y
+ * tiene que ser **una sola definición**: si la carga arma la clave de una forma y
+ * el cálculo de otra, el presupuesto y el gasto dejan de encontrarse y la línea
+ * aparece con gasto y sin presupuesto, sin que nada falle.
+ */
+export const clave = (
+  categoria_id: string | null,
+  subcategoria_id?: string | null
+): string =>
+  subcategoria_id ? `${categoria_id}>${subcategoria_id}` : (categoria_id ?? SIN_CLASIFICAR);
+
+/** El camino de vuelta. Va pegado a `clave` para que el formato se lea y se
+ *  escriba en el mismo lugar: partirlo a mano en otro archivo es cómo se termina
+ *  con dos formatos que casi coinciden. */
+export const partesDeClave = (
+  k: string
+): { categoria_id: string; subcategoria_id: string | null } => {
+  const corte = k.indexOf(">");
+  return corte === -1
+    ? { categoria_id: k, subcategoria_id: null }
+    : { categoria_id: k.slice(0, corte), subcategoria_id: k.slice(corte + 1) };
+};
+
 export type Indices = {
   grupos: Grupo[];
   categorias: Categoria[];
@@ -132,16 +160,15 @@ export function crearIndices(
       // inversión.
       return categoria_id ? (porIdSub.get(categoria_id)?.naturaleza ?? "operativo") : "operativo";
     },
-    claveDe: (categoria_id, subcategoria_id) =>
-      subcategoria_id ? `${categoria_id}>${subcategoria_id}` : (categoria_id ?? SIN_CLASIFICAR),
+    claveDe: clave,
     clavesDe: (categoria_id, naturaleza) => {
       const propia = porIdSub.get(categoria_id)?.naturaleza;
       const claves: string[] = [];
       // La categoría en sí: es donde cae todo lo clasificado sin precisar subcategoría,
       // que en el histórico es casi todo.
-      if (propia === naturaleza) claves.push(categoria_id);
+      if (propia === naturaleza) claves.push(clave(categoria_id));
       for (const s of porCategoria3.get(categoria_id) ?? []) {
-        if ((s.naturaleza ?? propia) === naturaleza) claves.push(`${categoria_id}>${s.id}`);
+        if ((s.naturaleza ?? propia) === naturaleza) claves.push(clave(categoria_id, s.id));
       }
       return claves;
     },
