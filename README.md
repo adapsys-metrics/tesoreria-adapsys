@@ -205,6 +205,34 @@ solo ruido: las variables de entorno y la URL de callback se configuran por proy
 así que uno de los dos puede quedar apuntando a otra parte o sin poder iniciar sesión.
 Conviene dejar uno solo y borrar el resto.
 
+### "No se puede acceder a este sitio" al iniciar sesión
+
+Si al apretar *Entrar con Google* el navegador muestra **DNS_PROBE_FINISHED_NXDOMAIN**
+sobre `<project-ref>.supabase.co`, el proyecto de Supabase está **pausado**, no caído.
+
+El plan gratuito pausa un proyecto a los **7 días sin actividad** y al hacerlo desmonta
+su infraestructura, incluido el registro DNS de su hostname. Por eso el error aparece en
+el dominio de Supabase y no en el de la app, y por eso `supabase.co` resuelve bien pero
+el subdominio del proyecto no existe:
+
+```
+nslookup <project-ref>.supabase.co     # NXDOMAIN  → pausado
+nslookup supabase.co                   # responde  → no es tu red
+```
+
+**No se pierde nada.** Se reactiva desde [supabase.com/dashboard](https://supabase.com/dashboard)
+— el proyecto aparece como *Paused* y hay un botón **Restore project**—, tarda unos
+minutos y vuelve con todos los datos. No hay que tocar Vercel: el *project ref* no
+cambia, así que las variables de entorno y el redirect URI de Google siguen sirviendo.
+
+Pasó en octubre de 2026, con la app ya en uso. Dos formas de que no vuelva a pasar:
+
+- **Seguir en el gratuito** y entrar al menos una vez por semana, bajando el respaldo
+  de Maestros → *Descargar todo* cada tanto. Ojo: un proyecto que queda pausado meses
+  sí termina borrándose.
+- **Pasar a Pro** (~USD 25/mes): no se pausa y trae respaldo diario automático, que es
+  el pendiente que CLAUDE.md §7 deja abierto. Entra en el costo estimado del proyecto.
+
 ### Preview sin proyecto Supabase todavía
 
 La app no explota si `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
