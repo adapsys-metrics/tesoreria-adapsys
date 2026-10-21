@@ -495,6 +495,10 @@ export function Categorias() {
                               <input
                                 value={h.titular ?? ""}
                                 onChange={(e) => cambiarTitular(h.id, e.target.value)}
+                                // El recorte va al salir y no al escribir: en cada
+                                // tecla se comería el espacio con que se separa el
+                                // nombre del apellido.
+                                onBlur={(e) => cambiarTitular(h.id, e.target.value.trim())}
                                 aria-label={`Quién ocupa ${h.nombre}`}
                                 placeholder="vacante"
                                 title="Quién ocupa el cargo. El cargo se queda aunque cambie la persona."

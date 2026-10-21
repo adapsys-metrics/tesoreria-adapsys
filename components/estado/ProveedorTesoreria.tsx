@@ -1084,8 +1084,20 @@ export function ProveedorTesoreria({
         ],
       })),
     renombrarSubcategoria: (id, nombre) => mapSub3(id, (x) => ({ ...x, nombre })),
+    /**
+     * Sin `trim` acá, y no es un descuido.
+     *
+     * El campo es controlado: lo que se guarda vuelve a la pantalla en el mismo
+     * render. Recortando en cada tecla, el espacio que uno escribe al terminar el
+     * nombre se borra antes de poder escribir el apellido, y la barra espaciadora
+     * parece rota. Curiosamente un espacio en medio sí entra, porque `trim` solo
+     * toca las puntas — así se descubrió.
+     *
+     * Lo que se normaliza es el vacío, que sí tiene significado: un cargo sin
+     * titular está vacante. El recorte va al salir del campo.
+     */
     cambiarTitular: (id, titular) =>
-      mapSub3(id, (x) => ({ ...x, titular: titular.trim() || null })),
+      mapSub3(id, (x) => ({ ...x, titular: titular === "" ? null : titular })),
     cambiarNaturalezaSubcategoria: (id, naturaleza) =>
       setEstado((p) => {
         const sub = p.subcategorias.find((x) => x.id === id);

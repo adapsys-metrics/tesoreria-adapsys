@@ -541,6 +541,19 @@ Lo mismo vale para cualquier campo de texto que se agregue a futuro.
 Y por las dudas: un `<input type="date">` **nunca** debe escribir su vacío al estado.
 Un movimiento sin fecha no existe — no está en ninguna cartola ni en ninguna proyección.
 
+### Un campo controlado no se normaliza mientras se escribe
+
+Lo que se guarda vuelve a la pantalla en el mismo render, así que **cualquier limpieza
+aplicada en el `onChange` se le aplica al usuario a mitad de palabra**. Recortando con
+`trim` en cada tecla, el espacio con que se separa el nombre del apellido desaparece
+antes de poder escribir la letra siguiente y la barra espaciadora parece rota — pasó con
+el titular de un cargo, y costó ver porque un espacio **en medio** sí entra: `trim` solo
+toca las puntas.
+
+La limpieza va en el `onBlur`, al salir del campo. Lo único que sí corresponde normalizar
+al escribir es lo que tiene un significado distinto —el vacío de un titular es un cargo
+vacante, y ahí `"" → null`—, porque eso no cambia lo que la persona está tecleando.
+
 ### Mientras carga no se muestra ningún número
 
 Hasta que los movimientos llegan de la base, **todos los números de la pantalla están

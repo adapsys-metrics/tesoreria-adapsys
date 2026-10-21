@@ -397,6 +397,37 @@ describe("Categorías que se llevan por cargos", () => {
     expect(campo.placeholder).toBe("vacante");
   });
 
+  it("se puede escribir un nombre con espacio", () => {
+    // Recortando en cada tecla, el espacio con que se separa el nombre del
+    // apellido se borraba antes de poder escribir la letra siguiente, y la barra
+    // espaciadora parecía rota. Un espacio en medio sí entraba, porque `trim`
+    // solo toca las puntas — así se descubrió, escribiendo "PatriciaAlarcón".
+    buscar("Analista de Datos");
+    const campo = screen.getByLabelText("Quién ocupa Analista de Datos");
+    fireEvent.change(campo, { target: { value: "Patricia " } });
+    expect((campo as HTMLInputElement).value).toBe("Patricia ");
+    fireEvent.change(campo, { target: { value: "Patricia Alarcón" } });
+    expect((campo as HTMLInputElement).value).toBe("Patricia Alarcón");
+  });
+
+  it("y al salir del campo se limpia lo que sobra", () => {
+    buscar("Analista de Datos");
+    const campo = screen.getByLabelText("Quién ocupa Analista de Datos");
+    fireEvent.change(campo, { target: { value: "  Patricia Alarcón  " } });
+    fireEvent.blur(campo, { target: { value: "  Patricia Alarcón  " } });
+    expect((campo as HTMLInputElement).value).toBe("Patricia Alarcón");
+  });
+
+  it("borrarlo del todo deja el cargo vacante", () => {
+    // Vacío y null son lo mismo acá: un cargo sin titular no es un cargo con una
+    // persona que se llama "".
+    buscar("Especialista de Finanzas");
+    const campo = screen.getByLabelText("Quién ocupa Especialista de Finanzas");
+    fireEvent.change(campo, { target: { value: "" } });
+    expect((campo as HTMLInputElement).placeholder).toBe("vacante");
+    expect((campo as HTMLInputElement).value).toBe("");
+  });
+
   it("cambiar quién lo ocupa no toca el nombre del cargo", () => {
     buscar("Especialista de Finanzas");
     fireEvent.change(screen.getByLabelText("Quién ocupa Especialista de Finanzas"), {
