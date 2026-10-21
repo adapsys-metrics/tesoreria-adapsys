@@ -278,3 +278,37 @@ describe("La vista previa de la generación", () => {
     expect(cuadro.getByText(/ya tenían presupuesto|ya tenía presupuesto/)).toBeDefined();
   });
 });
+
+
+describe("El cuadro de generar", () => {
+  it("el botón dice a qué año escribe", () => {
+    // Parado en 2026 y queriendo armar 2027, un botón sin año no delata el error:
+    // se aprieta, se aplica, y recién después se ve dónde quedó.
+    montar(<Presupuesto />);
+    expect(screen.getByRole("button", { name: /Generar operativo 2026/ })).toBeDefined();
+    fireEvent.change(screen.getByLabelText("Año"), { target: { value: "2027" } });
+    expect(screen.getByRole("button", { name: /Generar operativo 2027/ })).toBeDefined();
+  });
+
+  it("la ventana se pide por mes, no por día", () => {
+    // Un rango del 7 al 7 partiría dos meses al medio y generaría un presupuesto
+    // mensual a la mitad: un número creíble y mal. Con el selector de mes no se
+    // puede escribir.
+    montar(<Presupuesto />);
+    const desde = screen.getByLabelText("Desde qué mes se toma la base");
+    expect(desde.getAttribute("type")).toBe("month");
+    expect(screen.getByLabelText("Hasta qué mes se toma la base").getAttribute("type")).toBe(
+      "month"
+    );
+  });
+
+  it("al cambiar de año la ventana se acomoda sola", () => {
+    // 2027 todavía no empezó: su base son los doce meses ya cerrados.
+    montar(<Presupuesto />);
+    const desde = () =>
+      (screen.getByLabelText("Desde qué mes se toma la base") as HTMLInputElement).value;
+    expect(desde()).toBe("2026-01");
+    fireEvent.change(screen.getByLabelText("Año"), { target: { value: "2027" } });
+    expect(desde()).toBe("2025-08");
+  });
+});

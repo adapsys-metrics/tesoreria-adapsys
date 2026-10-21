@@ -518,17 +518,20 @@
 
 /* ── Generar la base del año ── */
 
+/* Los controles que alimentan al botón van agrupados con él: sin el recuadro,
+   "Desde" y "Hasta" se leen como un filtro de la tabla, que es lo que parecen al
+   lado de "Cierre a". */
 .generador {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 9px;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 7px 10px 8px;
   border: 1px solid var(--teal-soft);
   border-radius: 4px;
-  background: var(--surface);
+  background: var(--seccion);
 }
 
-.entradaFecha,
+.entradaMes,
 .entradaReajuste {
   border: 1px solid var(--borde-control);
   border-radius: 3px;
@@ -541,11 +544,33 @@
 }
 
 .entradaReajuste {
-  width: 54px;
+  width: 46px;
   text-align: right;
+  /* Sin las flechitas: suben de a uno y un reajuste se escribe, no se pulsa. */
+  appearance: textfield;
 }
 
-.entradaFecha:focus,
+.entradaReajuste::-webkit-outer-spin-button,
+.entradaReajuste::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* El "%" al lado del número y no debajo: `.control` apila en columna, así que un
+   tercer hijo suelto caía en su propia línea. */
+.campoConSufijo {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sufijo {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.entradaMes:focus,
 .entradaReajuste:focus {
   outline: none;
   border-color: var(--teal);

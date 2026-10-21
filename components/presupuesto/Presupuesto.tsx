@@ -403,45 +403,57 @@ export function Presupuesto() {
             }
             className={css.botonGenerar}
           >
-            Generar operativo
+            {/* Con el año: es a dónde se escribe, y es lo que uno quiere tener
+                claro antes de apretar. Parado en 2026 y queriendo armar 2027, el
+                botón sin año no delata el error. */}
+            Generar operativo {anio}
           </button>
 
+          {/* Meses y no fechas: la ventana son meses completos por definición, y un
+              día suelto —del 7 al 7— partiría dos meses al medio y generaría un
+              presupuesto mensual a la mitad. Saldría un número creíble y mal. Con
+              el selector de mes eso no se puede escribir. */}
           <label className={css.control}>
             <span className={css.etiqueta}>Desde</span>
             <input
-              type="date"
-              value={ventana.desde}
+              type="month"
+              value={ventana.desde.slice(0, 7)}
               onChange={(e) =>
-                e.target.value && setVentana((v) => ({ ...v, desde: e.target.value }))
+                e.target.value &&
+                setVentana((v) => ({ ...v, desde: `${e.target.value}-01` }))
               }
               aria-label="Desde qué mes se toma la base"
-              className={css.entradaFecha}
+              className={css.entradaMes}
             />
           </label>
 
           <label className={css.control}>
             <span className={css.etiqueta}>Hasta</span>
             <input
-              type="date"
-              value={ventana.hasta}
-              onChange={(e) =>
-                e.target.value && setVentana((v) => ({ ...v, hasta: e.target.value }))
-              }
+              type="month"
+              value={ventana.hasta.slice(0, 7)}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const [a, m] = e.target.value.split("-").map(Number);
+                setVentana((v) => ({ ...v, hasta: finDeMes(a!, m!) }));
+              }}
               aria-label="Hasta qué mes se toma la base"
-              className={css.entradaFecha}
+              className={css.entradaMes}
             />
           </label>
 
           <label className={css.control}>
             <span className={css.etiqueta}>Reajuste</span>
-            <input
-              type="number"
-              value={reajuste}
-              onChange={(e) => setReajuste(Number(e.target.value) || 0)}
-              aria-label="Reajuste en porcentaje"
-              className={css.entradaReajuste}
-            />
-            <span className={css.etiqueta}>%</span>
+            <span className={css.campoConSufijo}>
+              <input
+                type="number"
+                value={reajuste}
+                onChange={(e) => setReajuste(Number(e.target.value) || 0)}
+                aria-label="Reajuste en porcentaje"
+                className={css.entradaReajuste}
+              />
+              <span className={css.sufijo}>%</span>
+            </span>
           </label>
         </div>
 
