@@ -656,3 +656,36 @@
   font-size: 11px;
   color: var(--muted-claro);
 }
+
+/* ── Elegir qué proyectar ── */
+
+.barraElegir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.empuje {
+  flex: 1;
+}
+
+.cuentaElegidas {
+  font-family: var(--font-cifras);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* Una categoría que no se va a proyectar. Se atenúa en vez de ocultarse: hay que
+   poder ver lo que se está dejando fuera. */
+.filaDesmarcada td {
+  color: var(--tenue);
+}
+
+/* Lo que aparece en uno o dos meses casi siempre es ocasional, y es lo que
+   conviene mirar dos veces antes de convertirlo en compromiso del año que viene. */
+.mesesPocos {
+  color: var(--amber);
+  font-weight: 600;
+}

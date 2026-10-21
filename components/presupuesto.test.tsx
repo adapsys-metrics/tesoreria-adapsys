@@ -347,3 +347,63 @@ describe("Lo que no se presupuesta", () => {
     expect(screen.getByTitle(/Fuera del control presupuestario/)).toBeDefined();
   });
 });
+
+
+describe("Proyectar el año", () => {
+  // El presupuesto operativo de 2027 no se escribe: sale de sumar los movimientos
+  // proyectados de 2027, que se generan copiando los del año anterior. Dos pasos,
+  // cada uno con su vista previa.
+
+  const abrir = () => {
+    montar(<Presupuesto />);
+    fireEvent.change(screen.getByLabelText("Año"), { target: { value: "2027" } });
+    fireEvent.click(screen.getByRole("button", { name: /Proyectar 2027/ }));
+    return within(screen.getByRole("dialog", { name: "Proyectar 2027" }));
+  };
+
+  it("lista las categorías con en cuántos meses aparece cada una", () => {
+    // Es la columna que decide: 12 es mensual, 1 es una vez en la vida. Lo
+    // resuelve quien conoce el gasto, sin que la app adivine con un umbral.
+    const cuadro = abrir();
+    expect(cuadro.getByText("Meses")).toBeDefined();
+    expect(cuadro.getAllByRole("checkbox").length).toBeGreaterThan(0);
+  });
+
+  it("arranca con todas marcadas", () => {
+    // Es más rápido desmarcar lo ocasional que marcar lo mensual, porque lo
+    // mensual es casi todo.
+    const cuadro = abrir();
+    const casillas = cuadro.getAllByRole("checkbox") as HTMLInputElement[];
+    expect(casillas.every((c) => c.checked)).toBe(true);
+  });
+
+  it("desmarcar baja la cuenta de movimientos a crear", () => {
+    const cuadro = abrir();
+    const antes = cuadro.getByRole("button", { name: /^Crear \d+ movimiento/ }).textContent;
+    fireEvent.click(cuadro.getAllByRole("checkbox")[0]!);
+    const despues = cuadro.getByRole("button", { name: /^Crear \d+ movimiento/ }).textContent;
+    expect(despues).not.toBe(antes);
+  });
+
+  it("sin ninguna marcada no se puede crear nada", () => {
+    const cuadro = abrir();
+    fireEvent.click(cuadro.getByText("Ninguna"));
+    const boton = cuadro.getByRole("button", { name: /^Crear/ }) as HTMLButtonElement;
+    expect(boton.disabled).toBe(true);
+  });
+
+  it("cancelar no crea nada", () => {
+    const cuadro = abrir();
+    fireEvent.click(cuadro.getByText("Cancelar"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("el botón nombra el año destino", () => {
+    // Proyectar escribe movimientos en un año: es lo que hay que tener claro
+    // antes de apretar, igual que al generar el presupuesto.
+    montar(<Presupuesto />);
+    expect(screen.getByRole("button", { name: /Proyectar 2026/ })).toBeDefined();
+    fireEvent.change(screen.getByLabelText("Año"), { target: { value: "2027" } });
+    expect(screen.getByRole("button", { name: /Proyectar 2027/ })).toBeDefined();
+  });
+});

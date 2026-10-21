@@ -20,6 +20,9 @@ import {
 } from "@/lib/supabase/presupuesto";
 import { Bitacora, CuadroAjuste, type EnAjuste } from "./Ajustes";
 import { VistaPrevia, compararConLoQueHay, type Previo } from "./VistaPrevia";
+import { ProyectarAnio } from "./ProyectarAnio";
+import { proyectar, resumirPorCategoria, type ResumenCategoria } from "@/lib/proyeccion";
+import { generarProyeccion } from "@/lib/supabase/proyeccion";
 import {
   MESES_DEL_ANIO,
   SECCIONES,
@@ -91,6 +94,7 @@ export function Presupuesto() {
     // El gasto a la fecha sale de los movimientos: mientras cargan, toda la
     // columna vale cero y la tabla diría que no se gastó nada en el año.
     cargando: cargandoMovimientos,
+    reiniciar,
   } = useTesoreria();
   /**
    * Qué líneas presupuesta la generación.
@@ -119,6 +123,9 @@ export function Presupuesto() {
     aprobado: null,
     cambios: [],
   });
+  /** Las categorías que se podrían proyectar al año, antes de proyectarlas. */
+  const [proyectando, setProyectando] = useState<ResumenCategoria[] | null>(null);
+
   /** Lo que la generación escribiría, antes de escribirlo. */
   const [previo, setPrevio] = useState<{ filas: Previo[]; generado: Map<string, Meses> } | null>(
     null
@@ -333,6 +340,29 @@ export function Presupuesto() {
    * calendario, así que lo trimestral, lo semestral y lo anual aterrizan solos en
    * el mes en que ocurren — que es la parte que a mano cuesta.
    */
+  /**
+   * Proyectar el año: crear los movimientos, no el presupuesto.
+   *
+   * Es el primer paso de los dos. El pago de Entel de cada mes, el de GTD, el
+   * split de sueldos: se copian de la ventana al año destino como proyectados. El
+   * presupuesto operativo sale después, de sumarlos — así el flujo de caja y el
+   * control presupuestario dicen lo mismo por construcción, en vez de ser dos
+   * cosas que pueden no coincidir.
+   */
+  const abrirProyeccion = () =>
+    setProyectando(resumirPorCategoria(delPresupuesto, ventana, sePresupuesta, tc));
+
+  const aplicarProyeccion = (elegidas: Set<string>) => {
+    const nuevos = proyectar(delPresupuesto, ventana, anio, elegidas, 1 + reajuste / 100);
+    setProyectando(null);
+    if (!supabaseConfigurado) return;
+    generarProyeccion(crearClienteNavegador(), anio, nuevos)
+      // Hay que releer: los movimientos los escribió la base y el presupuesto se
+      // genera de ellos. Sin recargar, el paso siguiente sumaría lo de antes.
+      .then(() => reiniciar())
+      .catch((e: Error) => setError(e.message));
+  };
+
   const generarOperativo = () => {
     const generado = distribucionOperativa(
       delPresupuesto,
@@ -423,6 +453,15 @@ export function Presupuesto() {
         </label>
 
         <div className={css.generador}>
+          <button
+            type="button"
+            onClick={abrirProyeccion}
+            title={`Copia los movimientos de la ventana a ${anio} como proyectados: el pago de cada mes, con sus líneas. El presupuesto sale después, de sumarlos.`}
+            className={css.botonGenerar}
+          >
+            Proyectar {anio}
+          </button>
+
           <button
             type="button"
             onClick={generarOperativo}
@@ -618,6 +657,21 @@ export function Presupuesto() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {proyectando && (
+        <ProyectarAnio
+          resumen={proyectando}
+          anio={anio}
+          ventana={ventana}
+          reajuste={reajuste}
+          nombreDe={(id) => catalogo.categoriaDe(id).nombre}
+          cuantosMovimientos={(elegidas) =>
+            proyectar(delPresupuesto, ventana, anio, elegidas).length
+          }
+          cancelar={() => setProyectando(null)}
+          confirmar={aplicarProyeccion}
+        />
       )}
 
       {previo && (

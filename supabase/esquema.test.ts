@@ -71,6 +71,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0018_presupuesto_linea_base.sql"));
   await db.exec(leer("migrations/0019_cargos.sql"));
   await db.exec(leer("migrations/0020_categoria_fuera_del_control.sql"));
+  await db.exec(leer("migrations/0021_proyeccion_del_anio.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -139,6 +140,7 @@ describe("migraciones y seed", () => {
       "migrations/0018_presupuesto_linea_base.sql",
       "migrations/0019_cargos.sql",
       "migrations/0020_categoria_fuera_del_control.sql",
+      "migrations/0021_proyeccion_del_anio.sql",
     ]) {
       await expect(db.exec(leer(archivo))).resolves.toBeDefined();
     }
@@ -965,5 +967,87 @@ describe("los cargos", () => {
       `select nombre, titular from subcategorias where id = 'cargo-con'`
     );
     expect(r.rows[0]).toEqual({ nombre: "Especialista de Finanzas", titular: "Otra persona" });
+  });
+});
+
+
+describe("generar la proyección de un año", () => {
+  const UNO = (fecha: string, monto: number) => ({
+    fecha,
+    empresa_id: "adap",
+    cuenta_id: "a1",
+    contraparte: "GTD",
+    glosa: "Internet oficina",
+    monto,
+    moneda: "CLP",
+    lineas: [{ categoria_id: "arriendo-oficina", monto }],
+  });
+
+  it("crea los movimientos y los deja proyectados", async () => {
+    // El estado lo fija la función y no el payload: una llamada mal armada no
+    // puede meter movimientos como si ya hubieran ocurrido.
+    const n = await db.query<{ fn_generar_proyeccion: number }>(
+      `select fn_generar_proyeccion('${JSON.stringify({
+        anio: 2099,
+        movimientos: [UNO("2099-03-14", -1000), UNO("2099-04-14", -1000)],
+      })}'::jsonb)`
+    );
+    expect(n.rows[0]!.fn_generar_proyeccion).toBe(2);
+
+    const r = await db.query<{ n: number; estados: string }>(
+      `select count(*)::int as n, string_agg(distinct estado, ',') as estados
+         from movimientos where origen = 'proyeccion-2099'`
+    );
+    expect(r.rows[0]).toEqual({ n: 2, estados: "proyectado" });
+  });
+
+  it("rehacerla reemplaza solo lo suyo", async () => {
+    await db.exec(`select fn_generar_proyeccion('${JSON.stringify({
+      anio: 2099,
+      movimientos: [UNO("2099-05-14", -2000)],
+    })}'::jsonb)`);
+    const r = await db.query<{ n: number; total: number }>(
+      `select count(*)::int as n, sum(monto)::int as total
+         from movimientos where origen = 'proyeccion-2099'`
+    );
+    expect(r.rows[0]).toEqual({ n: 1, total: -2000 });
+  });
+
+  it("no toca lo que alguien cargó a mano", async () => {
+    // Es la razón de borrar por origen y no por año: si rehacer la proyección
+    // borrara lo escrito a mano, nadie se atrevería a rehacerla.
+    await db.exec(`
+      insert into movimientos (fecha, empresa_id, cuenta_id, monto, moneda, estado)
+      values ('2099-06-01', 'adap', 'a1', -777, 'CLP', 'proyectado')
+    `);
+    await db.exec(`select fn_generar_proyeccion('${JSON.stringify({
+      anio: 2099,
+      movimientos: [UNO("2099-07-14", -3000)],
+    })}'::jsonb)`);
+    const r = await db.query<{ n: number }>(
+      `select count(*)::int as n from movimientos
+        where fecha >= '2099-01-01' and origen is null`
+    );
+    expect(r.rows[0]!.n).toBe(1);
+  });
+
+  it("las líneas cuadran con el monto o no entra nada", async () => {
+    // La constraint es diferida: se evalúa al cerrar la transacción. Si no
+    // cuadrara, se perdería la proyección entera y no media.
+    expect(
+      await intentar(`select fn_generar_proyeccion('${JSON.stringify({
+        anio: 2098,
+        movimientos: [
+          {
+            fecha: "2098-03-14",
+            empresa_id: "adap",
+            cuenta_id: "a1",
+            monto: -1000,
+            moneda: "CLP",
+            lineas: [{ categoria_id: "arriendo-oficina", monto: -400 }],
+          },
+        ],
+      })}'::jsonb)`)
+    ).toBeTruthy();
   });
 });

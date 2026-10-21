@@ -806,26 +806,44 @@ Quicken usa las dos y mirando solo una, media tabla aterriza en el origen—; la
 van en **MacRomanEncoding** y leerlas como latin-1 se come las tildes; y el `$` viene en
 una fuente aparte de un solo glifo donde el byte `0x21` mapea a `U+0024`.
 
-### La proyección se genera del presupuesto, no de reglas por proveedor
+### El presupuesto sale de la proyección, no al revés
 
-Decidido con el equipo. La tentación es modelar recurrencias por proveedor ("GTD, día 14,
-mensual") y generar la serie del año. **No sirve como mecanismo principal:** un proveedor puede
-cambiar, puede ser ocasional, o tener un único pago en el año. Modelar cada uno como regla
-obliga a mantener reglas que no se sostienen.
+**Esto reemplaza una decisión anterior**, y conviene saber qué cambió y qué no.
 
-El mecanismo es al revés: **la línea de presupuesto por categoría genera la proyección del
-año**, distribuida en el tiempo. El proveedor es el dato de la contraparte, no la unidad de
-proyección.
+Lo que se descartó y sigue descartado: modelar **reglas** por proveedor ("GTD, día 14,
+mensual") y mantenerlas. Un proveedor cambia, es ocasional, o tiene un pago único; las
+reglas no se sostienen.
 
-Consecuencias a resolver cuando se implemente:
-- **Doble conteo.** Si la línea "Telefonía" está proyectada por presupuesto y además existe un
-  movimiento proyectado de GTD para septiembre, el mes queda contado dos veces. La proyección
-  generada tiene que ser el presupuesto **menos lo ya comprometido con movimientos concretos**,
-  por categoría y por período.
-- Un movimiento proyectado que viene del presupuesto y uno cargado a mano tienen que
-  distinguirse, para no pisar lo que alguien escribió.
-- Depende de la distribución mensual del presupuesto (el punto de más arriba): sin ella la
-  proyección generada sale lineal y las líneas estacionales quedan mal repartidas.
+Lo que se decidió después: **copiar los movimientos reales de un período al año siguiente**.
+No es una regla — es la historia, que después se edita movimiento por movimiento. El pago de
+Entel de cada mes, el de GTD, el split de sueldos. Y el presupuesto operativo sale de
+**sumar esos proyectados**, en dos pasos visibles:
+
+1. **Proyectar el año** (`lib/proyeccion.ts`): cada movimiento de la ventana se copia al
+   mismo mes y día del año destino, con sus líneas, como `proyectado`.
+2. **Generar el operativo** desde esos movimientos, que es el mecanismo de más arriba
+   apuntado al propio año destino.
+
+Por qué así y no al revés: el presupuesto y la proyección de caja eran **dos cosas separadas
+que podían no coincidir**. Saliendo el presupuesto de los proyectados, el flujo de caja del
+año y el control presupuestario dicen lo mismo por construcción — y de paso el año que viene
+aparece en el flujo, que es la otra mitad de lo que se quería ver.
+
+**El doble conteo se resuelve solo.** Era el riesgo de la decisión anterior: presupuesto y
+movimientos proyectados sumando lo mismo dos veces. Con una sola fuente no hay dos que sumar.
+
+Lo demás, tal como estaba previsto:
+
+- **Qué se copia se elige por categoría**, no movimiento por movimiento: son ~90 líneas y no
+  ~1.200. La columna que decide es **en cuántos meses aparece** — 12 es mensual, 4 trimestral,
+  1 una vez en el año—, y lo resuelve quien conoce el gasto en vez de un umbral adivinado.
+- **Lo generado se distingue de lo cargado a mano** por `movimientos.origen = proyeccion-<año>`.
+  Rehacer la proyección borra por origen, así que **nunca pisa lo que alguien escribió**: sin
+  eso, nadie se atrevería a rehacerla.
+- Un movimiento entra **entero** si alguna de sus líneas cae en una categoría elegida. Recortarlo
+  daría un monto que no es el que sale del banco.
+- El reajuste se aplica **línea por línea y el monto se recalcula sumándolas**. Al revés, el
+  redondeo las separa y la base rechaza el movimiento por descuadre.
 
 ### El costo de personas se lleva por cargo, y a mano
 

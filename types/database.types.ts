@@ -473,6 +473,13 @@ export type Database = {
       };
       /** Congela los doce meses del año y lo marca aprobado (0018). Desde ahí,
        *  todo cambio exige motivo y queda anotado. */
+      /** Reemplaza los movimientos proyectados generados para un año (0021).
+       *  Devuelve cuántos creó. Borra por origen, así que no toca lo cargado a
+       *  mano ni lo importado de Quicken. */
+      fn_generar_proyeccion: {
+        Args: { p: Json };
+        Returns: number;
+      };
       fn_aprobar_presupuesto: {
         Args: { p_anio: number; p_nota?: string | null };
         Returns: undefined;
