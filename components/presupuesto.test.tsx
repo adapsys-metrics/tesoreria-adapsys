@@ -12,6 +12,13 @@ import { GRUPOS, CATEGORIAS } from "@/lib/catalogo";
 
 prepararEntorno();
 
+/** Generar ya no escribe: abre la vista previa y hay que aplicarla. Los tests que
+ *  solo necesitan "el presupuesto cargado" pasan por los dos pasos de una vez. */
+const generar = () => {
+  fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+  fireEvent.click(screen.getByRole("button", { name: /^Aplicar a/ }));
+};
+
 describe("Presupuesto anual", () => {
   it("abre vacío y dice cómo empezar", () => {
     // Sin presupuesto cargado la tabla no tiene filas: sin explicación parecería
@@ -23,7 +30,7 @@ describe("Presupuesto anual", () => {
 
   it("generar arma la parte operativa desde los movimientos", () => {
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
     expect(screen.queryByText(/Todavía no hay presupuesto/)).toBeNull();
     expect(screen.getByText("Gastos Operativos")).toBeDefined();
     // Aparecen líneas reales del catálogo, no un total suelto.
@@ -35,7 +42,7 @@ describe("Presupuesto anual", () => {
     // presupuestar — y verlo es justamente el punto. Lo que no debe pasar es que
     // generar les invente un presupuesto.
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
 
     const naturalezaDe = new Map(CATEGORIAS.map((s) => [s.nombre, s.naturaleza]));
     const conPresupuesto = screen
@@ -49,7 +56,7 @@ describe("Presupuesto anual", () => {
 
   it("cambiar el mes de cierre mueve el presupuesto a la fecha", () => {
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
     const totalDe = () =>
       Array.from(document.querySelectorAll("tbody tr")).at(-1)?.textContent ?? "";
     const enero = (() => {
@@ -64,7 +71,7 @@ describe("Presupuesto anual", () => {
     // Sin esto no hay forma de contrastar el número contra la realidad: se ve un
     // total y hay que salir a buscar a mano de dónde salió.
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
 
     const montos = screen.getAllByTitle("Ver los movimientos que componen este monto");
     expect(montos.length).toBeGreaterThan(0);
@@ -82,7 +89,7 @@ describe("Presupuesto anual", () => {
     // y el panel convertía los dólares, así que una línea pagada con la tarjeta en
     // dólares mostraba 919.372 en la tabla y 7.009.612 al abrirla.
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
 
     const cifra = (t: string) => Math.abs(Number(t.replace(/[^\d,-]/g, "").replace(",", ".")));
 
@@ -98,7 +105,7 @@ describe("Presupuesto anual", () => {
 
   it("el detalle se cierra con Escape", () => {
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
     fireEvent.click(screen.getAllByTitle("Ver los movimientos que componen este monto")[0]!);
     expect(screen.queryByRole("dialog")).not.toBeNull();
     fireEvent.keyDown(document, { key: "Escape" });
@@ -109,7 +116,7 @@ describe("Presupuesto anual", () => {
     // §4.6: se excluyen del control —no son gasto que se decida presupuestar— pero
     // igual salen de la caja, así que van en una banda aparte.
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
 
     expect(screen.getByText("Fuera del control presupuestario")).toBeDefined();
 
@@ -133,7 +140,7 @@ describe("Presupuesto anual", () => {
     // Es lo que hay que ver venir: a partir de ahí cualquier gasto nuevo ya es
     // sobregasto. Bajarle el presupuesto a 1 fuerza el caso sobre datos reales.
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
     const campo = screen.getAllByLabelText(/^Presupuesto de /)[0]!;
     const nombre = (campo.getAttribute("aria-label") ?? "").replace("Presupuesto de ", "");
     fireEvent.blur(campo, { target: { value: "1" } });
@@ -145,7 +152,7 @@ describe("Presupuesto anual", () => {
 
   it("editar el presupuesto de una línea recalcula su variación", () => {
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
     const campo = screen.getAllByLabelText(/^Presupuesto de /)[0]! as HTMLInputElement;
     const antes = campo.value;
     fireEvent.blur(campo, { target: { value: "999.999.999" } });
@@ -166,7 +173,7 @@ describe("Las subcategorías en el presupuesto", () => {
 
   const conPresupuesto = () => {
     montar(<Presupuesto />);
-    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    generar();
   };
 
   it("la categoría con subcategorías abre en árbol", () => {
@@ -219,5 +226,55 @@ describe("Las subcategorías en el presupuesto", () => {
     // La madre es exactamente la suma de sus filas, ni más ni menos.
     expect(madre).toBe(hija + propias);
     expect(hija).toBeGreaterThan(0);
+  });
+});
+
+
+describe("La vista previa de la generación", () => {
+  // Generar reemplaza el presupuesto de cada línea con movimientos en la ventana.
+  // Sobre 290 categorías eso es mucho para deshacer a mano si la ventana quedó
+  // mal elegida, así que primero se muestra y después se escribe.
+
+  const abrirPrevia = () => {
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+  };
+
+  it("generar no escribe nada todavía", () => {
+    abrirPrevia();
+    expect(screen.getByRole("dialog", { name: "Qué va a quedar escrito" })).toBeDefined();
+    // Detrás del cuadro, la tabla sigue vacía.
+    expect(screen.getByText(/Todavía no hay presupuesto/)).toBeDefined();
+  });
+
+  it("muestra qué líneas y cuánto suman", () => {
+    abrirPrevia();
+    const cuadro = within(screen.getByRole("dialog", { name: "Qué va a quedar escrito" }));
+    expect(cuadro.getByText(/líneas? · .* al año/)).toBeDefined();
+    expect(cuadro.getAllByRole("row").length).toBeGreaterThan(1);
+  });
+
+  it("cancelar deja todo como estaba", () => {
+    abrirPrevia();
+    fireEvent.click(screen.getByText("Cancelar"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByText(/Todavía no hay presupuesto/)).toBeDefined();
+  });
+
+  it("aplicar sí escribe", () => {
+    abrirPrevia();
+    fireEvent.click(screen.getByRole("button", { name: /^Aplicar a/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByText(/Todavía no hay presupuesto/)).toBeNull();
+    expect(screen.getAllByLabelText(/^Presupuesto de /).length).toBeGreaterThan(0);
+  });
+
+  it("al generar sobre un presupuesto ya cargado avisa cuántas líneas reemplaza", () => {
+    // Es lo que daba miedo: apretar y descubrir después que pisó lo que había.
+    montar(<Presupuesto />);
+    generar();
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    const cuadro = within(screen.getByRole("dialog", { name: "Qué va a quedar escrito" }));
+    expect(cuadro.getByText(/ya tenían presupuesto|ya tenía presupuesto/)).toBeDefined();
   });
 });

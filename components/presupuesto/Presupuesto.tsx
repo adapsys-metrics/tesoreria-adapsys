@@ -19,6 +19,7 @@ import {
   type PresupuestoDelAnio,
 } from "@/lib/supabase/presupuesto";
 import { Bitacora, CuadroAjuste, type EnAjuste } from "./Ajustes";
+import { VistaPrevia, compararConLoQueHay, type Previo } from "./VistaPrevia";
 import {
   MESES_DEL_ANIO,
   SECCIONES,
@@ -107,6 +108,11 @@ export function Presupuesto() {
     aprobado: null,
     cambios: [],
   });
+  /** Lo que la generación escribiría, antes de escribirlo. */
+  const [previo, setPrevio] = useState<{ filas: Previo[]; generado: Map<string, Meses> } | null>(
+    null
+  );
+
   /** De dónde sale la base al generar, y cuánto se reajusta. */
   const [ventana, setVentana] = useState(() => ventanaPara(Number(HOY.slice(0, 4)), HOY));
   const [reajuste, setReajuste] = useState(0);
@@ -314,14 +320,25 @@ export function Presupuesto() {
    * el mes en que ocurren — que es la parte que a mano cuesta.
    */
   const generarOperativo = () => {
-    const distribucion = distribucionOperativa(
+    const generado = distribucionOperativa(
       delPresupuesto,
       ventana,
       esOperativa,
       tc,
       1 + reajuste / 100
     );
-    for (const [k, meses] of distribucion) guardar(k, meses);
+    // No se escribe todavía: generar reemplaza el presupuesto de cada línea con
+    // movimientos en la ventana, y sobre 290 categorías eso es mucho para
+    // deshacer a mano si la ventana quedó mal elegida.
+    setPrevio({
+      generado,
+      filas: compararConLoQueHay(generado, datos.meses, (k) => {
+        const { categoria_id, subcategoria_id } = partesDeClave(k);
+        const cat = catalogo.categoriaDe(categoria_id).nombre;
+        const sub = catalogo.nombreSubcategoria(subcategoria_id);
+        return sub ? `${cat} · ${sub}` : cat;
+      }),
+    });
   };
 
   const totalGeneral = totalizar(secciones.flatMap((s) => s.grupos.flatMap((c) => c.filas)));
@@ -549,6 +566,26 @@ export function Presupuesto() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {previo && (
+        <VistaPrevia
+          previo={previo.filas}
+          ventana={ventana}
+          reajuste={reajuste}
+          // Las que tienen presupuesto y la generación no toca: sin decirlo,
+          // alguien podría creer que generar las borra.
+          cuantasQuedanIgual={
+            [...datos.meses.entries()].filter(
+              ([k, m]) => anualDe(m) > 0 && !previo.generado.has(k)
+            ).length
+          }
+          cancelar={() => setPrevio(null)}
+          aplicar={() => {
+            for (const [k, meses] of previo.generado) guardar(k, meses);
+            setPrevio(null);
+          }}
+        />
       )}
 
       {ajustando && (

@@ -351,6 +351,12 @@ inflado sin que nada falle, así que se avisa antes de generar (`mesesRepetidos`
 Y no se puede generar en bloque sobre un año **aprobado**: pisaría la línea base. Ahí se
 ajusta línea por línea, con su motivo.
 
+**Generar muestra antes de escribir.** Reemplaza el presupuesto de cada línea con
+movimientos en la ventana, y sobre 290 categorías eso es mucho para deshacer a mano si la
+ventana quedó mal elegida. La vista previa lista lo que quedaría —ordenado por lo que más
+pesa, que es donde se nota si la ventana está mal—, **marca las líneas que ya tenían
+presupuesto** y cuenta las que no se tocan, para que nadie crea que generar las borra.
+
 ### Una categoría puede llevarse por cargos
 
 `Sueldos` no se controla por lo que se le paga a cada persona sino por lo que cuesta cada
