@@ -9,6 +9,7 @@ import { ProveedorTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Registro } from "@/components/movimientos/Registro";
 import { Encabezado } from "@/components/chrome/Encabezado";
 import { Cuentas } from "@/components/chrome/Cuentas";
+import { NOMBRE_APP } from "@/lib/marca";
 
 prepararEntorno();
 
@@ -19,6 +20,15 @@ describe("Chrome", () => {
     expect(screen.getByText("Comprometido CLP")).toBeDefined();
     expect(screen.getByText("Posición proyectada CLP")).toBeDefined();
     expect(screen.getByText("Saldo USD")).toBeDefined();
+  });
+
+  it("la barra lleva el nombre de la app, no el de la vista", () => {
+    // Se acordó llamarla ADARA Finance. Va desde una sola constante porque
+    // aparece también en el login y en el título de cada pestaña: repartido,
+    // el día que cambie queda a medias en alguna de las tres.
+    montar(<Encabezado />);
+    expect(screen.getByText(NOMBRE_APP)).toBeDefined();
+    expect(screen.queryByText("Tesorería")).toBeNull();
   });
 
   it("el selector de empresas abre y filtra", () => {

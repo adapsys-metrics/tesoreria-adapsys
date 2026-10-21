@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Cifra, clases } from "@/components/ui/primitivas";
 import { clp } from "@/lib/formato";
+import { NOMBRE_APP } from "@/lib/marca";
 import { SelectorEmpresas } from "./SelectorEmpresas";
 import { Sesion } from "./Sesion";
 import css from "./chrome.module.css";
@@ -55,7 +56,7 @@ export function Encabezado() {
             height={983}
             priority
           />
-          <span className={css.marcaTexto}>Tesorería</span>
+          <span className={css.marcaTexto}>{NOMBRE_APP}</span>
         </div>
 
         <SelectorEmpresas />

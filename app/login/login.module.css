@@ -111,12 +111,11 @@
 
 .titulo {
   margin: 0;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   color: #ffffff;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .boton {

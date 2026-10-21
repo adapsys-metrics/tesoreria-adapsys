@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { NOMBRE_APP } from "@/lib/marca";
 import { useEffect, useState } from "react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
 import css from "./login.module.css";
@@ -71,7 +72,7 @@ export default function Login() {
           priority
         />
 
-        <h1 className={css.titulo}>Tesorería</h1>
+        <h1 className={css.titulo}>{NOMBRE_APP}</h1>
 
         <button onClick={iniciarSesion} disabled={!CONFIGURADO} className={css.boton}>
           Ingresar con Google

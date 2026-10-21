@@ -3,6 +3,16 @@
 Sistema web de tesorería y control presupuestario para reemplazar Quicken (escritorio, archivo local)
 más una planilla Excel de control presupuestario que hoy se arma a mano.
 
+**En pantalla la app se llama ADARA Finance.** El nombre sale de una sola constante
+(`lib/marca.ts`) porque aparece en la barra superior, en el login y en el título de cada
+pestaña: repartido, el día que cambie queda a medias en alguna de las tres y nadie lo nota
+hasta verlo en una captura. Va **sin caja alta**, que es como se escribe — el rótulo de la
+barra la tenía y lo habría vuelto "ADARA FINANCE".
+
+El repositorio, la carpeta y las tablas siguen diciendo `tesoreria`, a propósito: el nombre
+de pantalla lo decide el negocio y puede volver a cambiar; renombrar el proyecto y la base
+para seguirlo costaría migraciones y links rotos sin que nadie vea una diferencia.
+
 **Idioma del proyecto: español.** Código, comentarios, nombres de tabla y de columna en español.
 Es el idioma en que el equipo piensa el negocio y traducirlo introduce ambigüedad.
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { titulo } from "@/lib/marca";
 import { Poppins, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -27,8 +28,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tesorería Adapsys",
-  description: "Tesorería y control presupuestario — Adapsys",
+  title: titulo(),
+  description: "Tesorería y control presupuestario de Adapsys",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

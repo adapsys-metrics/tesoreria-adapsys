@@ -32,10 +32,11 @@
    cuál es. Va en un peso menor para que no compita con la marca. */
 .marcaTexto {
   font-family: var(--font-sans);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 600;
+  /* Sin caja alta y con menos tracking: es un nombre propio, no un rótulo. El
+     0.14em de antes estaba calculado para versalitas y acá separaría de más. */
+  letter-spacing: 0.02em;
   color: var(--teal);
   border-left: 1px solid var(--rule);
   padding-left: 10px;
