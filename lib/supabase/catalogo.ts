@@ -29,7 +29,9 @@ export async function cargarCatalogo(supabase: SupabaseClient<Database>): Promis
         const desde = pagina * TAMANO_PAGINA;
         const { data, error } = await supabase
           .from("categorias")
-          .select("id,grupo_id,nombre,naturaleza,activa")
+          // La lista va explícita y por eso hay que acordarse de ampliarla: una
+          // columna nueva que no esté acá no llega, y el tipo deja de calzar.
+          .select("id,grupo_id,nombre,naturaleza,activa,por_cargos")
           .order("grupo_id")
           .order("nombre")
           .range(desde, desde + TAMANO_PAGINA - 1);
@@ -40,7 +42,10 @@ export async function cargarCatalogo(supabase: SupabaseClient<Database>): Promis
       }
       return todas;
     })(),
-    supabase.from("subcategorias").select("id,categoria_id,nombre,naturaleza,activa").order("nombre"),
+    supabase
+      .from("subcategorias")
+      .select("id,categoria_id,nombre,naturaleza,activa,titular")
+      .order("nombre"),
   ]);
 
   if (gru.error) throw new Error(`No se pudo cargar el catálogo: ${gru.error.message}`);
