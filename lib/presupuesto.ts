@@ -24,6 +24,7 @@
 
 import { enCLP, expandir } from "@/lib/dominio";
 import { clave } from "@/lib/catalogo-indices";
+import { HOY } from "@/lib/fechas";
 import type { LineaPresupuesto, Movimiento, Naturaleza } from "@/lib/tipos";
 
 /** Los doce meses del año, índice 0 = enero. */
@@ -164,15 +165,27 @@ export function ejecutadoPorClave(
  */
 export function distribucionOperativa(
   movimientos: Movimiento[],
-  anio: number,
+  /** Ventana de la que se saca la base. Cada movimiento cae en **su mes del
+   *  calendario**, sin importar de qué año venga: con un rango de noviembre a
+   *  octubre, los meses 11 y 12 salen del año anterior y el resto del actual. Eso
+   *  es lo que permite armar el año que viene antes de que termine éste. */
+  rango: { desde: string; hasta: string },
   esOperativa: (categoria_id: string, subcategoria_id: string | null) => boolean,
-  tc: number
+  tc: number,
+  /** Factor sobre cada mes: 1,05 sube todo un 5%. El reajuste del año se aplica
+   *  acá y no después para que el reparto conserve su forma. */
+  reajuste = 1,
+  hoy: string = HOY
 ): Map<string, Meses> {
-  const desde = `${anio}-01-01`;
-  const hasta = `${anio}-12-31`;
+  const { desde, hasta } = rango;
   const porSub = new Map<string, Meses>();
 
   for (const fila of expandir(movimientos)) {
+    // Un proyectado **vencido** no entra: se planeó para una fecha que ya pasó y
+    // no ocurrió, así que no es base de nada. Uno a futuro sí, y es lo que permite
+    // generar el año en curso a mitad de año: para los meses que faltan, lo
+    // planificado es el único dato que hay.
+    if (fila.estado === "proyectado" && fila.fecha < hoy) continue;
     if (fila.fecha < desde || fila.fecha > hasta) continue;
     if (!fila.categoria_id || !esOperativa(fila.categoria_id, fila.subcategoria_id)) continue;
     // Por clave y no por categoría, para que lo que se genera caiga en las mismas
@@ -184,8 +197,54 @@ export function distribucionOperativa(
     porSub.set(k, meses);
   }
   // La magnitud se toma por mes, ya con las devoluciones descontadas.
-  for (const [sub, meses] of porSub) porSub.set(sub, meses.map(Math.abs));
+  for (const [sub, meses] of porSub) {
+    porSub.set(sub, meses.map((m) => Math.round(Math.abs(m) * reajuste)));
+  }
   return porSub;
+}
+
+/**
+ * Los doce meses terminados en el último mes cerrado.
+ *
+ * Es la ventana con la que se arma el año siguiente: trae lo más reciente y a la
+ * vez un ciclo anual completo, que es lo que hace falta para que lo trimestral,
+ * lo semestral y lo anual caigan en su mes. Tomar "el año en curso" a mitad de
+ * año dejaría sin noviembre ni diciembre, que es justo donde están el aguinaldo y
+ * los cierres.
+ */
+export function ultimosDoceMeses(hoy: string): { desde: string; hasta: string } {
+  const anio = Number(hoy.slice(0, 4));
+  const mes = Number(hoy.slice(5, 7));
+  // El mes en curso no está cerrado: la ventana termina en el anterior.
+  const finMes = mes === 1 ? 12 : mes - 1;
+  const finAnio = mes === 1 ? anio - 1 : anio;
+  const iniMes = finMes === 12 ? 1 : finMes + 1;
+  const iniAnio = finMes === 12 ? finAnio : finAnio - 1;
+  return {
+    desde: `${iniAnio}-${String(iniMes).padStart(2, "0")}-01`,
+    hasta: finDeMes(finAnio, finMes),
+  };
+}
+
+/**
+ * De dónde sacar la base para armar un año.
+ *
+ * Un año que todavía no empezó se arma con los **doce meses ya cerrados**: tomar
+ * "su propio año" no daría nada, porque no hay movimientos. Un año en curso o ya
+ * pasado se arma con **ese mismo año**, que es lo que uno espera al pararse en él.
+ */
+export function ventanaPara(anio: number, hoy: string): { desde: string; hasta: string } {
+  if (anio > Number(hoy.slice(0, 4))) return ultimosDoceMeses(hoy);
+  return { desde: `${anio}-01-01`, hasta: `${anio}-12-31` };
+}
+
+/** Cuántos meses del calendario quedan cubiertos más de una vez por el rango. Un
+ *  rango de más de doce meses sumaría el mismo mes dos veces y el anual saldría
+ *  inflado sin que nada falle: se avisa antes de generar. */
+export function mesesRepetidos(rango: { desde: string; hasta: string }): number {
+  const meses = (f: string) => Number(f.slice(0, 4)) * 12 + Number(f.slice(5, 7));
+  const largo = meses(rango.hasta) - meses(rango.desde) + 1;
+  return Math.max(0, largo - MESES_DEL_ANIO);
 }
 
 /**

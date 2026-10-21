@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   ajustarDesde,
   anualDe,
+  mesesRepetidos,
+  ultimosDoceMeses,
+  ventanaPara,
   reescalar,
   distribucionOperativa,
   distribuirLineal,
@@ -129,7 +132,7 @@ describe("el control presupuestario, de punta a punta", () => {
       [gasto("1", "2026-05-10", "arriendo-oficina", -3_000_000, { empresa_id: "sm" })].filter((m) =>
         entraAlPresupuesto(m, ADAPSYS)
       ),
-      2026,
+      { desde: "2026-01-01", hasta: "2026-12-31" },
       () => true
     , TC);
     expect(meses.get("arriendo-oficina")).toBeUndefined();
@@ -149,7 +152,7 @@ describe("distribucionOperativa", () => {
         gasto("2", "2026-06-20", "retiros-socios", -20_000_000),
         gasto("3", "2026-08-20", "retiros-socios", -20_000_000),
       ],
-      2026,
+      { desde: "2026-01-01", hasta: "2026-12-31" },
       esOperativa
     , TC).get("retiros-socios")!;
 
@@ -160,18 +163,36 @@ describe("distribucionOperativa", () => {
     expect(ytdDe(meses, 7)).toBe(40_000_000);
   });
 
-  it("suma lo proyectado y lo ya ocurrido del año", () => {
-    // El presupuesto es lo planificado para el año completo. Sumar solo lo
-    // proyectado daría un número que encoge con cada pago.
+  it("suma lo proyectado a futuro y lo ya ocurrido del año", () => {
+    // El presupuesto es lo planificado para el año completo. Contar solo lo que
+    // ya pasó daría un número que encoge con cada mes que falta por delante: para
+    // esos meses, lo planificado es el único dato que hay.
     const meses = distribucionOperativa(
       [
         gasto("1", "2026-01-25", "sueldos", -400, { estado: "conciliado" }),
         gasto("2", "2026-11-25", "sueldos", -600, { estado: "proyectado" }),
       ],
-      2026,
+      { desde: "2026-01-01", hasta: "2026-12-31" },
       esOperativa
     , TC).get("sueldos")!;
     expect(anualDe(meses)).toBe(1000);
+  });
+
+  it("pero deja fuera lo proyectado que ya se pasó de fecha", () => {
+    // Se planeó para una fecha que ya pasó y no ocurrió. Presupuestar el año que
+    // viene sobre eso sería arrastrar lo que no se hizo.
+    const meses = distribucionOperativa(
+      [
+        gasto("1", "2026-01-25", "sueldos", -400, { estado: "conciliado" }),
+        gasto("2", "2026-02-25", "sueldos", -600, { estado: "proyectado" }),
+      ],
+      { desde: "2026-01-01", hasta: "2026-12-31" },
+      esOperativa,
+      TC,
+      1,
+      "2026-08-20"
+    ).get("sueldos")!;
+    expect(anualDe(meses)).toBe(400);
   });
 
   it("convierte los dólares igual que el ejecutado", () => {
@@ -179,7 +200,7 @@ describe("distribucionOperativa", () => {
     // toda línea pagada en dólares arrancaría el año con un sobregasto de 1.000 a 1.
     const d = distribucionOperativa(
       [gasto("1", "2026-02-01", "sistop", -100, { moneda: "USD" })],
-      2026,
+      { desde: "2026-01-01", hasta: "2026-12-31" },
       () => true,
       970
     );
@@ -189,7 +210,7 @@ describe("distribucionOperativa", () => {
   it("deja fuera las categorías de inversión, que van a mano", () => {
     const d = distribucionOperativa(
       [gasto("1", "2026-02-01", "equipos-computacionales", -900)],
-      2026,
+      { desde: "2026-01-01", hasta: "2026-12-31" },
       esOperativa
     , TC);
     expect(d.size).toBe(0);
@@ -207,7 +228,7 @@ describe("distribucionOperativa", () => {
           ],
         }),
       ],
-      2026,
+      { desde: "2026-01-01", hasta: "2026-12-31" },
       esOperativa
     , TC);
     expect(d.get("telefonia-e-internet")![7]).toBe(306745); // agosto
@@ -217,7 +238,7 @@ describe("distribucionOperativa", () => {
   it("deja fuera otros años", () => {
     const d = distribucionOperativa(
       [gasto("1", "2025-12-31", "sueldos", -100), gasto("2", "2026-01-01", "sueldos", -100)],
-      2026,
+      { desde: "2026-01-01", hasta: "2026-12-31" },
       esOperativa
     , TC);
     expect(anualDe(d.get("sueldos")!)).toBe(100);
@@ -535,5 +556,95 @@ describe("el presupuesto distingue la subcategoría", () => {
     expect(propia.clave).toBe("cat");
     expect(hija.clave).toBe("cat>sub");
     expect(hija.subcategoria_id).toBe("sub");
+  });
+});
+
+
+describe("ultimosDoceMeses", () => {
+  it("termina en el último mes cerrado, no en el que corre", () => {
+    // El mes en curso está a medias: incluirlo haría que la base dependa del día
+    // en que uno aprieta el botón.
+    expect(ultimosDoceMeses("2026-10-21")).toEqual({
+      desde: "2025-10-01",
+      hasta: "2026-09-30",
+    });
+  });
+
+  it("en enero la ventana es el año anterior completo", () => {
+    expect(ultimosDoceMeses("2027-01-15")).toEqual({
+      desde: "2026-01-01",
+      hasta: "2026-12-31",
+    });
+  });
+
+  it("siempre cubre doce meses y ni uno más", () => {
+    for (const hoy of ["2026-01-05", "2026-08-20", "2026-10-21", "2026-12-31"]) {
+      expect(mesesRepetidos(ultimosDoceMeses(hoy))).toBe(0);
+    }
+  });
+});
+
+describe("ventanaPara", () => {
+  it("un año que todavía no empezó se arma con los doce meses cerrados", () => {
+    // Tomar su propio año no daría nada: no hay movimientos en 2027 todavía.
+    expect(ventanaPara(2027, "2026-10-21")).toEqual(ultimosDoceMeses("2026-10-21"));
+  });
+
+  it("el año en curso se arma con su propio año", () => {
+    expect(ventanaPara(2026, "2026-10-21")).toEqual({
+      desde: "2026-01-01",
+      hasta: "2026-12-31",
+    });
+  });
+});
+
+describe("mesesRepetidos", () => {
+  it("un rango de doce meses no repite ninguno", () => {
+    expect(mesesRepetidos({ desde: "2025-10-01", hasta: "2026-09-30" })).toBe(0);
+  });
+
+  it("uno de catorce repite dos, y el anual saldría inflado", () => {
+    // Cada movimiento cae en su mes del calendario sin importar el año, así que
+    // un rango largo suma el mismo mes dos veces sin que nada falle.
+    expect(mesesRepetidos({ desde: "2025-08-01", hasta: "2026-09-30" })).toBe(2);
+  });
+});
+
+describe("distribucionOperativa", () => {
+  const operativa = () => true;
+
+  it("cada movimiento cae en su mes del calendario, venga del año que venga", () => {
+    // Es lo que permite armar 2027 antes de que 2026 termine: noviembre sale de
+    // 2025 y marzo de 2026, y los dos aterrizan en su mes.
+    const d = distribucionOperativa(
+      [
+        mov({ id: "1", estado: "conciliado", fecha: "2025-11-20", monto: -500 }),
+        mov({ id: "2", estado: "conciliado", fecha: "2026-03-10", monto: -300 }),
+      ],
+      { desde: "2025-10-01", hasta: "2026-09-30" },
+      operativa,
+      TC
+    );
+    const meses = d.get("sueldos") ?? [];
+    expect(meses[10]).toBe(500);
+    expect(meses[2]).toBe(300);
+  });
+
+  it("el reajuste sube cada mes sin aplanar la forma", () => {
+    const d = distribucionOperativa(
+      [
+        mov({ id: "1", estado: "conciliado", fecha: "2026-01-10", monto: -1000 }),
+        mov({ id: "2", estado: "conciliado", fecha: "2026-02-10", monto: -3000 }),
+      ],
+      { desde: "2026-01-01", hasta: "2026-12-31" },
+      operativa,
+      TC,
+      1.05
+    );
+    const meses = d.get("sueldos") ?? [];
+    expect(meses[0]).toBe(1050);
+    expect(meses[1]).toBe(3150);
+    // Febrero sigue pesando el triple que enero.
+    expect(meses[1]! / meses[0]!).toBeCloseTo(3);
   });
 });

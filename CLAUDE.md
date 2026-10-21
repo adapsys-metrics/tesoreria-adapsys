@@ -305,6 +305,37 @@ como vinieron.
 - Líneas fuera del control presupuestario (retiros de socios, préstamos, inversiones) se excluyen
   pero se muestran en una banda aparte para que nadie olvide que existen.
 
+### El año siguiente se arma desde los doce meses ya cerrados
+
+*Generar operativo* suma los movimientos operativos de una ventana por categoría y los
+deja como presupuesto, **repartidos en el mes en que ocurrió cada uno**. Eso es lo que
+hace que lo trimestral, lo semestral y lo anual aterricen solos en su mes — la parte que
+armar a mano cuesta.
+
+La ventana por defecto depende del año que se esté armando:
+
+- **Un año que todavía no empezó** → los **doce meses ya cerrados**. Tomar "su propio
+  año" no daría nada, y tomar el año en curso a mitad de año dejaría fuera noviembre y
+  diciembre, que es donde están el aguinaldo y los cierres. Cada movimiento cae en **su
+  mes del calendario** sin importar de qué año venga, así que con una ventana de octubre
+  a septiembre los meses 10, 11 y 12 salen del año anterior y el resto del actual.
+- **El año en curso o uno pasado** → ese mismo año, que es lo que uno espera al pararse
+  en él.
+
+La ventana se puede cambiar a mano, y hay un **reajuste en %** que sube o baja todos los
+meses conservando la forma del reparto.
+
+**Un proyectado vencido no entra; uno a futuro sí.** Lo que se planeó para una fecha que
+ya pasó y no ocurrió no es base de nada. Lo que está por delante sí, porque para los
+meses que faltan es el único dato que hay — por eso generar el año en curso a mitad de
+año no devuelve un número que encoge con cada mes.
+
+**Una ventana de más de doce meses sumaría el mismo mes dos veces** y el anual saldría
+inflado sin que nada falle, así que se avisa antes de generar (`mesesRepetidos`).
+
+Y no se puede generar en bloque sobre un año **aprobado**: pisaría la línea base. Ahí se
+ajusta línea por línea, con su motivo.
+
 ### Una categoría puede llevarse por cargos
 
 `Sueldos` no se controla por lo que se le paga a cada persona sino por lo que cuesta cada

@@ -25,6 +25,8 @@ import {
   anualDe,
   distribucionOperativa,
   distribuirLineal,
+  mesesRepetidos,
+  ventanaPara,
   ejecutadoPorClave,
   entraAlPresupuesto,
   filaDe,
@@ -105,11 +107,17 @@ export function Presupuesto() {
     aprobado: null,
     cambios: [],
   });
+  /** De dónde sale la base al generar, y cuánto se reajusta. */
+  const [ventana, setVentana] = useState(() => ventanaPara(Number(HOY.slice(0, 4)), HOY));
+  const [reajuste, setReajuste] = useState(0);
+
   /** La línea que se está ajustando, y la bitácora que se está mirando. */
   const [ajustando, setAjustando] = useState<EnAjuste | null>(null);
   const [bitacora, setBitacora] = useState<{ titulo: string; de: string | null } | null>(null);
   const [cargando, setCargando] = useState(supabaseConfigurado);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => setVentana(ventanaPara(anio, HOY)), [anio]);
 
   useEffect(() => {
     if (!supabaseConfigurado) return;
@@ -296,8 +304,23 @@ export function Presupuesto() {
     [datos, ejecutado, mes, catalogo]
   );
 
+  /**
+   * La base del año que viene sale de los doce meses ya cerrados.
+   *
+   * No del "año en curso": a mitad de año eso deja fuera noviembre y diciembre,
+   * que es donde están el aguinaldo y los cierres, y la línea anual sale corta
+   * justo en los meses que más pesan. Cada movimiento cae en su mes del
+   * calendario, así que lo trimestral, lo semestral y lo anual aterrizan solos en
+   * el mes en que ocurren — que es la parte que a mano cuesta.
+   */
   const generarOperativo = () => {
-    const distribucion = distribucionOperativa(delPresupuesto, anio, esOperativa, tc);
+    const distribucion = distribucionOperativa(
+      delPresupuesto,
+      ventana,
+      esOperativa,
+      tc,
+      1 + reajuste / 100
+    );
     for (const [k, meses] of distribucion) guardar(k, meses);
   };
 
@@ -351,14 +374,59 @@ export function Presupuesto() {
           </select>
         </label>
 
-        <button
-          type="button"
-          onClick={generarOperativo}
-          title="Suma los movimientos operativos del año por categoría y los deja como presupuesto, repartidos por el mes de cada uno"
-          className={css.botonGenerar}
-        >
-          Generar operativo desde los movimientos
-        </button>
+        <div className={css.generador}>
+          <button
+            type="button"
+            onClick={generarOperativo}
+            disabled={datos.aprobado !== null}
+            title={
+              datos.aprobado
+                ? "El presupuesto del año ya está aprobado: cambiarlo en bloque pisaría la línea base. Se ajusta línea por línea, con su motivo."
+                : "Suma los movimientos operativos de la ventana por categoría y los deja como presupuesto, repartidos por el mes en que ocurrió cada uno"
+            }
+            className={css.botonGenerar}
+          >
+            Generar operativo
+          </button>
+
+          <label className={css.control}>
+            <span className={css.etiqueta}>Desde</span>
+            <input
+              type="date"
+              value={ventana.desde}
+              onChange={(e) =>
+                e.target.value && setVentana((v) => ({ ...v, desde: e.target.value }))
+              }
+              aria-label="Desde qué mes se toma la base"
+              className={css.entradaFecha}
+            />
+          </label>
+
+          <label className={css.control}>
+            <span className={css.etiqueta}>Hasta</span>
+            <input
+              type="date"
+              value={ventana.hasta}
+              onChange={(e) =>
+                e.target.value && setVentana((v) => ({ ...v, hasta: e.target.value }))
+              }
+              aria-label="Hasta qué mes se toma la base"
+              className={css.entradaFecha}
+            />
+          </label>
+
+          <label className={css.control}>
+            <span className={css.etiqueta}>Reajuste</span>
+            <input
+              type="number"
+              value={reajuste}
+              onChange={(e) => setReajuste(Number(e.target.value) || 0)}
+              aria-label="Reajuste en porcentaje"
+              className={css.entradaReajuste}
+            />
+            <span className={css.etiqueta}>%</span>
+          </label>
+        </div>
 
         <span className={css.empujeBarra} />
 
@@ -389,6 +457,16 @@ export function Presupuesto() {
           </button>
         )}
       </div>
+
+      {mesesRepetidos(ventana) > 0 && (
+        <div className={css.bandaAviso} role="status">
+          La ventana cubre más de doce meses, así que{" "}
+          <strong>{mesesRepetidos(ventana)}</strong>{" "}
+          {mesesRepetidos(ventana) === 1 ? "mes se contaría" : "meses se contarían"} dos
+          veces y el anual saldría inflado. Cada movimiento cae en su mes del calendario,
+          sin importar de qué año venga.
+        </div>
+      )}
 
       {error && (
         <div className={css.bandaError} role="alert">
