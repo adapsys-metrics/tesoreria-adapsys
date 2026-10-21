@@ -22,9 +22,10 @@ import { Bitacora, CuadroAjuste, type EnAjuste } from "./Ajustes";
 import { VistaPrevia, compararConLoQueHay, type Previo } from "./VistaPrevia";
 import { ProyectarAnio } from "./ProyectarAnio";
 import {
+  expandirLineas,
   origenDe,
-  proyectar,
   resumirPorCategoria,
+  type LineaRecurrente,
   type ResumenCategoria,
 } from "@/lib/proyeccion";
 import { generarProyeccion } from "@/lib/supabase/proyeccion";
@@ -33,7 +34,6 @@ import {
   SECCIONES,
   anualDe,
   distribucionOperativa,
-  distribuirLineal,
   mesesRepetidos,
   ventanaPara,
   ejecutadoPorClave,
@@ -332,28 +332,30 @@ export function Presupuesto() {
   );
 
   /**
-   * La base del año que viene sale de los doce meses ya cerrados.
-   *
-   * No del "año en curso": a mitad de año eso deja fuera noviembre y diciembre,
-   * que es donde están el aguinaldo y los cierres, y la línea anual sale corta
-   * justo en los meses que más pesan. Cada movimiento cae en su mes del
-   * calendario, así que lo trimestral, lo semestral y lo anual aterrizan solos en
-   * el mes en que ocurren — que es la parte que a mano cuesta.
-   */
-  /**
    * Proyectar el año: crear los movimientos, no el presupuesto.
    *
-   * Es el primer paso de los dos. El pago de Entel de cada mes, el de GTD, el
-   * split de sueldos: se copian de la ventana al año destino como proyectados. El
-   * presupuesto operativo sale después, de sumarlos — así el flujo de caja y el
+   * Es el primer paso de los dos. Las líneas se escriben —proveedor, categoría,
+   * monto, día y cada cuánto— y de ahí salen los movimientos proyectados del año.
+   * El presupuesto operativo sale después, de sumarlos: así el flujo de caja y el
    * control presupuestario dicen lo mismo por construcción, en vez de ser dos
    * cosas que pueden no coincidir.
+   *
+   * Lo que se pagó en la ventana viaja igual, como consulta al lado. No para
+   * copiarlo entero: sirve para no olvidarse de un pago, pero el monto que queda
+   * escrito es uno elegido — los sueldos suben, el IMA se renegocia y el IVA sale
+   * de las ventas del mes, así que copiar el año pasado estaría mal en la mitad
+   * de las líneas.
    */
   const abrirProyeccion = () =>
     setProyectando(resumirPorCategoria(delPresupuesto, ventana, sePresupuesta, tc));
 
-  const aplicarProyeccion = (eleccion: Map<string, number>) => {
-    const nuevos = proyectar(delPresupuesto, ventana, anio, eleccion, 1 + reajuste / 100);
+  /** El signo de una línea sale de la naturaleza de su categoría (§4.6): un gasto
+   *  negativo, un ingreso positivo. Nadie escribe el menos. */
+  const esIngreso = (categoria_id: string, subcategoria_id: string | null) =>
+    catalogo.naturalezaDe(categoria_id, subcategoria_id) === "ingreso";
+
+  const aplicarProyeccion = (lineas: LineaRecurrente[]) => {
+    const nuevos = expandirLineas(lineas, anio, esIngreso);
     setProyectando(null);
     if (!supabaseConfigurado) return;
     generarProyeccion(crearClienteNavegador(), anio, nuevos)
@@ -456,7 +458,7 @@ export function Presupuesto() {
           <button
             type="button"
             onClick={abrirProyeccion}
-            title={`Copia los movimientos de la ventana a ${anio} como proyectados: el pago de cada mes, con sus líneas. El presupuesto sale después, de sumarlos.`}
+            title={`Escribí los pagos que se repiten y quedan creados como proyectados de ${anio}. El presupuesto sale después, de sumarlos.`}
             className={css.botonGenerar}
           >
             Proyectar {anio}
@@ -512,7 +514,9 @@ export function Presupuesto() {
             />
           </label>
 
-          <label className={css.control}>
+          {/* El reajuste es del presupuesto operativo, no de la proyección: ahí los
+              montos se escriben a mano y subirlos un 5% a todos no tendría sentido. */}
+          <label className={css.control} title="Se aplica al generar el presupuesto operativo desde los movimientos. La proyección se escribe con sus montos.">
             <span className={css.etiqueta}>Reajuste</span>
             <span className={css.campoConSufijo}>
               <input
@@ -664,10 +668,10 @@ export function Presupuesto() {
           resumen={proyectando}
           anio={anio}
           ventana={ventana}
-          reajuste={reajuste}
           nombreDe={(id) => catalogo.categoriaDe(id).nombre}
-          cuantosMovimientos={(eleccion) =>
-            proyectar(delPresupuesto, ventana, anio, eleccion).length
+          cuantosMovimientos={(lineas) => expandirLineas(lineas, anio, esIngreso).length}
+          totalDe={(lineas) =>
+            expandirLineas(lineas, anio, esIngreso).reduce((t, m) => t + m.monto, 0)
           }
           yaGenerados={movimientos.filter((m) => m.origen === origenDe(anio)).length}
           cancelar={() => setProyectando(null)}

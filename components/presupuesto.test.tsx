@@ -2,9 +2,9 @@
 // expandidos. Compilar no basta — el bundler no detecta un identificador
 // usado antes de declararse, y eso ya reventó en este proyecto.
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { montar, montarEn, prepararEntorno } from "@/components/pruebas/entorno";
+import { montar, prepararEntorno } from "@/components/pruebas/entorno";
 import { ProveedorTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Presupuesto } from "@/components/presupuesto/Presupuesto";
 import { Categorias } from "@/components/categorias/Categorias";
@@ -351,81 +351,177 @@ describe("Lo que no se presupuesta", () => {
 
 describe("Proyectar el año", () => {
   // El presupuesto operativo de 2027 no se escribe: sale de sumar los movimientos
-  // proyectados de 2027, que se generan copiando los del año anterior. Dos pasos,
-  // cada uno con su vista previa.
+  // proyectados de 2027, y esos se escriben acá, línea por línea.
+  //
+  // Antes esto copiaba el año anterior y se elegía qué traer. Servía para saber qué
+  // se paga y no para decidir qué se va a pagar: el pasado viene con su desorden y
+  // la mitad de los montos cambia igual. La historia quedó al lado, como consulta.
 
-  const abrir = () => {
+  /** La cuenta que paga: sin ella la base rechaza el movimiento (§2). */
+  const elegirCuenta = (cuadro: ReturnType<typeof within>) => {
+    const select = cuadro.getByLabelText("Paga desde") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: select.options[1]!.value } });
+  };
+
+  const abrir = (conCuenta = true) => {
     montar(<Presupuesto />);
     fireEvent.change(screen.getByLabelText("Año"), { target: { value: "2027" } });
     fireEvent.click(screen.getByRole("button", { name: /Proyectar 2027/ }));
-    return within(screen.getByRole("dialog", { name: "Proyectar 2027" }));
+    const cuadro = within(screen.getByRole("dialog", { name: "Proyectar 2027" }));
+    if (conCuenta) elegirCuenta(cuadro);
+    return cuadro;
   };
 
-  it("nombra la ventana en meses y no en fechas ISO", () => {
-    // La ventana son meses completos: "2025-10-01" hace pensar que el día
-    // importa, y además el ISO es el formato de la base y no el de pantalla (§8).
+  /** Una línea completa: proveedor, categoría y monto. Sin los tres no genera nada. */
+  const escribirLinea = (
+    cuadro: ReturnType<typeof within>,
+    proveedor: string,
+    busqueda: string,
+    monto: number
+  ) => {
+    fireEvent.click(cuadro.getByText("+ línea"));
+    const n = cuadro.getAllByLabelText(/^Proveedor de la línea /).length;
+    fireEvent.change(cuadro.getByLabelText(`Proveedor de la línea ${n}`), {
+      target: { value: proveedor },
+    });
+    fireEvent.click(cuadro.getAllByRole("button", { name: "Categoría" })[n - 1]!);
+    fireEvent.change(cuadro.getByPlaceholderText("Buscar categoría"), {
+      target: { value: busqueda },
+    });
+    fireEvent.mouseDown(cuadro.getAllByRole("option")[0]!);
+    fireEvent.change(cuadro.getByLabelText(`Monto de la línea ${n}`), {
+      target: { value: String(monto) },
+    });
+  };
+
+  const crear = (cuadro: ReturnType<typeof within>) =>
+    cuadro.getByRole("button", { name: /^Crear \d+ movimiento/ }) as HTMLButtonElement;
+
+  it("arranca vacío: nada proyectado es nada escrito", () => {
+    // El cuadro no propone líneas. Una propuesta que nadie mira se guarda igual, y
+    // acá lo que se guarda son movimientos de 2027 (§6, ningún default guardable).
     const cuadro = abrir();
+    expect(cuadro.getByText(/Todavía no hay líneas/)).toBeDefined();
+    expect(crear(cuadro).disabled).toBe(true);
+  });
+
+  it("sin elegir la cuenta no hay nada que crear", () => {
+    // `empresa_id` y `cuenta_id` son not null en la base: una proyección sin
+    // cuenta no falla al armarla, falla al insertarla —entera, y recién ahí.
+    const cuadro = abrir(false);
+    escribirLinea(cuadro, "Entel", "telefonia", 90000);
+    expect(crear(cuadro).disabled).toBe(true);
+    expect(cuadro.getByText(/falta la cuenta/)).toBeDefined();
+  });
+
+  it("la cuenta elegida pone la empresa: en una cuenta del banco manda ella", () => {
+    // §2: en una cuenta del banco la cuenta determina empresa y moneda. Acá eso
+    // se nota en que con la cuenta puesta ya se puede crear.
+    const cuadro = abrir();
+    escribirLinea(cuadro, "Entel", "telefonia", 90000);
+    expect(crear(cuadro).disabled).toBe(false);
+  });
+
+  it("una línea mensual son doce movimientos", () => {
+    const cuadro = abrir();
+    escribirLinea(cuadro, "Entel", "telefonia", 90000);
+    expect(crear(cuadro).textContent).toMatch(/Crear 12 movimientos/);
+  });
+
+  it("trimestral son cuatro, y anual uno", () => {
+    // Es la parte que a mano cuesta: lo trimestral aterriza solo en marzo, junio,
+    // septiembre y diciembre sin que haya que escribir cuatro líneas.
+    const cuadro = abrir();
+    escribirLinea(cuadro, "Entel", "telefonia", 90000);
+    fireEvent.change(cuadro.getByLabelText("Cada cuánto cae la línea 1"), {
+      target: { value: "trimestral" },
+    });
+    expect(crear(cuadro).textContent).toMatch(/Crear 4 movimientos/);
+    fireEvent.change(cuadro.getByLabelText("Cada cuánto cae la línea 1"), {
+      target: { value: "anual" },
+    });
+    expect(crear(cuadro).textContent).toMatch(/Crear 1 movimiento/);
+  });
+
+  it("desde corta el arranque: lo que empieza en octubre son tres meses", () => {
+    // Un contrato que parte a mitad de año no son doce pagos, y un aguinaldo cae
+    // una vez. Sin esto habría que borrar los meses de más después de crearlos.
+    const cuadro = abrir();
+    escribirLinea(cuadro, "Entel", "telefonia", 90000);
+    fireEvent.change(cuadro.getByLabelText("Desde qué mes cae la línea 1"), {
+      target: { value: "10" },
+    });
+    expect(crear(cuadro).textContent).toMatch(/Crear 3 movimientos/);
+  });
+
+  it("sin categoría la línea no genera nada, y se dice", () => {
+    // Un movimiento sin clasificar no llega al presupuesto: sumaría cero donde
+    // tendría que sumar. Deshabilitar sin explicar dejaría buscando el botón.
+    const cuadro = abrir();
+    fireEvent.click(cuadro.getByText("+ línea"));
+    fireEvent.change(cuadro.getByLabelText("Monto de la línea 1"), {
+      target: { value: "90000" },
+    });
+    expect(crear(cuadro).disabled).toBe(true);
+    expect(cuadro.getByText(/1 sin completar/)).toBeDefined();
+  });
+
+  it("el signo lo pone la categoría: nadie escribe el menos", () => {
+    // El monto se escribe en magnitud, como en la planilla (§8). Si el signo
+    // quedara en manos de quien escribe, un gasto en positivo infla la caja.
+    const cuadro = abrir();
+    escribirLinea(cuadro, "Entel", "telefonia", 90000);
+    expect(cuadro.getByText(/−1\.080\.000/)).toBeDefined();
+  });
+
+  it("quitar una línea la saca de la cuenta", () => {
+    const cuadro = abrir();
+    escribirLinea(cuadro, "Entel", "telefonia", 90000);
+    fireEvent.click(cuadro.getByLabelText("Quitar la línea 1"));
+    expect(crear(cuadro).disabled).toBe(true);
+  });
+
+  it("lo que se pagó el año pasado queda al lado, como consulta", () => {
+    // No para copiarlo entero: para no olvidarse de un pago. Es la pestaña, no el
+    // mecanismo — el monto que queda escrito es uno elegido.
+    const cuadro = abrir();
+    fireEvent.click(cuadro.getByText("Lo que pagué el año pasado"));
+    expect(cuadro.getAllByRole("button", { expanded: false }).length).toBeGreaterThan(0);
+  });
+
+  it("la consulta nombra la ventana en meses y no en fechas ISO", () => {
+    // La ventana son meses completos: "2025-10-01" hace pensar que el día importa,
+    // y además el ISO es el formato de la base y no el de pantalla (§8).
+    const cuadro = abrir();
+    fireEvent.click(cuadro.getByText("Lo que pagué el año pasado"));
     expect(cuadro.getByText(/octubre 2025/)).toBeDefined();
     expect(cuadro.queryByText(/2025-10-01/)).toBeNull();
   });
 
-  it("lista las categorías con en cuántos meses aparece cada una", () => {
-    // Es la columna que decide: 12 es mensual, 1 es una vez en la vida. Lo
-    // resuelve quien conoce el gasto, sin que la app adivine con un umbral.
-    const cuadro = abrir();
-    expect(cuadro.getByText("Meses")).toBeDefined();
-    expect(cuadro.getByText("Proyectar")).toBeDefined();
-    expect(cuadro.getAllByRole("checkbox").length).toBeGreaterThan(0);
-  });
-
-  it("una categoría se abre y muestra sus proveedores", () => {
+  it("una categoría de la consulta se abre y muestra sus proveedores", () => {
     // "Telefonía e internet · 12 meses" no dice si son doce pagos a Entel o una
-    // mezcla. Sin abrirla, uno proyecta a ciegas.
+    // mezcla. Sin abrirla, traer una línea sería traer a ciegas.
     const cuadro = abrir();
-    const antes = cuadro.getAllByRole("row").length;
+    fireEvent.click(cuadro.getByText("Lo que pagué el año pasado"));
+    const antes = cuadro.queryAllByRole("row").length;
     fireEvent.click(cuadro.getAllByRole("button", { expanded: false })[0]!);
     expect(cuadro.getAllByRole("row").length).toBeGreaterThan(antes);
-    expect(cuadro.getAllByLabelText(/^Meses a proyectar de /).length).toBeGreaterThan(0);
   });
 
-  it("bajar los meses de un proveedor baja los movimientos a crear", () => {
-    // Un contrato que termina en junio no son doce pagos. Se corta sin salir
-    // del cuadro y sin tocar a los demás proveedores de la misma categoría.
+  it("traer escribe la línea y vuelve al formulario", () => {
+    // Traer no crea nada: deja la línea escrita y editable, que es el punto —
+    // el monto del año pasado es un punto de partida, no la decisión.
     const cuadro = abrir();
+    fireEvent.click(cuadro.getByText("Lo que pagué el año pasado"));
     fireEvent.click(cuadro.getAllByRole("button", { expanded: false })[0]!);
-    const antes = cuadro.getByRole("button", { name: /^Crear \d+ movimiento/ }).textContent;
-    fireEvent.change(cuadro.getAllByLabelText(/^Meses a proyectar de /)[0]!, {
-      target: { value: "1" },
-    });
-    const despues = cuadro.getByRole("button", { name: /^Crear \d+ movimiento/ }).textContent;
-    expect(despues).not.toBe(antes);
-  });
-
-  it("arranca con todas marcadas y con todos sus meses", () => {
-    // Es más rápido recortar lo ocasional que marcar lo mensual, porque lo
-    // mensual es casi todo.
-    const cuadro = abrir();
-    const casillas = cuadro.getAllByRole("checkbox") as HTMLInputElement[];
-    expect(casillas.every((c) => c.checked)).toBe(true);
-  });
-
-  it("desmarcar baja la cuenta de movimientos a crear", () => {
-    const cuadro = abrir();
-    const antes = cuadro.getByRole("button", { name: /^Crear \d+ movimiento/ }).textContent;
-    fireEvent.click(cuadro.getAllByRole("checkbox")[0]!);
-    const despues = cuadro.getByRole("button", { name: /^Crear \d+ movimiento/ }).textContent;
-    expect(despues).not.toBe(antes);
-  });
-
-  it("sin ninguna marcada no se puede crear nada", () => {
-    const cuadro = abrir();
-    fireEvent.click(cuadro.getByText("Ninguna"));
-    const boton = cuadro.getByRole("button", { name: /^Crear/ }) as HTMLButtonElement;
-    expect(boton.disabled).toBe(true);
+    fireEvent.click(cuadro.getAllByRole("button", { name: /^Traer / })[0]!);
+    expect(cuadro.getAllByLabelText(/^Proveedor de la línea /).length).toBe(1);
+    expect(crear(cuadro).disabled).toBe(false);
   });
 
   it("cancelar no crea nada", () => {
     const cuadro = abrir();
+    escribirLinea(cuadro, "Entel", "telefonia", 90000);
     fireEvent.click(cuadro.getByText("Cancelar"));
     expect(screen.queryByRole("dialog")).toBeNull();
   });

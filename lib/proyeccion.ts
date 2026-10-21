@@ -1,14 +1,24 @@
-// Proyectar un año copiando los movimientos de otro.
+// Escribir la proyección de un año.
 //
 // El presupuesto operativo del año que viene no se escribe: **sale de sumar los
-// movimientos proyectados**. Y esos movimientos se generan copiando los del año
-// anterior — el pago de Entel de cada mes, el de GTD, el split de sueldos— al
-// mismo mes y día del año destino.
+// movimientos proyectados**. Y esos movimientos salen de líneas que alguien
+// escribe —proveedor, categoría, monto, día y cada cuánto—, una por pago que se
+// repite: Entel el 14 de cada mes, el aguinaldo en diciembre, el split de
+// sueldos.
 //
-// Es distinto de lo que CLAUDE.md §10 descartó. Ahí se rechazó modelar
-// **reglas** por proveedor ("GTD, día 14, mensual") y mantenerlas: un proveedor
-// cambia, es ocasional, o tiene un pago único. Acá no hay reglas — hay una copia
-// de la historia real, que después se edita movimiento por movimiento.
+// Antes esto copiaba el año anterior y se elegía qué traer. La idea era buena
+// para **saber qué se paga** y mala para **decidir qué se va a pagar**: el pasado
+// viene con su desorden —un proveedor que aparece una vez con un monto enorme,
+// una categoría que ya no se usa— y además la mitad de los montos cambian igual,
+// porque los sueldos suben, el IMA se renegocia y el IVA sale de las ventas del
+// mes. Quedó `resumirPorCategoria`, que arma ese resumen como **consulta** al
+// lado del formulario, con un botón para traer una línea ya rellena.
+//
+// Vale la pena decir en qué se parece y en qué no a lo que CLAUDE.md §10
+// descartó. Ahí se rechazó mantener **reglas por proveedor** que generaran el
+// presupuesto del año entero y hubiera que cuidar vivas. Acá la línea no es una
+// regla que persista: se expande una vez, en movimientos concretos y editables,
+// y después se muere. Lo que queda en la base son los movimientos, no la regla.
 //
 // Lo que sí hereda de ese párrafo es la advertencia del doble conteo, y se
 // resuelve por construcción: si el presupuesto sale de los proyectados en vez de
@@ -18,11 +28,16 @@ import { enCLP, expandir } from "@/lib/dominio";
 import { clave } from "@/lib/catalogo-indices";
 import type { DocTipo, Moneda, Movimiento } from "@/lib/tipos";
 
-/** Lo que se va a crear. Sin `id`: los asigna la base. */
+/** Lo que se va a crear. Sin `id`: los asigna la base.
+ *
+ *  Empresa y cuenta no son opcionales: en la base las dos columnas son `not null`
+ *  (0001), así que una proyección sin cuenta no falla al armarla sino al
+ *  insertarla, entera y recién ahí. Dejarlas obligatorias acá hace que el
+ *  compilador lo pida antes. */
 export type MovimientoProyectado = {
   fecha: string;
-  empresa_id: string | null;
-  cuenta_id: string | null;
+  empresa_id: string;
+  cuenta_id: string;
   contraparte: string | null;
   glosa: string | null;
   monto: number;
@@ -55,6 +70,13 @@ export type Rama = {
   movimientos: number;
   /** Suma en CLP, en magnitud. */
   total: number;
+  /** Lo que pagó por mes en que apareció. Es el monto que uno pondría al escribir
+   *  la línea, y por eso se divide por meses y no por movimientos: dos pagos en
+   *  el mismo mes son un mes de gasto. */
+  promedio: number;
+  /** El día más repetido. Un arriendo cae siempre el 5 y una boleta el 14; ese
+   *  dato está en la historia y no hay por qué volver a buscarlo. */
+  dia: number;
 };
 
 /** Una categoría con sus proveedores. */
@@ -69,27 +91,23 @@ export type ResumenCategoria = {
   ramas: Rama[];
 };
 
+/** El valor que más se repite; con empate, el menor. Para el día de un pago eso
+ *  es lo correcto: entre el 5 y el 14 con la misma frecuencia, el 5 llega antes y
+ *  es el supuesto conservador para una proyección de caja. */
 /** La identidad de una rama. Categoría y proveedor, porque el mismo proveedor
  *  puede aparecer en dos categorías y ser dos cosas distintas. */
-export const claveRama = (categoria_id: string, contraparte: string | null): string =>
+const claveRama = (categoria_id: string, contraparte: string | null): string =>
   `${categoria_id}|${contraparte ?? ""}`;
 
-/**
- * La misma fecha, un año destino.
- *
- * Mes y día se conservan: un pago del 14 sigue siendo del 14. El 29 de febrero se
- * corre al 28 cuando el destino no es bisiesto — es la única fecha que no existe
- * todos los años, y dejarla pasar generaría un movimiento con fecha inválida que
- * la base rechaza entera.
- */
-export function mismaFechaEn(fecha: string, anio: number): string {
-  const mes = fecha.slice(5, 7);
-  const dia = fecha.slice(8, 10);
-  if (mes === "02" && dia === "29") {
-    const bisiesto = (anio % 4 === 0 && anio % 100 !== 0) || anio % 400 === 0;
-    return `${anio}-02-${bisiesto ? "29" : "28"}`;
+function masRepetido(xs: number[]): number {
+  const cuenta = new Map<number, number>();
+  for (const x of xs) cuenta.set(x, (cuenta.get(x) ?? 0) + 1);
+  let mejor = xs[0] ?? 1;
+  for (const [x, n] of cuenta) {
+    const actual = cuenta.get(mejor) ?? 0;
+    if (n > actual || (n === actual && x < mejor)) mejor = x;
   }
-  return `${anio}-${mes}-${dia}`;
+  return mejor;
 }
 
 /**
@@ -110,8 +128,8 @@ export function resumirPorCategoria(
   seProyecta: (categoria_id: string, subcategoria_id: string | null) => boolean,
   tc: number
 ): ResumenCategoria[] {
-  type Acumulado = { ids: Set<string>; meses: Set<number>; total: number };
-  const vacio = (): Acumulado => ({ ids: new Set(), meses: new Set(), total: 0 });
+  type Acumulado = { ids: Set<string>; meses: Set<number>; total: number; dias: number[] };
+  const vacio = (): Acumulado => ({ ids: new Set(), meses: new Set(), total: 0, dias: [] });
   const porRama = new Map<string, Acumulado & { categoria_id: string; contraparte: string }>();
 
   for (const fila of expandir(movimientos)) {
@@ -125,6 +143,7 @@ export function resumirPorCategoria(
     const contraparte = fila.contraparte ?? "";
     const k = claveRama(fila.categoria_id, contraparte);
     const actual = porRama.get(k) ?? { ...vacio(), categoria_id: fila.categoria_id, contraparte };
+    if (!actual.ids.has(fila.movimiento_id)) actual.dias.push(Number(fila.fecha.slice(8, 10)));
     actual.ids.add(fila.movimiento_id);
     actual.meses.add(Number(fila.fecha.slice(5, 7)));
     actual.total += enCLP(fila, tc);
@@ -139,6 +158,8 @@ export function resumirPorCategoria(
       meses: [...r.meses].sort((a, b) => a - b),
       movimientos: r.ids.size,
       total: Math.abs(r.total),
+      promedio: r.meses.size ? Math.round(Math.abs(r.total) / r.meses.size) : 0,
+      dia: masRepetido(r.dias),
     };
     porCategoria.set(r.categoria_id, [...(porCategoria.get(r.categoria_id) ?? []), rama]);
   }
@@ -156,103 +177,149 @@ export function resumirPorCategoria(
     .sort((a, b) => b.total - a.total);
 }
 
+// ── Escribir la proyección ──────────────────────────────────────────────────
+
+/** Cada cuánto se repite un pago en el año. */
+export type Cadencia = "mensual" | "bimestral" | "trimestral" | "cuatrimestral" | "semestral" | "anual";
+
+/** Cada cuántos meses cae. */
+export const PASO: Record<Cadencia, number> = {
+  mensual: 1,
+  bimestral: 2,
+  trimestral: 3,
+  cuatrimestral: 4,
+  semestral: 6,
+  anual: 12,
+};
+
+/** Una línea que alguien escribe: un pago que se repite. */
+export type LineaRecurrente = {
+  /** Local, para poder editarla y borrarla de la lista. No llega a la base. */
+  id: string;
+  contraparte: string;
+  categoria_id: string;
+  subcategoria_id: string | null;
+  /** En magnitud. El signo lo pone la naturaleza de la categoría: un gasto sale
+   *  negativo y un ingreso positivo, sin que nadie tenga que escribir el menos. */
+  monto: number;
+  dia: number;
+  cada: Cadencia;
+  /** Primer mes en que cae, 1 = enero. Un trimestral desde marzo cae en marzo,
+   *  junio, septiembre y diciembre; desde enero, en enero, abril, julio y
+   *  octubre. Sin esto, "trimestral" no dice cuál de las dos. */
+  desde: number;
+  empresa_id: string | null;
+  cuenta_id: string | null;
+  moneda: Moneda;
+};
+
 /**
- * Los movimientos del año destino.
+ * Los meses en que cae una línea, dentro del año.
  *
- * La elección es **por rama y en meses**: de cada par categoría-proveedor se
- * proyectan sus primeros N meses. Doce es repetirlo todo el año; uno deja el pago
- * anual una sola vez; seis corta el contrato que termina a mitad de año. Cero, o
- * una rama ausente del mapa, no se proyecta.
- *
- * "Los primeros" se cuenta sobre los **meses del año destino**, no sobre el orden
- * de la ventana: con un rango de octubre a septiembre, los primeros seis tienen
- * que ser enero a junio del año que se arma.
- *
- * Un movimiento entra **entero** si alguna de sus ramas lo alcanza. Entero y no
- * recortado: un pago de tarjeta con dieciséis líneas es una transferencia, y
- * traer solo las líneas elegidas daría un movimiento cuyo monto no es el que va a
- * salir del banco.
- *
- * El reajuste se aplica **línea por línea y el monto se recalcula sumándolas**.
- * Al revés —escalar el monto y las líneas por separado— el redondeo las separa y
- * la base rechaza el movimiento por descuadre (§3).
+ * Arranca en `desde` y avanza de a `PASO`, hasta diciembre. No da la vuelta: una
+ * línea trimestral desde noviembre cae en noviembre y punto — el año que viene es
+ * otro año y se proyecta aparte.
  */
-export function proyectar(
-  movimientos: Movimiento[],
-  rango: { desde: string; hasta: string },
-  anioDestino: number,
-  /** Por rama (`claveRama`), cuántos de sus meses proyectar. */
-  eleccion: Map<string, number>,
-  reajuste = 1
-): MovimientoProyectado[] {
-  // Los meses que cada rama deja pasar: sus primeros N, en orden del año destino.
-  const permitidos = new Map<string, Set<number>>();
-  const mesesDe = new Map<string, Set<number>>();
-
-  const enRango = movimientos.filter(
-    (m) => m.fecha >= rango.desde && m.fecha <= rango.hasta && m.estado !== "proyectado"
-  );
-
-  for (const m of enRango) {
-    const mes = Number(mismaFechaEn(m.fecha, anioDestino).slice(5, 7));
-    for (const cat of new Set(m.lineas.map((l) => l.categoria_id))) {
-      const k = claveRama(cat, m.contraparte);
-      mesesDe.set(k, (mesesDe.get(k) ?? new Set()).add(mes));
-    }
-  }
-
-  for (const [k, meses] of mesesDe) {
-    const cuantos = eleccion.get(k) ?? 0;
-    permitidos.set(k, new Set([...meses].sort((a, b) => a - b).slice(0, cuantos)));
-  }
-
-  const salida: MovimientoProyectado[] = [];
-  for (const m of enRango) {
-    const fecha = mismaFechaEn(m.fecha, anioDestino);
-    const mes = Number(fecha.slice(5, 7));
-    const alcanzado = [...new Set(m.lineas.map((l) => l.categoria_id))].some((cat) =>
-      permitidos.get(claveRama(cat, m.contraparte))?.has(mes)
-    );
-    // Sin líneas no hay rama que lo alcance: un movimiento sin clasificar no se
-    // arrastra al año siguiente.
-    if (!alcanzado) continue;
-
-    const lineas = m.lineas.map((l) => ({
-      categoria_id: l.categoria_id,
-      subcategoria_id: l.subcategoria_id,
-      doc_tipo: l.doc_tipo,
-      monto: Math.round(l.monto * reajuste),
-      glosa: l.glosa,
-    }));
-
-    salida.push({
-      fecha,
-      empresa_id: m.empresa_id,
-      // La cuenta se conserva: un proyectado en una cuenta del banco es lo que
-      // alimenta el registro de egresos proyectados, y no afecta el saldo.
-      cuenta_id: m.cuenta_id,
-      contraparte: m.contraparte,
-      glosa: m.glosa,
-      // De las líneas y no escalando el monto original: así la suma cuadra exacto
-      // y la base no lo rechaza.
-      monto: lineas.reduce((t, l) => t + l.monto, 0),
-      moneda: m.moneda,
-      tipo_cambio: m.tipo_cambio,
-      doc_tipo: m.doc_tipo,
-      lineas,
-    });
-  }
-
-  return salida;
+export function mesesDeLinea(cada: Cadencia, desde: number): number[] {
+  const paso = PASO[cada];
+  const meses: number[] = [];
+  for (let m = Math.min(Math.max(desde, 1), 12); m <= 12; m += paso) meses.push(m);
+  return meses;
 }
 
-/** La elección por defecto: cada rama proyecta todos los meses en que apareció. */
-export const eleccionCompleta = (resumen: ResumenCategoria[]): Map<string, number> =>
-  new Map(
-    resumen.flatMap((c) =>
-      c.ramas.map((r) => [claveRama(r.categoria_id, r.contraparte), r.meses.length] as const)
-    )
-  );
+/**
+ * El día que corresponde en un mes, sin salirse de él.
+ *
+ * "Día 31, mensual" es una instrucción razonable que en febrero no existe. Se
+ * recorta al último día del mes en vez de generar una fecha inválida, que la base
+ * rechazaría y se llevaría puesta la proyección entera.
+ */
+export function diaEnMes(anio: number, mes: number, dia: number): string {
+  const ultimo = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
+  const d = Math.min(Math.max(dia, 1), ultimo);
+  return `${anio}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+/**
+ * Los movimientos de una línea escrita.
+ *
+ * El signo sale de la naturaleza de la categoría y no de lo que se escriba: en
+ * una pantalla donde se cargan treinta líneas, un menos olvidado convierte un
+ * gasto en ingreso y el flujo del año queda al revés sin que nada falle.
+ */
+export function expandirLinea(
+  l: LineaRecurrente,
+  anio: number,
+  esIngreso: (categoria_id: string, subcategoria_id: string | null) => boolean
+): MovimientoProyectado[] {
+  const signo = esIngreso(l.categoria_id, l.subcategoria_id) ? 1 : -1;
+  const monto = signo * Math.abs(Math.round(l.monto));
+  if (monto === 0) return [];
+
+  // En variables y no leídas de `l` adentro del map: así el estrechamiento del
+  // chequeo sobrevive al cierre y la línea sin cuenta no llega a la base.
+  const { empresa_id, cuenta_id } = l;
+  if (!empresa_id || !cuenta_id) return [];
+
+  return mesesDeLinea(l.cada, l.desde).map((mes) => ({
+    fecha: diaEnMes(anio, mes, l.dia),
+    empresa_id,
+    cuenta_id,
+    contraparte: l.contraparte.trim() || null,
+    glosa: l.contraparte.trim() || null,
+    monto,
+    moneda: l.moneda,
+    tipo_cambio: null,
+    doc_tipo: null,
+    lineas: [
+      {
+        categoria_id: l.categoria_id,
+        subcategoria_id: l.subcategoria_id,
+        doc_tipo: null,
+        monto,
+        glosa: null,
+      },
+    ],
+  }));
+}
+
+/** Todas las líneas escritas, en un solo conjunto. */
+export const expandirLineas = (
+  lineas: LineaRecurrente[],
+  anio: number,
+  esIngreso: (categoria_id: string, subcategoria_id: string | null) => boolean
+): MovimientoProyectado[] => lineas.flatMap((l) => expandirLinea(l, anio, esIngreso));
+
+/**
+ * Una línea escrita a partir de lo que la historia dice de un proveedor.
+ *
+ * La cadencia sale de en cuántos meses apareció: doce es mensual, cuatro
+ * trimestral, uno anual. Es una propuesta para no volver a buscar el dato, no una
+ * conclusión — queda editable, que es el punto de escribirlas.
+ */
+export function lineaDesdeRama(r: Rama, id: string, moneda: Moneda = "CLP"): LineaRecurrente {
+  const n = r.meses.length;
+  const cada: Cadencia =
+    n >= 11 ? "mensual"
+    : n >= 5 ? "bimestral"
+    : n === 4 ? "trimestral"
+    : n === 3 ? "cuatrimestral"
+    : n === 2 ? "semestral"
+    : "anual";
+  return {
+    id,
+    contraparte: r.contraparte,
+    categoria_id: r.categoria_id,
+    subcategoria_id: null,
+    monto: r.promedio,
+    dia: r.dia,
+    cada,
+    desde: r.meses[0] ?? 1,
+    empresa_id: null,
+    cuenta_id: null,
+    moneda,
+  };
+}
 
 /** Marca de lo generado, para poder rehacerlo sin pisar lo escrito a mano. */
 export const origenDe = (anio: number): string => `proyeccion-${anio}`;

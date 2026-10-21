@@ -808,49 +808,69 @@ una fuente aparte de un solo glifo donde el byte `0x21` mapea a `U+0024`.
 
 ### El presupuesto sale de la proyección, no al revés
 
-**Esto reemplaza una decisión anterior**, y conviene saber qué cambió y qué no.
+**Esto reemplaza dos decisiones anteriores**, y conviene saber qué cambió y qué no.
 
-Lo que se descartó y sigue descartado: modelar **reglas** por proveedor ("GTD, día 14,
-mensual") y mantenerlas. Un proveedor cambia, es ocasional, o tiene un pago único; las
-reglas no se sostienen.
+Lo que se descartó y sigue descartado: modelar **reglas por proveedor** que vivan en la
+base, se mantengan vivas y generen el presupuesto del año entero. Un proveedor cambia, es
+ocasional, o tiene un pago único; las reglas no se sostienen.
 
-Lo que se decidió después: **copiar los movimientos reales de un período al año siguiente**.
-No es una regla — es la historia, que después se edita movimiento por movimiento. El pago de
-Entel de cada mes, el de GTD, el split de sueldos. Y el presupuesto operativo sale de
-**sumar esos proyectados**, en dos pasos visibles:
+Lo que se intentó después y **también se descartó**: copiar los movimientos reales de un
+período al año siguiente y elegir qué traer. La idea era buena para **saber qué se paga** y
+mala para **decidir qué se va a pagar**. El pasado viene con su desorden —un proveedor que
+aparece una vez con un monto enorme, una categoría que ya no se usa, 153 millones mal
+clasificados— y además la mitad de los montos cambian igual: los sueldos suben, el ingreso
+mínimo asegurado se renegocia y el IVA sale de las ventas del mes. Quien revisaba el cuadro
+terminaba mirando categorías que no eran las suyas.
 
-1. **Proyectar el año** (`lib/proyeccion.ts`): cada movimiento de la ventana se copia al
-   mismo mes y día del año destino, con sus líneas, como `proyectado`.
+**Lo que se hace: se escriben las líneas.** Proveedor, categoría, monto, día y cada cuánto
+—mensual, bimestral, trimestral, cuatrimestral, semestral o anual—, más desde qué mes
+arranca. Eso se expande en movimientos `proyectado` del año destino, y el presupuesto
+operativo sale de **sumarlos**. Dos pasos visibles:
+
+1. **Proyectar el año** (`lib/proyeccion.ts` · `components/presupuesto/ProyectarAnio.tsx`):
+   cada línea escrita se expande en sus movimientos, uno por mes en que cae.
 2. **Generar el operativo** desde esos movimientos, que es el mecanismo de más arriba
    apuntado al propio año destino.
 
-Por qué así y no al revés: el presupuesto y la proyección de caja eran **dos cosas separadas
-que podían no coincidir**. Saliendo el presupuesto de los proyectados, el flujo de caja del
-año y el control presupuestario dicen lo mismo por construcción — y de paso el año que viene
-aparece en el flujo, que es la otra mitad de lo que se quería ver.
+**No es volver a las reglas por proveedor.** La diferencia es qué queda guardado: la línea
+se expande una vez, en movimientos concretos y editables, y después se muere. En la base
+quedan los movimientos, no la regla — no hay nada que mantener vivo ni que se desactualice
+en silencio.
 
-**El doble conteo se resuelve solo.** Era el riesgo de la decisión anterior: presupuesto y
+Por qué el presupuesto sale de ahí y no al revés: eran **dos cosas separadas que podían no
+coincidir**. Saliendo el presupuesto de los proyectados, el flujo de caja del año y el
+control presupuestario dicen lo mismo por construcción — y de paso el año que viene aparece
+en el flujo, que es la otra mitad de lo que se quería ver.
+
+**El doble conteo se resuelve solo.** Era el riesgo de la primera decisión: presupuesto y
 movimientos proyectados sumando lo mismo dos veces. Con una sola fuente no hay dos que sumar.
 
-Lo demás, tal como estaba previsto:
+Detalles que costaron y no se deducen del código:
 
-- **Qué se copia se elige en dos niveles: categoría y proveedor**, no movimiento por
-  movimiento. El proveedor hace falta porque "Telefonía e internet · 12 meses" no dice si son
-  doce pagos a Entel o una mezcla de Entel y GTD, y sin eso se proyecta a ciegas.
-- **Y por cuántos meses.** Cada proveedor trae en cuántos apareció y cuántas veces repetirlo:
-  12 todo el año, 6 un contrato que termina a mitad, 1 un pago anual, 0 no se proyecta. Se
-  toman **los primeros meses del año destino**, no los primeros de la ventana: con un rango de
-  octubre a septiembre, "los primeros seis" tiene que querer decir enero a junio del año que se
-  está armando.
-- Los meses de una categoría se **unen**, no se suman: dos proveedores mensuales son doce
-  meses, no veinticuatro.
-- **Lo generado se distingue de lo cargado a mano** por `movimientos.origen = proyeccion-<año>`.
-  Rehacer la proyección borra por origen, así que **nunca pisa lo que alguien escribió**: sin
-  eso, nadie se atrevería a rehacerla.
-- Un movimiento entra **entero** si alguna de sus líneas cae en una categoría elegida. Recortarlo
-  daría un monto que no es el que sale del banco.
-- El reajuste se aplica **línea por línea y el monto se recalcula sumándolas**. Al revés, el
-  redondeo las separa y la base rechaza el movimiento por descuadre.
+- **El signo lo pone la categoría, no quien escribe.** El monto va en magnitud, como en la
+  planilla (§8). En una pantalla donde se cargan treinta líneas, un menos olvidado convierte
+  un gasto en ingreso y el flujo del año queda al revés sin que nada falle.
+- **La cuenta que paga se elige una vez, arriba, y no por línea.** No es comodidad:
+  `movimientos.empresa_id` y `cuenta_id` son `not null`, así que una línea sin cuenta no
+  falla al armarla sino al insertar, y se lleva puesta la corrida entera. Por eso
+  `MovimientoProyectado` las pide obligatorias y `expandirLinea` devuelve vacío sin ellas:
+  que lo pida el compilador antes que Postgres. Sin preseleccionar, porque elegir la cuenta
+  decide la empresa (§2).
+- **El día 31 se recorta al último del mes.** Febrero no tiene 31 y la base rechaza la fecha
+  inválida — y con ella toda la proyección, porque entra en una sola transacción.
+- **Lo que se pagó en la ventana quedó como consulta**, al lado del formulario, con un botón
+  para traer una línea ya rellena: la cadencia sale de en cuántos meses apareció y el día del
+  que más se repitió. Sirve para no olvidarse de un pago, no para decidir el monto. Por eso
+  `resumirPorCategoria` sigue existiendo y abre por **proveedor**: "Telefonía e internet · 12
+  meses" no dice si son doce pagos a Entel o una mezcla.
+- **Lo generado se distingue de lo cargado a mano** por `movimientos.origen =
+  proyeccion-<año>`. Rehacer la proyección borra por origen, así que **nunca pisa lo que
+  alguien escribió**: sin eso, nadie se atrevería a rehacerla.
+
+**Lo que falta.** Actualizar en enero los montos que cambiaron —sueldos, IMA, IVA— es hoy
+línea por línea en Movimientos. Falta la **edición en bloque de proyectados**: elegir varios
+y aplicarles un monto nuevo o un porcentaje. Y el **IVA** es estructuralmente distinto: sale
+de las ventas del mes, así que un monto fijo copiado siempre va a estar mal.
 
 ### El costo de personas se lleva por cargo, y a mano
 

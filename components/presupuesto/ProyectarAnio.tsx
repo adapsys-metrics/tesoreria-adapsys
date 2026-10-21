@@ -1,36 +1,46 @@
 "use client";
 
-// Elegir qué se proyecta al año siguiente, y por cuántos meses.
+// Escribir la proyección del año que viene.
 //
-// Copiar los ~1.200 movimientos operativos de un año traería todo lo ocasional, y
-// lo ocasional del año pasado se volvería compromiso del que viene hasta que
-// alguien lo saque de a uno.
+// Primero esto copiaba los movimientos del año anterior y se elegía qué traer. La
+// idea era buena para **saber qué se paga** y mala para **decidir qué se va a
+// pagar**: el pasado viene con su desorden —un proveedor que aparece una vez con
+// un monto enorme, una categoría que ya no se usa— y además la mitad de los
+// montos cambian igual, porque los sueldos suben, el IMA se renegocia y el IVA
+// sale de las ventas del mes.
 //
-// Se elige en dos niveles, que son los dos en que se piensa el gasto:
-//
-//   categoría   "Telefonía e internet"
-//     proveedor   GTD · 12 meses · proyectar 12
-//     proveedor   Entel · 12 meses · proyectar 12
-//
-// El proveedor hace falta: "Telefonía e internet · 12 meses" no dice si son doce
-// pagos a Entel o una mezcla, y sin saberlo uno proyecta a ciegas. Y los meses
-// hacen falta porque un contrato que termina en junio no son doce pagos, y un
-// seguro anual no son doce: es uno.
+// Así que la proyección se escribe: proveedor, categoría, monto, día y cada
+// cuánto. Y lo que se pagó el año pasado queda al lado, como consulta, con un
+// botón para traer una línea ya rellena — para no tener que acordarse de los
+// treinta y siete pagos, pero que cada número que quede sea uno elegido.
 
-import { Fragment, useState } from "react";
-import { claveRama, type Rama, type ResumenCategoria } from "@/lib/proyeccion";
-import { mag } from "@/lib/formato";
-import { mesLargo } from "@/lib/fechas";
+import { useMemo, useRef, useState } from "react";
+import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
+import {
+  PASO,
+  lineaDesdeRama,
+  mesesDeLinea,
+  type Cadencia,
+  type LineaRecurrente,
+  type Rama,
+  type ResumenCategoria,
+} from "@/lib/proyeccion";
+import { clp, mag } from "@/lib/formato";
+import { MESES, MESES_CORTOS, mesLargo } from "@/lib/fechas";
+import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { BotonFantasma, clases } from "@/components/ui/primitivas";
 import css from "./presupuesto.module.css";
+
+const CADENCIAS = Object.keys(PASO) as Cadencia[];
+const claveDeRama = (r: Rama) => `${r.categoria_id}|${r.contraparte}`;
 
 export function ProyectarAnio({
   resumen,
   anio,
   ventana,
-  reajuste,
   nombreDe,
   cuantosMovimientos,
+  totalDe,
   yaGenerados,
   confirmar,
   cancelar,
@@ -38,54 +48,63 @@ export function ProyectarAnio({
   resumen: ResumenCategoria[];
   anio: number;
   ventana: { desde: string; hasta: string };
-  reajuste: number;
   nombreDe: (categoria_id: string) => string;
-  /** Cuántos movimientos saldrían de esta elección. */
-  cuantosMovimientos: (eleccion: Map<string, number>) => number;
-  /** Cuántos ya se generaron antes para este año. Proyectar los reemplaza, y los
-   *  ajustes que alguien les haya hecho encima se pierden: hay que decirlo. */
+  /** Cuántos movimientos saldrían de estas líneas. */
+  cuantosMovimientos: (lineas: LineaRecurrente[]) => number;
+  /** Cuánto suman, con el signo ya resuelto por la naturaleza. */
+  totalDe: (lineas: LineaRecurrente[]) => number;
+  /** Cuántos ya se generaron antes para este año. Proyectar los reemplaza. */
   yaGenerados: number;
-  confirmar: (eleccion: Map<string, number>) => void;
+  confirmar: (lineas: LineaRecurrente[]) => void;
   cancelar: () => void;
 }) {
-  // Arranca con todo completo: es más rápido recortar lo ocasional que marcar lo
-  // mensual, porque lo mensual es casi todo.
-  const [eleccion, setEleccion] = useState<Map<string, number>>(
-    () =>
-      new Map(
-        resumen.flatMap((c) =>
-          c.ramas.map((r) => [claveRama(r.categoria_id, r.contraparte), r.meses.length] as const)
-        )
-      )
+  // Las cuentas del contexto van sin filtrar por empresa a propósito: el
+  // presupuesto es consolidado y el filtro global no aplica (§4.6).
+  const { cuentas, empresas } = useTesoreria();
+  const deBanco = useMemo(
+    () => cuentas.filter((c) => c.tipo === "banco" && c.moneda === "CLP"),
+    [cuentas]
   );
+  const nombreEmpresa = (id: string) => empresas.find((e) => e.id === id)?.corto ?? id;
+
+  const [vista, setVista] = useState<"escribir" | "historia">("escribir");
+  const [cuentaId, setCuentaId] = useState("");
+  const [lineas, setLineas] = useState<LineaRecurrente[]>([]);
   const [abiertas, setAbiertas] = useState<Set<string>>(new Set());
+  const siguiente = useRef(0);
 
-  const fijar = (k: string, n: number) =>
-    setEleccion((p) => new Map(p).set(k, Math.max(0, n)));
+  const nuevaId = () => `l${++siguiente.current}`;
 
-  const fijarCategoria = (c: ResumenCategoria, lleno: boolean) =>
-    setEleccion((p) => {
-      const siguiente = new Map(p);
-      for (const r of c.ramas) {
-        siguiente.set(claveRama(r.categoria_id, r.contraparte), lleno ? r.meses.length : 0);
-      }
-      return siguiente;
-    });
+  const agregar = (l?: LineaRecurrente) =>
+    setLineas((p) => [
+      ...p,
+      l ?? {
+        id: nuevaId(),
+        contraparte: "",
+        categoria_id: "",
+        subcategoria_id: null,
+        monto: 0,
+        dia: 1,
+        cada: "mensual",
+        desde: 1,
+        empresa_id: null,
+        cuenta_id: null,
+        moneda: "CLP",
+      },
+    ]);
 
-  const mesesDe = (r: Rama) => eleccion.get(claveRama(r.categoria_id, r.contraparte)) ?? 0;
-  const activa = (c: ResumenCategoria) => c.ramas.some((r) => mesesDe(r) > 0);
+  const editar = <K extends keyof LineaRecurrente>(
+    id: string,
+    campo: K,
+    valor: LineaRecurrente[K]
+  ) => setLineas((p) => p.map((l) => (l.id === id ? { ...l, [campo]: valor } : l)));
 
-  const todo = (lleno: boolean) =>
-    setEleccion(
-      new Map(
-        resumen.flatMap((c) =>
-          c.ramas.map(
-            (r) =>
-              [claveRama(r.categoria_id, r.contraparte), lleno ? r.meses.length : 0] as const
-          )
-        )
-      )
-    );
+  const quitar = (id: string) => setLineas((p) => p.filter((l) => l.id !== id));
+
+  const traer = (r: Rama) => {
+    agregar(lineaDesdeRama(r, nuevaId()));
+    setVista("escribir");
+  };
 
   const alternarAbierta = (id: string) =>
     setAbiertas((p) => {
@@ -95,18 +114,26 @@ export function ProyectarAnio({
       return s;
     });
 
-  const cuantos = cuantosMovimientos(eleccion);
-  const cuantasActivas = resumen.filter(activa).length;
+  // La cuenta manda: ella determina empresa y moneda (§2). Un movimiento sin
+  // cuenta la base lo rechaza —`empresa_id` y `cuenta_id` son not null—, así que
+  // sin elegirla no hay nada que crear.
+  const cuenta = deBanco.find((c) => c.id === cuentaId) ?? null;
 
-  /** Lo que aporta una rama con los meses elegidos. Proporcional a lo observado:
-   *  cortar a la mitad los meses deja la mitad del monto. */
-  const totalDe = (r: Rama) =>
-    r.meses.length === 0 ? 0 : Math.round((r.total * mesesDe(r)) / r.meses.length);
-
-  const totalElegido = resumen.reduce(
-    (t, c) => t + c.ramas.reduce((s, r) => s + totalDe(r), 0),
-    0
-  );
+  // Solo las completas generan algo: sin categoría el movimiento no llegaría al
+  // presupuesto, y sin monto no hay nada que proyectar.
+  const listas = cuenta
+    ? lineas
+        .filter((l) => l.categoria_id && l.monto !== 0)
+        .map((l) => ({
+          ...l,
+          empresa_id: cuenta.empresa_id,
+          cuenta_id: cuenta.id,
+          moneda: cuenta.moneda,
+        }))
+    : [];
+  const cuantos = cuantosMovimientos(listas);
+  const total = totalDe(listas);
+  const incompletas = lineas.filter((l) => !l.categoria_id || l.monto === 0).length;
 
   return (
     <div className={css.velo} role="dialog" aria-label={`Proyectar ${anio}`} onClick={cancelar}>
@@ -116,18 +143,24 @@ export function ProyectarAnio({
       >
         <h2 className={css.tituloCuadro}>Proyectar {anio}</h2>
 
-        <p className={css.notaCuadro}>
-          Copia los movimientos de {mesLargo(ventana.desde)} a {mesLargo(ventana.hasta)} al
-          mismo mes y día de {anio}, como proyectados
-          {reajuste !== 0 && `, con ${reajuste > 0 ? "+" : ""}${reajuste}% de reajuste`}. El
-          presupuesto operativo sale después de sumarlos.
-        </p>
-
-        <p className={css.notaCuadro}>
-          <strong>Meses</strong> es en cuántos apareció. <strong>Proyectar</strong> es cuántas
-          veces se repite en {anio}: 12 todo el año, 6 un contrato que termina a mitad, 1 un
-          pago anual, 0 no se proyecta. Se toman los primeros meses del año.
-        </p>
+        <div className={css.pestanas}>
+          <button
+            type="button"
+            onClick={() => setVista("escribir")}
+            aria-pressed={vista === "escribir"}
+            className={clases(css.pestana, vista === "escribir" && css.pestanaActiva)}
+          >
+            Escribir las líneas
+          </button>
+          <button
+            type="button"
+            onClick={() => setVista("historia")}
+            aria-pressed={vista === "historia"}
+            className={clases(css.pestana, vista === "historia" && css.pestanaActiva)}
+          >
+            Lo que pagué el año pasado
+          </button>
+        </div>
 
         {yaGenerados > 0 && (
           <p className={css.avisoCuadro}>
@@ -138,112 +171,231 @@ export function ProyectarAnio({
           </p>
         )}
 
-        <div className={css.barraElegir}>
-          <BotonFantasma onClick={() => todo(true)}>Marcar todas</BotonFantasma>
-          <BotonFantasma onClick={() => todo(false)}>Ninguna</BotonFantasma>
-          <span className={css.empuje} />
-          <span className={css.cuentaElegidas}>
-            {cuantasActivas} de {resumen.length} · {cuantos}{" "}
-            {cuantos === 1 ? "movimiento" : "movimientos"} · {mag(totalElegido)}
-          </span>
-        </div>
+        {vista === "escribir" ? (
+          <>
+            <p className={css.notaCuadro}>
+              Cada línea es un pago que se repite. El signo lo pone la categoría: un gasto sale
+              negativo sin que haya que escribir el menos. Todo en pesos — un pago en dólares
+              se carga después como movimiento.
+            </p>
 
-        <div className={css.listaPrevia}>
-          <table className={css.tablaPrevia}>
-            <thead>
-              <tr>
-                <th />
-                <th>Categoría y proveedor</th>
-                <th className={css.numPrevia}>Meses</th>
-                <th className={css.numPrevia}>Proyectar</th>
-                <th className={css.numPrevia}>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resumen.map((c) => {
-                const nombre = nombreDe(c.categoria_id);
-                const abierta = abiertas.has(c.categoria_id);
-                const marcada = activa(c);
-                const total = c.ramas.reduce((t, r) => t + totalDe(r), 0);
+            {/* La cuenta va una sola vez y no por línea: casi todo se paga desde la
+                misma, y cada movimiento queda editable después. Sin preseleccionar,
+                porque elegirla mueve plata de empresa (§2). */}
+            <label className={css.campoCuadro}>
+              Paga desde
+              <select
+                value={cuentaId}
+                onChange={(e) => setCuentaId(e.target.value)}
+                className={css.selectLinea}
+              >
+                <option value="">— elegí la cuenta —</option>
+                {deBanco.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {nombreEmpresa(c.empresa_id)} · {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-                return (
-                  <Fragment key={c.categoria_id}>
-                    <tr className={!marcada ? css.filaDesmarcada : undefined}>
+            <div className={css.listaPrevia}>
+              <table className={css.tablaPrevia}>
+                <thead>
+                  <tr>
+                    <th>Proveedor</th>
+                    <th>Categoría</th>
+                    <th className={css.numPrevia}>Monto</th>
+                    <th className={css.numPrevia}>Día</th>
+                    <th>Cada</th>
+                    <th>Desde</th>
+                    <th className={css.numPrevia}>Movs</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {lineas.map((l, i) => (
+                    <tr key={l.id}>
                       <td>
                         <input
-                          type="checkbox"
-                          checked={marcada}
-                          onChange={() => fijarCategoria(c, !marcada)}
-                          aria-label={`Proyectar ${nombre}`}
+                          value={l.contraparte}
+                          onChange={(e) => editar(l.id, "contraparte", e.target.value)}
+                          placeholder="Entel"
+                          aria-label={`Proveedor de la línea ${i + 1}`}
+                          className={css.entradaLinea}
                         />
+                      </td>
+                      <td className={css.celdaCategoria}>
+                        <SelectorCategoria
+                          valor={l.categoria_id || null}
+                          onChange={(id) => editar(l.id, "categoria_id", id)}
+                          compacto
+                        />
+                      </td>
+                      <td className={css.numPrevia}>
+                        <input
+                          type="number"
+                          value={l.monto || ""}
+                          onChange={(e) => editar(l.id, "monto", Number(e.target.value) || 0)}
+                          placeholder="0"
+                          aria-label={`Monto de la línea ${i + 1}`}
+                          className={clases(css.entradaLinea, css.entradaMontoLinea)}
+                        />
+                      </td>
+                      <td className={css.numPrevia}>
+                        <input
+                          type="number"
+                          min={1}
+                          max={31}
+                          value={l.dia}
+                          onChange={(e) => editar(l.id, "dia", Number(e.target.value) || 1)}
+                          aria-label={`Día de la línea ${i + 1}`}
+                          className={css.entradaMeses}
+                        />
+                      </td>
+                      <td>
+                        <select
+                          value={l.cada}
+                          onChange={(e) => editar(l.id, "cada", e.target.value as Cadencia)}
+                          aria-label={`Cada cuánto cae la línea ${i + 1}`}
+                          className={css.selectLinea}
+                        >
+                          {CADENCIAS.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={l.desde}
+                          onChange={(e) => editar(l.id, "desde", Number(e.target.value))}
+                          aria-label={`Desde qué mes cae la línea ${i + 1}`}
+                          className={css.selectLinea}
+                        >
+                          {MESES.map((m, j) => (
+                            <option key={m} value={j + 1}>
+                              {MESES_CORTOS[j]}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className={css.numPrevia}>
+                        {l.categoria_id && l.monto ? mesesDeLinea(l.cada, l.desde).length : "—"}
                       </td>
                       <td>
                         <button
                           type="button"
-                          onClick={() => alternarAbierta(c.categoria_id)}
-                          aria-expanded={abierta}
-                          className={css.abrirRama}
+                          onClick={() => quitar(l.id)}
+                          aria-label={`Quitar la línea ${i + 1}`}
+                          className={css.borrarLinea}
                         >
-                          <span className={clases(css.flechaRama, abierta && css.flechaAbierta)}>
-                            ▸
-                          </span>
-                          {nombre}
-                          <span className={css.cuantosProveedores}>
-                            {c.ramas.length}{" "}
-                            {c.ramas.length === 1 ? "proveedor" : "proveedores"}
-                          </span>
+                          ×
                         </button>
                       </td>
-                      {/* Lo que aparece en uno o dos meses casi siempre es
-                          ocasional: es lo que conviene mirar dos veces antes de
-                          volverlo compromiso del año que viene. */}
-                      <td className={clases(css.numPrevia, c.meses <= 2 && css.mesesPocos)}>
-                        {c.meses}
-                      </td>
-                      <td className={css.numPrevia} />
-                      <td className={css.numPrevia}>{mag(total)}</td>
                     </tr>
+                  ))}
+                </tbody>
+              </table>
 
-                    {abierta &&
-                      c.ramas.map((r) => {
-                        const k = claveRama(r.categoria_id, r.contraparte);
-                        const n = mesesDe(r);
-                        const quien = r.contraparte || "sin proveedor";
-                        return (
-                          <tr key={k} className={clases(css.filaRama, n === 0 && css.filaDesmarcada)}>
-                            <td />
-                            <td className={css.nombreRama}>{quien}</td>
-                            <td className={clases(css.numPrevia, r.meses.length <= 2 && css.mesesPocos)}>
-                              {r.meses.length}
-                            </td>
-                            <td className={css.numPrevia}>
-                              <input
-                                type="number"
-                                min={0}
-                                max={r.meses.length}
-                                value={n}
-                                onChange={(e) => fijar(k, Number(e.target.value) || 0)}
-                                aria-label={`Meses a proyectar de ${quien} en ${nombre}`}
-                                className={css.entradaMeses}
-                              />
-                            </td>
-                            <td className={css.numPrevia}>{mag(totalDe(r))}</td>
-                          </tr>
-                        );
-                      })}
-                  </Fragment>
+              {lineas.length === 0 && (
+                <p className={css.vacioLineas}>
+                  Todavía no hay líneas. Escribí una, o traelas desde lo que pagaste el año
+                  pasado.
+                </p>
+              )}
+            </div>
+
+            <div className={css.barraElegir}>
+              <BotonFantasma onClick={() => agregar()}>+ línea</BotonFantasma>
+              <span className={css.empuje} />
+              <span className={css.cuentaElegidas}>
+                {!cuenta && lineas.length > 0 && (
+                  <span className={css.mesesPocos}>falta la cuenta · </span>
+                )}
+                {incompletas > 0 && (
+                  <span className={css.mesesPocos}>{incompletas} sin completar · </span>
+                )}
+                {listas.length} {listas.length === 1 ? "línea" : "líneas"} · {cuantos}{" "}
+                {cuantos === 1 ? "movimiento" : "movimientos"} · {clp(total)}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className={css.notaCuadro}>
+              De {mesLargo(ventana.desde)} a {mesLargo(ventana.hasta)}, por proveedor.{" "}
+              <strong>Traer</strong> escribe la línea con el monto por mes y el día que más se
+              repitió, y queda editable.
+            </p>
+
+            <div className={css.listaPrevia}>
+              {resumen.map((c) => {
+                const abierta = abiertas.has(c.categoria_id);
+                return (
+                  <div key={c.categoria_id} className={css.grupoHistoria}>
+                    <button
+                      type="button"
+                      onClick={() => alternarAbierta(c.categoria_id)}
+                      aria-expanded={abierta}
+                      className={css.abrirRama}
+                    >
+                      <span className={clases(css.flechaRama, abierta && css.flechaAbierta)}>
+                        ▸
+                      </span>
+                      {nombreDe(c.categoria_id)}
+                      <span className={css.cuantosProveedores}>
+                        {c.ramas.length} {c.ramas.length === 1 ? "proveedor" : "proveedores"} ·{" "}
+                        {mag(c.total)}
+                      </span>
+                    </button>
+
+                    {abierta && (
+                      <table className={css.tablaPrevia}>
+                        <tbody>
+                          {c.ramas.map((r) => (
+                            <tr key={claveDeRama(r)}>
+                              <td className={css.nombreRama}>
+                                {r.contraparte || "sin proveedor"}
+                              </td>
+                              <td
+                                className={clases(
+                                  css.numPrevia,
+                                  r.meses.length <= 2 && css.mesesPocos
+                                )}
+                              >
+                                {r.meses.length} {r.meses.length === 1 ? "mes" : "meses"}
+                              </td>
+                              <td className={css.numPrevia}>{mag(r.promedio)} / mes</td>
+                              <td className={css.numPrevia}>{mag(r.total)}</td>
+                              <td className={css.numPrevia}>
+                                <button
+                                  type="button"
+                                  onClick={() => traer(r)}
+                                  aria-label={`Traer ${r.contraparte || "sin proveedor"} de ${nombreDe(c.categoria_id)}`}
+                                  className={css.botonTraer}
+                                >
+                                  traer
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </>
+        )}
 
         <div className={css.accionesCuadro}>
           <BotonFantasma onClick={cancelar}>Cancelar</BotonFantasma>
           <button
             type="button"
             disabled={cuantos === 0}
-            onClick={() => confirmar(eleccion)}
+            onClick={() => confirmar(listas)}
             className={css.botonAjustar}
           >
             Crear {cuantos} {cuantos === 1 ? "movimiento" : "movimientos"}

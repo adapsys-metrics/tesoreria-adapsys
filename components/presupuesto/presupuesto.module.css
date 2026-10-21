@@ -760,3 +760,130 @@
   outline: none;
   border-color: var(--teal);
 }
+
+/* ── Escribir la proyección ── */
+
+.pestanas {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.pestana {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  padding: 6px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--muted);
+}
+
+.pestana:hover {
+  color: var(--teal);
+}
+
+.pestanaActiva {
+  border-bottom-color: var(--teal);
+  color: var(--teal);
+  font-weight: 600;
+}
+
+.entradaLinea {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--borde-control);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 11.5px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.entradaLinea:focus,
+.selectLinea:focus {
+  outline: none;
+  border-color: var(--teal);
+}
+
+.entradaMontoLinea {
+  width: 94px;
+  text-align: right;
+  font-family: var(--font-cifras);
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+}
+
+.entradaMontoLinea::-webkit-outer-spin-button,
+.entradaMontoLinea::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+.selectLinea {
+  border: 1px solid var(--borde-control);
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 11px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* El selector de categoría trae su propio ancho; acá necesita uno acotado o se
+   come la fila. */
+.celdaCategoria {
+  max-width: 220px;
+}
+
+.borrarLinea {
+  border: 0;
+  background: none;
+  padding: 0 4px;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--tenue);
+}
+
+.borrarLinea:hover {
+  color: var(--brick);
+}
+
+.vacioLineas {
+  margin: 0;
+  padding: 18px 14px;
+  font-size: 11.5px;
+  color: var(--muted-claro);
+  text-align: center;
+}
+
+.grupoHistoria {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.botonTraer {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--teal-soft);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--teal);
+}
+
+.botonTraer:hover {
+  background: var(--teal-soft);
+}
+
+/* La cuenta que paga, arriba del formulario. Una sola para todas las líneas. */
+.campoCuadro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
