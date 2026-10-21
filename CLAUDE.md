@@ -24,7 +24,12 @@ Adapsys (CLA Adaptación Ltda) es una consultora chilena. Administración y fina
 **3 personas**, todas con permiso de escritura. No hay necesidad de roles complejos al día uno.
 
 **Son 3 personas, no "el dominio".** El acceso va por lista explícita en la tabla
-`usuarios_autorizados`, administrable desde el panel de Supabase. Filtrar solo por
+`usuarios_autorizados`, administrable desde el panel de Supabase. Esa misma tabla lleva el
+**nombre**, y es de ahí que sale el que se ve en la barra superior — no del perfil de
+Google, que dice lo que cada quien tenga puesto ahí. El correo no se pierde: va en el
+title, y **pasa al frente cuando el nombre no se resuelve**, que es justo el caso en que
+alguien está averiguando con qué cuenta entró. La política `propia_fila` ya permite esa
+lectura, así que no hizo falta tocar permisos. Filtrar solo por
 `@adapsysgroup.com` dejaría entrar a consultores y operaciones a ver los saldos de las cinco
 sociedades, los sueldos por persona y los retiros de socios. Los dos filtros conviven: hay que
 estar en la lista **y** tener correo corporativo.

@@ -419,7 +419,9 @@
   font-size: 11px;
 }
 
-.correo {
+/* Quién está firmado. El ancho máximo y el recorte siguen porque cuando el nombre
+   no se resuelve cae el correo, que sí es largo. */
+.quien {
   color: var(--muted);
   max-width: 190px;
   overflow: hidden;
