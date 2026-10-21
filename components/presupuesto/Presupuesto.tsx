@@ -92,11 +92,22 @@ export function Presupuesto() {
     // columna vale cero y la tabla diría que no se gastó nada en el año.
     cargando: cargandoMovimientos,
   } = useTesoreria();
-  // Por clave, no por categoría: una subcategoría puede sobrescribir la naturaleza
-  // de su madre (§4.2) y generar lo operativo mirando solo la categoría metería
-  // sus líneas de inversión en la sección equivocada.
-  const esOperativa = (categoria_id: string, subcategoria_id: string | null) =>
-    catalogo.naturalezaDe(categoria_id, subcategoria_id) === "operativo";
+  /**
+   * Qué líneas presupuesta la generación.
+   *
+   * Operativas **y dentro del control**. Lo segundo faltaba, y escribía en la base
+   * un presupuesto para los depósitos a plazo, los fondos mutuos y todo `7
+   * INVERSIONES`: categorías operativas de un grupo que está fuera del control a
+   * propósito. No se veía porque la tabla solo muestra los grupos controlados, así
+   * que eran filas invisibles en `presupuesto_meses`.
+   *
+   * Por clave y no por categoría: una subcategoría puede sobrescribir la
+   * naturaleza de su madre (§4.2), y mirando solo la categoría sus líneas de
+   * inversión irían a la sección equivocada.
+   */
+  const sePresupuesta = (categoria_id: string, subcategoria_id: string | null) =>
+    catalogo.naturalezaDe(categoria_id, subcategoria_id) === "operativo" &&
+    catalogo.entraAlControl(categoria_id);
   const [detalle, setDetalle] = useState<Detalle | null>(null);
 
   const [anio, setAnio] = useState(() => Number(HOY.slice(0, 4)));
@@ -272,6 +283,9 @@ export function Presupuesto() {
           // se encarga `clavesDe`, que devuelve solo las que caen de este lado.
           const categorias = catalogo
             .categoriasDe(grupo.id)
+            // Una categoría excluida a mano sale del control aunque su grupo esté
+            // dentro. Su gasto no se pierde: baja a la banda de fuera de control.
+            .filter((s) => s.controlada)
             .map((s) => {
               const hijas = catalogo.subcategoriasDe(s.id);
               const filas = catalogo
@@ -323,7 +337,7 @@ export function Presupuesto() {
     const generado = distribucionOperativa(
       delPresupuesto,
       ventana,
-      esOperativa,
+      sePresupuesta,
       tc,
       1 + reajuste / 100
     );
@@ -346,14 +360,31 @@ export function Presupuesto() {
   /** Lo que queda fuera del control, con su gasto. Se muestra igual para que nadie
    *  olvide que existe: son millones que salen de la caja aunque no se presupuesten. */
   const fueraDeControl = useMemo(() => {
+    // El gasto de una categoría es el suyo más el de sus subcategorías: desde que
+    // el ejecutado va por clave (§3.1), mirar solo `categoria_id` deja fuera lo
+    // que se clasificó con más detalle.
+    const gastoDe = (categoria_id: string) =>
+      (ejecutado.get(categoria_id) ?? 0) +
+      catalogo
+        .subcategoriasDe(categoria_id)
+        .reduce((t, h) => t + (ejecutado.get(clave(categoria_id, h.id)) ?? 0), 0);
+
     const grupos = catalogo.grupos
-      .filter((c) => !c.controlado)
-      .map((grupo) => ({
-        grupo,
-        real: catalogo
+      .map((grupo) => {
+        // Lo que no entra al control: el grupo entero, o las categorías excluidas
+        // a mano dentro de un grupo que sí entra. Si no aparecieran acá, esa plata
+        // desaparecería del informe sin que nadie lo note.
+        const fuera = catalogo
           .categoriasDe(grupo.id)
-          .reduce((t, s) => t + (ejecutado.get(s.id) ?? 0), 0),
-      }))
+          .filter((s) => !grupo.controlado || !s.controlada);
+        return {
+          grupo,
+          // Con el grupo entero fuera, su nombre alcanza. Si solo se excluyeron
+          // algunas de sus categorías, hay que decir cuáles.
+          detalle: grupo.controlado ? fuera.map((s) => s.nombre) : [],
+          real: fuera.reduce((t, s) => t + gastoDe(s.id), 0),
+        };
+      })
       .filter((c) => c.real > 0);
     return { grupos, total: grupos.reduce((t, c) => t + c.real, 0) };
   }, [ejecutado, catalogo]);
@@ -559,15 +590,24 @@ export function Presupuesto() {
         <div className={css.fuera}>
           <Rotulo texto="Fuera del control presupuestario" />
           <p className={css.glosaFuera}>
-            Impuestos, comisiones bancarias, inversiones, préstamos y movimientos con socios. No se
-            presupuestan —salen de lo que se factura, de lo que se mueve o de una decisión de los
-            dueños— pero igual salen de la caja.
+            Impuestos, comisiones bancarias, inversiones, préstamos y movimientos con socios,
+            más las categorías sueltas que se excluyeron a mano. No se presupuestan —salen de lo
+            que se factura, de lo que se mueve o de una decisión de los dueños— pero igual salen
+            de la caja.
           </p>
           <table className={css.tablaFuera}>
             <tbody>
-              {fueraDeControl.grupos.map(({ grupo, real }) => (
+              {fueraDeControl.grupos.map(({ grupo, detalle, real }) => (
                 <tr key={grupo.id}>
-                  <td className={tabla.td}>{grupo.nombre}</td>
+                  <td className={tabla.td}>
+                    {grupo.nombre}
+                    {/* El grupo entra al control y solo se excluyeron algunas de
+                        sus categorías: sin nombrarlas, la fila diría que el grupo
+                        está fuera, que no es cierto. */}
+                    {detalle.length > 0 && (
+                      <span className={css.detalleFuera}> · {detalle.join(", ")}</span>
+                    )}
+                  </td>
                   <td className={clases(tabla.td, tabla.tdNum)}>{mag(real)}</td>
                 </tr>
               ))}

@@ -77,6 +77,7 @@ export type Database = {
           nombre: string;
           naturaleza: Naturaleza;
           activa: boolean;
+          controlada: boolean;
           por_cargos: boolean;
         };
         Insert: {
@@ -85,6 +86,7 @@ export type Database = {
           nombre: string;
           naturaleza: Naturaleza;
           activa?: boolean;
+          controlada?: boolean;
           por_cargos?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["categorias"]["Insert"]>;

@@ -90,6 +90,18 @@ export type Indices = {
    * podría partir entre sus dos naturalezas: todo caería en la misma celda.
    */
   claveDe: (categoria_id: string | null, subcategoria_id?: string | null) => string;
+  /**
+   * ¿Esta línea entra al control presupuestario?
+   *
+   * Se compone en dos niveles: entra si **su grupo entra y ella no está
+   * excluida**. El grupo saca lo grueso —impuestos, bancos, inversiones,
+   * préstamos y socios no son gasto que se decida presupuestar— y la categoría
+   * saca lo que dentro de un grupo controlado tampoco lo es.
+   *
+   * Lo que queda fuera **sigue saliendo de la caja** y se muestra en su banda
+   * (§4.6). Excluir no es borrar.
+   */
+  entraAlControl: (categoria_id: string | null) => boolean;
   /** Las claves de una categoría que caen de un lado. Una categoría mixta devuelve
    *  unas en inversión y otras en operativo, y por eso aparece en las dos secciones. */
   clavesDe: (categoria_id: string, naturaleza: Naturaleza) => string[];
@@ -138,6 +150,7 @@ export function crearIndices(
         nombre: id ? `${id} (no existe en el catálogo)` : "Sin clasificar",
         naturaleza: "operativo",
         activa: false,
+        controlada: false,
         por_cargos: false,
       };
     },
@@ -162,6 +175,12 @@ export function crearIndices(
       return categoria_id ? (porIdSub.get(categoria_id)?.naturaleza ?? "operativo") : "operativo";
     },
     claveDe: clave,
+    entraAlControl: (categoria_id) => {
+      if (!categoria_id) return false;
+      const cat = porIdSub.get(categoria_id);
+      if (!cat) return false;
+      return (porIdCat.get(cat.grupo_id)?.controlado ?? false) && cat.controlada;
+    },
     clavesDe: (categoria_id, naturaleza) => {
       const propia = porIdSub.get(categoria_id)?.naturaleza;
       const claves: string[] = [];

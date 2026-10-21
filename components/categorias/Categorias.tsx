@@ -36,6 +36,7 @@ export function Categorias() {
     alternarControlado,
     alternarActiva,
     alternarPorCargos,
+    alternarControlada,
     crearGrupo,
     crearCategoria,
     borrarCategoria,
@@ -428,6 +429,29 @@ export function Categorias() {
                             className={clases(css.insignia, css.toggle, !s.activa && css.insigniaFuera)}
                           >
                             {s.activa ? "activa" : "inactiva"}
+                          </button>
+
+                          {/* Fuera del control sin sacar el grupo entero: dentro
+                              de un grupo controlado hay líneas que no son gasto
+                              que se decida presupuestar —los depósitos a plazo
+                              dependen de si hay caja—. Su gasto se sigue viendo
+                              en la banda aparte. */}
+                          <button
+                            type="button"
+                            onClick={() => alternarControlada(s.id)}
+                            aria-pressed={s.controlada}
+                            title={
+                              s.controlada
+                                ? "Entra al control presupuestario"
+                                : "Fuera del control presupuestario. Su gasto se sigue mostrando en la banda aparte, porque igual sale de la caja."
+                            }
+                            className={clases(
+                              css.insignia,
+                              css.toggle,
+                              !s.controlada && css.insigniaFuera
+                            )}
+                          >
+                            {s.controlada ? "presupuesta" : "no presupuesta"}
                           </button>
 
                           {/* Una categoría que se lleva por cargos: sus

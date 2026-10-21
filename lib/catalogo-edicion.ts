@@ -105,6 +105,7 @@ export function parsearCatalogo(texto: string, existentes = new Set<string>()): 
       nombre: limpio,
       naturaleza: nat ?? naturaleza,
       activa: true,
+      controlada: true,
       // Nace sin cargos: llevar una categoría por cargos es una decisión del
       // maestro, no algo que un listado pegado deba resolver.
       por_cargos: false,

@@ -320,6 +320,20 @@ como vinieron.
 - Líneas fuera del control presupuestario (retiros de socios, préstamos, inversiones) se excluyen
   pero se muestran en una banda aparte para que nadie olvide que existen.
 
+**La exclusión va en dos niveles y se compone.** `grupos.controlado` saca lo grueso —impuestos,
+bancos, inversiones, préstamos y socios no son gasto que se decida presupuestar— y
+`categorias.controlada` saca una línea suelta dentro de un grupo que sí entra: los depósitos a
+plazo dependen de si hay caja para generarlos, y antes no había forma de sacarlos sin sacar
+`7 INVERSIONES` entero. Una línea entra si **su grupo entra y ella no está excluida**.
+
+Y **excluir no es borrar**: lo excluido sigue saliendo de la caja, así que baja a la banda
+aparte. Cuando solo se excluyen algunas categorías de un grupo controlado, la banda las nombra —
+decir solo el nombre del grupo haría creer que el grupo entero quedó fuera.
+
+Ojo con esto al generar: la generación tiene que filtrar **por el control y no solo por la
+naturaleza**. Faltaba, y escribía presupuesto para todo `7 INVERSIONES` —categorías operativas de
+un grupo excluido— en filas que la tabla nunca mostraba.
+
 ### El año siguiente se arma desde los doce meses ya cerrados
 
 *Generar operativo* suma los movimientos operativos de una ventana por categoría y los

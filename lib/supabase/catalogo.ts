@@ -31,7 +31,7 @@ export async function cargarCatalogo(supabase: SupabaseClient<Database>): Promis
           .from("categorias")
           // La lista va explícita y por eso hay que acordarse de ampliarla: una
           // columna nueva que no esté acá no llega, y el tipo deja de calzar.
-          .select("id,grupo_id,nombre,naturaleza,activa,por_cargos")
+          .select("id,grupo_id,nombre,naturaleza,activa,controlada,por_cargos")
           .order("grupo_id")
           .order("nombre")
           .range(desde, desde + TAMANO_PAGINA - 1);

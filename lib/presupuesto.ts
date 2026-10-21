@@ -170,7 +170,10 @@ export function distribucionOperativa(
    *  octubre, los meses 11 y 12 salen del año anterior y el resto del actual. Eso
    *  es lo que permite armar el año que viene antes de que termine éste. */
   rango: { desde: string; hasta: string },
-  esOperativa: (categoria_id: string, subcategoria_id: string | null) => boolean,
+  /** Qué líneas presupuesta: operativas y dentro del control. Lo segundo importa
+   *  — sin eso se genera presupuesto para los depósitos a plazo y todo lo que el
+   *  control excluye a propósito, en filas que la tabla nunca muestra. */
+  sePresupuesta: (categoria_id: string, subcategoria_id: string | null) => boolean,
   tc: number,
   /** Factor sobre cada mes: 1,05 sube todo un 5%. El reajuste del año se aplica
    *  acá y no después para que el reparto conserve su forma. */
@@ -187,7 +190,7 @@ export function distribucionOperativa(
     // planificado es el único dato que hay.
     if (fila.estado === "proyectado" && fila.fecha < hoy) continue;
     if (fila.fecha < desde || fila.fecha > hasta) continue;
-    if (!fila.categoria_id || !esOperativa(fila.categoria_id, fila.subcategoria_id)) continue;
+    if (!fila.categoria_id || !sePresupuesta(fila.categoria_id, fila.subcategoria_id)) continue;
     // Por clave y no por categoría, para que lo que se genera caiga en las mismas
     // líneas contra las que después se compara.
     const k = clave(fila.categoria_id, fila.subcategoria_id);

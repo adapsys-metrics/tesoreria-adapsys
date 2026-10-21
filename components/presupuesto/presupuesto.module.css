@@ -649,3 +649,10 @@
   margin-right: 6px;
   color: var(--amber);
 }
+
+/* Las categorías excluidas a mano dentro de un grupo que sí entra al control. Van
+   nombradas y en tono menor: lo que manda en la fila es el grupo. */
+.detalleFuera {
+  font-size: 11px;
+  color: var(--muted-claro);
+}

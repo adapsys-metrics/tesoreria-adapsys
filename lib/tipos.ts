@@ -79,6 +79,10 @@ export type Categoria = {
   nombre: string;
   naturaleza: Naturaleza;
   activa: boolean;
+  /** Entra al control presupuestario. Se compone con `grupos.controlado`: una
+   *  línea entra si su grupo entra **y** ella no está excluida (0020). Lo excluido
+   *  se sigue mostrando en la banda aparte: igual sale de la caja. */
+  controlada: boolean;
   /** Sus subcategorías son cargos y llevan el nombre de quien los ocupa (0019).
    *  Cambia cómo se piden en el mantenedor, no cómo se agregan: un cargo es una
    *  subcategoría como cualquier otra. */

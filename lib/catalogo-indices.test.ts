@@ -13,6 +13,7 @@ const CAT: Categoria = {
   nombre: "Equipamiento oficina",
   naturaleza: "operativo",
   activa: true,
+  controlada: true,
   por_cargos: false,
 };
 const sub = (id: string, naturaleza: Subcategoria["naturaleza"]): Subcategoria => ({

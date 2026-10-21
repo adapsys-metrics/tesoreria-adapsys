@@ -167,6 +167,10 @@ type Contexto = Estado & {
   /** Una categoría inactiva no se ofrece al clasificar, pero no rompe lo ya
    *  clasificado con ella. Es el reemplazo de borrar cuando está en uso. */
   alternarActiva: (id: string) => void;
+  /** Saca una categoría del control presupuestario sin sacar su grupo entero. Su
+   *  gasto no se pierde: baja a la banda de fuera de control, porque igual sale de
+   *  la caja (§4.6). */
+  alternarControlada: (id: string) => void;
   /** Marca que esta categoría se lleva por cargos: sus subcategorías pasan a pedir
    *  también el nombre de quien los ocupa. No cambia nada de lo ya clasificado — un
    *  cargo es una subcategoría como cualquier otra. */
@@ -1012,6 +1016,7 @@ export function ProveedorTesoreria({
     alternarControlado: (id) => mapCat(id, (c) => ({ ...c, controlado: !c.controlado })),
     alternarActiva: (id) => mapSub(id, (x) => ({ ...x, activa: !x.activa })),
     alternarPorCargos: (id) => mapSub(id, (x) => ({ ...x, por_cargos: !x.por_cargos })),
+    alternarControlada: (id) => mapSub(id, (x) => ({ ...x, controlada: !x.controlada })),
     crearGrupo: (nombre) =>
       setEstado((p) => {
         const id = idLibre(nombre, idsDelCatalogo(p));
@@ -1031,6 +1036,7 @@ export function ProveedorTesoreria({
               nombre,
               naturaleza: "operativo",
               activa: true,
+              controlada: true,
               por_cargos: false,
             },
           ],
@@ -1051,6 +1057,7 @@ export function ProveedorTesoreria({
               p.categorias.find((x) => x.grupo_id === grupo_id)?.naturaleza ??
               "operativo",
             activa: true,
+            controlada: true,
             por_cargos: false,
           },
         ],

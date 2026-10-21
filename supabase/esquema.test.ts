@@ -70,6 +70,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0017_registro_de_control.sql"));
   await db.exec(leer("migrations/0018_presupuesto_linea_base.sql"));
   await db.exec(leer("migrations/0019_cargos.sql"));
+  await db.exec(leer("migrations/0020_categoria_fuera_del_control.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -137,6 +138,7 @@ describe("migraciones y seed", () => {
       "migrations/0017_registro_de_control.sql",
       "migrations/0018_presupuesto_linea_base.sql",
       "migrations/0019_cargos.sql",
+      "migrations/0020_categoria_fuera_del_control.sql",
     ]) {
       await expect(db.exec(leer(archivo))).resolves.toBeDefined();
     }

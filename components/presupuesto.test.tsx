@@ -7,6 +7,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { montar, montarEn, prepararEntorno } from "@/components/pruebas/entorno";
 import { ProveedorTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Presupuesto } from "@/components/presupuesto/Presupuesto";
+import { Categorias } from "@/components/categorias/Categorias";
 import { Flujo } from "@/components/flujo/Flujo";
 import { GRUPOS, CATEGORIAS } from "@/lib/catalogo";
 
@@ -310,5 +311,39 @@ describe("El cuadro de generar", () => {
     expect(desde()).toBe("2026-01");
     fireEvent.change(screen.getByLabelText("Año"), { target: { value: "2027" } });
     expect(desde()).toBe("2025-08");
+  });
+});
+
+
+describe("Lo que no se presupuesta", () => {
+  // "7 INVERSIONES" está fuera del control a propósito: los depósitos a plazo no
+  // son un gasto que se decida presupuestar, dependen de si hay caja. Pero sus
+  // categorías son operativas, y generar miraba solo la naturaleza: escribía un
+  // presupuesto para ellas en filas que la tabla nunca mostraba.
+
+  it("generar no presupuesta lo que el control excluye", () => {
+    montar(<Presupuesto />);
+    fireEvent.click(screen.getByRole("button", { name: /Generar operativo/ }));
+    const cuadro = within(screen.getByRole("dialog", { name: "Qué va a quedar escrito" }));
+    expect(cuadro.queryByText(/Depositos a plazo/)).toBeNull();
+    expect(cuadro.queryByText(/Fondos mutuos/)).toBeNull();
+  });
+
+  it("pero su gasto se sigue viendo: igual sale de la caja", () => {
+    montar(<Presupuesto />);
+    generar();
+    expect(screen.getByText("Fuera del control presupuestario")).toBeDefined();
+  });
+
+  it("una categoría suelta se puede sacar del control desde el maestro", () => {
+    // La exclusión por grupo saca lo grueso; dentro de un grupo controlado hay
+    // líneas que tampoco se presupuestan y antes no había forma de sacarlas.
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Arriendo oficina" },
+    });
+    const marca = screen.getByTitle("Entra al control presupuestario");
+    fireEvent.click(marca);
+    expect(screen.getByTitle(/Fuera del control presupuestario/)).toBeDefined();
   });
 });
