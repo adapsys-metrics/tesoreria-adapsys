@@ -13,6 +13,7 @@
 
 import { anualDe, type Meses } from "@/lib/presupuesto";
 import { clp, mag } from "@/lib/formato";
+import { mesLargo } from "@/lib/fechas";
 import { BotonFantasma, clases } from "@/components/ui/primitivas";
 import css from "./presupuesto.module.css";
 
@@ -78,7 +79,7 @@ export function VistaPrevia({
         </h2>
 
         <p className={css.notaCuadro}>
-          De los movimientos entre {ventana.desde} y {ventana.hasta}
+          De los movimientos entre {mesLargo(ventana.desde)} y {mesLargo(ventana.hasta)}
           {reajuste !== 0 && `, con ${reajuste > 0 ? "+" : ""}${reajuste}% de reajuste`}.
           Cada uno cae en su mes, así que lo trimestral y lo anual quedan en el mes en
           que ocurrieron.

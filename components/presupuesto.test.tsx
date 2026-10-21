@@ -361,6 +361,14 @@ describe("Proyectar el año", () => {
     return within(screen.getByRole("dialog", { name: "Proyectar 2027" }));
   };
 
+  it("nombra la ventana en meses y no en fechas ISO", () => {
+    // La ventana son meses completos: "2025-10-01" hace pensar que el día
+    // importa, y además el ISO es el formato de la base y no el de pantalla (§8).
+    const cuadro = abrir();
+    expect(cuadro.getByText(/octubre 2025/)).toBeDefined();
+    expect(cuadro.queryByText(/2025-10-01/)).toBeNull();
+  });
+
   it("lista las categorías con en cuántos meses aparece cada una", () => {
     // Es la columna que decide: 12 es mensual, 1 es una vez en la vida. Lo
     // resuelve quien conoce el gasto, sin que la app adivine con un umbral.

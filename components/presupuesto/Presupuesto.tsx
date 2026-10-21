@@ -47,7 +47,7 @@ import {
   type FilaPresupuesto,
   type Meses,
 } from "@/lib/presupuesto";
-import { HOY, fechaCorta } from "@/lib/fechas";
+import { HOY, MESES, fechaCorta } from "@/lib/fechas";
 import { expandir } from "@/lib/dominio";
 import { clave, partesDeClave } from "@/lib/catalogo-indices";
 import { PanelDetalle, type Detalle } from "@/components/flujo/PanelDetalle";
@@ -56,11 +56,6 @@ import { clp, mag, pct } from "@/lib/formato";
 import { Cabecera, Rotulo, TablaFantasma, clases } from "@/components/ui/primitivas";
 import tabla from "@/components/ui/tabla.module.css";
 import css from "./presupuesto.module.css";
-
-const NOMBRES_MES = [
-  "enero", "febrero", "marzo", "abril", "mayo", "junio",
-  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-];
 
 const LINEA_VACIA = { monto: 0, monto_anterior: 0, responsable: "", nota: "" };
 
@@ -258,7 +253,7 @@ export function Presupuesto() {
   const abrir = (titulo: string, subs: Set<string>) => {
     const items = lineasDe(subs);
     if (!items.length) return;
-    setDetalle({ titulo, periodo: `Enero a ${NOMBRES_MES[mes - 1]} de ${anio}`, items });
+    setDetalle({ titulo, periodo: `Enero a ${MESES[mes - 1]} de ${anio}`, items });
   };
 
   /** Fija el detalle de la línea. Solo se puede sobre una línea que ya existe: sin
@@ -449,7 +444,7 @@ export function Presupuesto() {
             onChange={(e) => setMes(Number(e.target.value))}
             className={css.selectMes}
           >
-            {NOMBRES_MES.map((nombre, i) => (
+            {MESES.map((nombre, i) => (
               <option key={nombre} value={i + 1}>
                 {nombre}
               </option>

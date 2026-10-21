@@ -15,6 +15,13 @@ export const MESES_CORTOS = [
   "jul", "ago", "sep", "oct", "nov", "dic",
 ];
 
+/** Los meses enteros. Viven acá y no en cada vista porque estaban repetidos en
+ *  dos, y dos listas de meses son dos lugares donde se puede escribir mal uno. */
+export const MESES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
 /**
  * Hoy, en la zona horaria de Chile.
  *
@@ -83,6 +90,16 @@ export const etiquetaDia = (s: string): string =>
 /** Etiqueta de un mes: "ago 26". */
 export const etiquetaMes = (s: string): string =>
   `${MESES_CORTOS[mesDe(s) - 1]} ${String(anioDe(s)).slice(2)}`;
+
+/**
+ * Un mes para leer: "octubre 2025".
+ *
+ * Para cuando lo que se nombra **es un mes y no un día**: la ventana desde la que
+ * se proyecta son meses completos, y mostrarla como `2025-10-01` hace pensar que
+ * el día importa. Además el ISO es el formato de la base, no el de pantalla (§8).
+ */
+export const mesLargo = (s: string): string =>
+  `${MESES[mesDe(s) - 1]} ${anioDe(s)}`;
 
 /** Fecha para mostrar en pantalla: DD-MM-YY (CLAUDE.md §8). */
 export const fechaCorta = (s: string): string =>

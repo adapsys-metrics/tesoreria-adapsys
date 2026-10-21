@@ -18,14 +18,9 @@ import { ajustarDesde, anualDe, type Meses } from "@/lib/presupuesto";
 import type { CambioPresupuesto } from "@/lib/supabase/presupuesto";
 import { clp, mag } from "@/lib/formato";
 import { clave } from "@/lib/catalogo-indices";
-import { fechaCorta } from "@/lib/fechas";
+import { MESES_CORTOS, fechaCorta } from "@/lib/fechas";
 import { BotonFantasma, clases } from "@/components/ui/primitivas";
 import css from "./presupuesto.module.css";
-
-const NOMBRES_MES = [
-  "ene", "feb", "mar", "abr", "may", "jun",
-  "jul", "ago", "sep", "oct", "nov", "dic",
-];
 
 /** Qué línea se está ajustando. Se identifica por su clave de reporte —categoría
  *  o par categoría-subcategoría—, que es como está indexado todo el presupuesto. */
@@ -100,22 +95,22 @@ export function CuadroAjuste({
         {resultado?.ok === false ? (
           <p className={css.avisoCuadro}>
             No se puede bajar a {mag(nuevo)}: hasta{" "}
-            {NOMBRES_MES[resultado.desde - 2] ?? "el mes anterior"} ya hay{" "}
+            {MESES_CORTOS[resultado.desde - 2] ?? "el mes anterior"} ya hay{" "}
             <strong>{mag(resultado.minimo)}</strong> presupuestados, y esos meses no
             se reescriben. Para bajar más hay que editar los meses a mano.
           </p>
         ) : resultado?.ok ? (
           <div className={css.repartoCuadro}>
             <p className={css.notaCuadro}>
-              Los meses hasta {NOMBRES_MES[desde - 2] ?? "antes"} quedan como están.
+              Los meses hasta {MESES_CORTOS[desde - 2] ?? "antes"} quedan como están.
               Se reparten <strong>{mag(resultado.repartido)}</strong> entre{" "}
-              {NOMBRES_MES[desde - 1]}–dic:
+              {MESES_CORTOS[desde - 1]}–dic:
             </p>
             <div className={css.mesesCuadro}>
               {resultado.meses.slice(desde - 1).map((m, i) => (
                 <span key={i} className={css.mesCuadro}>
                   <span className={css.nombreMesCuadro}>
-                    {NOMBRES_MES[desde - 1 + i]}
+                    {MESES_CORTOS[desde - 1 + i]}
                   </span>
                   {mag(m)}
                 </span>
@@ -193,7 +188,7 @@ export function Bitacora({
             {[...porAjuste.values()].map((grupo) => {
               const primero = grupo[0]!;
               const delta = grupo.reduce((t, c) => t + (c.despues - c.antes), 0);
-              const meses = grupo.map((c) => NOMBRES_MES[c.mes - 1]).join(", ");
+              const meses = grupo.map((c) => MESES_CORTOS[c.mes - 1]).join(", ");
               return (
                 <li
                   key={`${primero.cuando}-${clave(primero.categoria_id, primero.subcategoria_id)}`}

@@ -20,6 +20,7 @@
 import { Fragment, useState } from "react";
 import { claveRama, type Rama, type ResumenCategoria } from "@/lib/proyeccion";
 import { mag } from "@/lib/formato";
+import { mesLargo } from "@/lib/fechas";
 import { BotonFantasma, clases } from "@/components/ui/primitivas";
 import css from "./presupuesto.module.css";
 
@@ -116,8 +117,8 @@ export function ProyectarAnio({
         <h2 className={css.tituloCuadro}>Proyectar {anio}</h2>
 
         <p className={css.notaCuadro}>
-          Copia los movimientos de {ventana.desde} a {ventana.hasta} al mismo mes y día de{" "}
-          {anio}, como proyectados
+          Copia los movimientos de {mesLargo(ventana.desde)} a {mesLargo(ventana.hasta)} al
+          mismo mes y día de {anio}, como proyectados
           {reajuste !== 0 && `, con ${reajuste > 0 ? "+" : ""}${reajuste}% de reajuste`}. El
           presupuesto operativo sale después de sumarlos.
         </p>
