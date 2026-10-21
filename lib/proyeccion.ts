@@ -38,17 +38,41 @@ export type MovimientoProyectado = {
   }[];
 };
 
-/** Lo que una categoría aportaría, para poder elegir antes de generar. */
+/**
+ * Lo que un proveedor aporta dentro de una categoría.
+ *
+ * El proveedor es el nivel en que esto se mira de verdad: "Telefonía e internet ·
+ * 12 meses" no dice si son doce pagos a Entel o una mezcla de Entel y GTD, y sin
+ * saberlo uno proyecta a ciegas.
+ */
+export type Rama = {
+  categoria_id: string;
+  /** Vacío cuando el movimiento no la tiene. */
+  contraparte: string;
+  /** Los meses del año destino en que aparece, ordenados. Su largo es "en cuántos
+   *  meses": 12 es mensual, 4 trimestral, 1 una vez en el año. */
+  meses: number[];
+  movimientos: number;
+  /** Suma en CLP, en magnitud. */
+  total: number;
+};
+
+/** Una categoría con sus proveedores. */
 export type ResumenCategoria = {
   categoria_id: string;
   /** Cuántos movimientos se copiarían. */
   movimientos: number;
-  /** En cuántos meses distintos aparece. 12 es mensual; 1, una vez en el año. Es
-   *  el dato que distingue un gasto recurrente de uno ocasional sin adivinar. */
+  /** En cuántos meses distintos aparece la categoría entera. */
   meses: number;
   /** Suma en CLP, en magnitud. */
   total: number;
+  ramas: Rama[];
 };
+
+/** La identidad de una rama. Categoría y proveedor, porque el mismo proveedor
+ *  puede aparecer en dos categorías y ser dos cosas distintas. */
+export const claveRama = (categoria_id: string, contraparte: string | null): string =>
+  `${categoria_id}|${contraparte ?? ""}`;
 
 /**
  * La misma fecha, un año destino.
@@ -69,12 +93,16 @@ export function mismaFechaEn(fecha: string, anio: number): string {
 }
 
 /**
- * Qué aportaría cada categoría, para elegir cuáles proyectar.
+ * Qué aportaría cada categoría, abierta por proveedor.
  *
  * Se cuenta por **movimiento** y no por línea: un split de sueldos con cuatro
  * cargos es un pago, no cuatro. Pero la categoría de un movimiento sale de sus
- * líneas, así que un split reparte el mismo movimiento entre varias — y entonces
- * cada una lo cuenta, porque proyectarlo es traerlo entero.
+ * líneas, así que un split reparte el mismo movimiento entre varias — y cada una
+ * lo cuenta, porque proyectarlo es traerlo entero.
+ *
+ * Los meses son los **del año destino**, no los de la ventana. Con un rango de
+ * octubre a septiembre, "los primeros seis" tiene que querer decir enero a junio
+ * del año que se está armando, no octubre a marzo.
  */
 export function resumirPorCategoria(
   movimientos: Movimiento[],
@@ -82,7 +110,9 @@ export function resumirPorCategoria(
   seProyecta: (categoria_id: string, subcategoria_id: string | null) => boolean,
   tc: number
 ): ResumenCategoria[] {
-  const porCategoria = new Map<string, { ids: Set<string>; meses: Set<string>; total: number }>();
+  type Acumulado = { ids: Set<string>; meses: Set<number>; total: number };
+  const vacio = (): Acumulado => ({ ids: new Set(), meses: new Set(), total: 0 });
+  const porRama = new Map<string, Acumulado & { categoria_id: string; contraparte: string }>();
 
   for (const fila of expandir(movimientos)) {
     if (fila.fecha < rango.desde || fila.fecha > rango.hasta) continue;
@@ -92,23 +122,36 @@ export function resumirPorCategoria(
     if (!fila.categoria_id) continue;
     if (!seProyecta(fila.categoria_id, fila.subcategoria_id)) continue;
 
-    const actual = porCategoria.get(fila.categoria_id) ?? {
-      ids: new Set<string>(),
-      meses: new Set<string>(),
-      total: 0,
-    };
+    const contraparte = fila.contraparte ?? "";
+    const k = claveRama(fila.categoria_id, contraparte);
+    const actual = porRama.get(k) ?? { ...vacio(), categoria_id: fila.categoria_id, contraparte };
     actual.ids.add(fila.movimiento_id);
-    actual.meses.add(fila.fecha.slice(0, 7));
+    actual.meses.add(Number(fila.fecha.slice(5, 7)));
     actual.total += enCLP(fila, tc);
-    porCategoria.set(fila.categoria_id, actual);
+    porRama.set(k, actual);
+  }
+
+  const porCategoria = new Map<string, Rama[]>();
+  for (const r of porRama.values()) {
+    const rama: Rama = {
+      categoria_id: r.categoria_id,
+      contraparte: r.contraparte,
+      meses: [...r.meses].sort((a, b) => a - b),
+      movimientos: r.ids.size,
+      total: Math.abs(r.total),
+    };
+    porCategoria.set(r.categoria_id, [...(porCategoria.get(r.categoria_id) ?? []), rama]);
   }
 
   return [...porCategoria.entries()]
-    .map(([categoria_id, x]) => ({
+    .map(([categoria_id, ramas]) => ({
       categoria_id,
-      movimientos: x.ids.size,
-      meses: x.meses.size,
-      total: Math.abs(x.total),
+      // El total y los meses de la categoría no son la suma de sus ramas cuando un
+      // mismo mes lo tocan dos proveedores: por eso los meses se unen, no se suman.
+      meses: new Set(ramas.flatMap((r) => r.meses)).size,
+      movimientos: ramas.reduce((t, r) => t + r.movimientos, 0),
+      total: ramas.reduce((t, r) => t + r.total, 0),
+      ramas: ramas.sort((a, b) => b.total - a.total),
     }))
     .sort((a, b) => b.total - a.total);
 }
@@ -116,10 +159,19 @@ export function resumirPorCategoria(
 /**
  * Los movimientos del año destino.
  *
- * Un movimiento entra entero si **alguna de sus líneas** cae en una categoría
- * elegida. Entero y no recortado: un pago de tarjeta con dieciséis líneas es una
- * transferencia, y traer solo las líneas elegidas daría un movimiento cuyo monto
- * no es el que va a salir del banco.
+ * La elección es **por rama y en meses**: de cada par categoría-proveedor se
+ * proyectan sus primeros N meses. Doce es repetirlo todo el año; uno deja el pago
+ * anual una sola vez; seis corta el contrato que termina a mitad de año. Cero, o
+ * una rama ausente del mapa, no se proyecta.
+ *
+ * "Los primeros" se cuenta sobre los **meses del año destino**, no sobre el orden
+ * de la ventana: con un rango de octubre a septiembre, los primeros seis tienen
+ * que ser enero a junio del año que se arma.
+ *
+ * Un movimiento entra **entero** si alguna de sus ramas lo alcanza. Entero y no
+ * recortado: un pago de tarjeta con dieciséis líneas es una transferencia, y
+ * traer solo las líneas elegidas daría un movimiento cuyo monto no es el que va a
+ * salir del banco.
  *
  * El reajuste se aplica **línea por línea y el monto se recalcula sumándolas**.
  * Al revés —escalar el monto y las líneas por separado— el redondeo las separa y
@@ -129,21 +181,41 @@ export function proyectar(
   movimientos: Movimiento[],
   rango: { desde: string; hasta: string },
   anioDestino: number,
-  /** Categorías elegidas en la vista previa. */
-  elegidas: Set<string>,
+  /** Por rama (`claveRama`), cuántos de sus meses proyectar. */
+  eleccion: Map<string, number>,
   reajuste = 1
 ): MovimientoProyectado[] {
+  // Los meses que cada rama deja pasar: sus primeros N, en orden del año destino.
+  const permitidos = new Map<string, Set<number>>();
+  const mesesDe = new Map<string, Set<number>>();
+
+  const enRango = movimientos.filter(
+    (m) => m.fecha >= rango.desde && m.fecha <= rango.hasta && m.estado !== "proyectado"
+  );
+
+  for (const m of enRango) {
+    const mes = Number(mismaFechaEn(m.fecha, anioDestino).slice(5, 7));
+    for (const cat of new Set(m.lineas.map((l) => l.categoria_id))) {
+      const k = claveRama(cat, m.contraparte);
+      mesesDe.set(k, (mesesDe.get(k) ?? new Set()).add(mes));
+    }
+  }
+
+  for (const [k, meses] of mesesDe) {
+    const cuantos = eleccion.get(k) ?? 0;
+    permitidos.set(k, new Set([...meses].sort((a, b) => a - b).slice(0, cuantos)));
+  }
+
   const salida: MovimientoProyectado[] = [];
-
-  for (const m of movimientos) {
-    if (m.fecha < rango.desde || m.fecha > rango.hasta) continue;
-    // Lo ya proyectado no se re-proyecta: sería arrastrar al año siguiente algo
-    // que todavía no ocurrió en éste.
-    if (m.estado === "proyectado") continue;
-
-    // Sin líneas no hay categoría que elegir, así que no se proyecta: un
-    // movimiento sin clasificar no se arrastra al año siguiente.
-    if (!m.lineas.some((l) => elegidas.has(l.categoria_id))) continue;
+  for (const m of enRango) {
+    const fecha = mismaFechaEn(m.fecha, anioDestino);
+    const mes = Number(fecha.slice(5, 7));
+    const alcanzado = [...new Set(m.lineas.map((l) => l.categoria_id))].some((cat) =>
+      permitidos.get(claveRama(cat, m.contraparte))?.has(mes)
+    );
+    // Sin líneas no hay rama que lo alcance: un movimiento sin clasificar no se
+    // arrastra al año siguiente.
+    if (!alcanzado) continue;
 
     const lineas = m.lineas.map((l) => ({
       categoria_id: l.categoria_id,
@@ -154,7 +226,7 @@ export function proyectar(
     }));
 
     salida.push({
-      fecha: mismaFechaEn(m.fecha, anioDestino),
+      fecha,
       empresa_id: m.empresa_id,
       // La cuenta se conserva: un proyectado en una cuenta del banco es lo que
       // alimenta el registro de egresos proyectados, y no afecta el saldo.
@@ -173,6 +245,14 @@ export function proyectar(
 
   return salida;
 }
+
+/** La elección por defecto: cada rama proyecta todos los meses en que apareció. */
+export const eleccionCompleta = (resumen: ResumenCategoria[]): Map<string, number> =>
+  new Map(
+    resumen.flatMap((c) =>
+      c.ramas.map((r) => [claveRama(r.categoria_id, r.contraparte), r.meses.length] as const)
+    )
+  );
 
 /** Marca de lo generado, para poder rehacerlo sin pisar lo escrito a mano. */
 export const origenDe = (anio: number): string => `proyeccion-${anio}`;

@@ -366,11 +366,35 @@ describe("Proyectar el año", () => {
     // resuelve quien conoce el gasto, sin que la app adivine con un umbral.
     const cuadro = abrir();
     expect(cuadro.getByText("Meses")).toBeDefined();
+    expect(cuadro.getByText("Proyectar")).toBeDefined();
     expect(cuadro.getAllByRole("checkbox").length).toBeGreaterThan(0);
   });
 
-  it("arranca con todas marcadas", () => {
-    // Es más rápido desmarcar lo ocasional que marcar lo mensual, porque lo
+  it("una categoría se abre y muestra sus proveedores", () => {
+    // "Telefonía e internet · 12 meses" no dice si son doce pagos a Entel o una
+    // mezcla. Sin abrirla, uno proyecta a ciegas.
+    const cuadro = abrir();
+    const antes = cuadro.getAllByRole("row").length;
+    fireEvent.click(cuadro.getAllByRole("button", { expanded: false })[0]!);
+    expect(cuadro.getAllByRole("row").length).toBeGreaterThan(antes);
+    expect(cuadro.getAllByLabelText(/^Meses a proyectar de /).length).toBeGreaterThan(0);
+  });
+
+  it("bajar los meses de un proveedor baja los movimientos a crear", () => {
+    // Un contrato que termina en junio no son doce pagos. Se corta sin salir
+    // del cuadro y sin tocar a los demás proveedores de la misma categoría.
+    const cuadro = abrir();
+    fireEvent.click(cuadro.getAllByRole("button", { expanded: false })[0]!);
+    const antes = cuadro.getByRole("button", { name: /^Crear \d+ movimiento/ }).textContent;
+    fireEvent.change(cuadro.getAllByLabelText(/^Meses a proyectar de /)[0]!, {
+      target: { value: "1" },
+    });
+    const despues = cuadro.getByRole("button", { name: /^Crear \d+ movimiento/ }).textContent;
+    expect(despues).not.toBe(antes);
+  });
+
+  it("arranca con todas marcadas y con todos sus meses", () => {
+    // Es más rápido recortar lo ocasional que marcar lo mensual, porque lo
     // mensual es casi todo.
     const cuadro = abrir();
     const casillas = cuadro.getAllByRole("checkbox") as HTMLInputElement[];

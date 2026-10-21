@@ -834,9 +834,16 @@ movimientos proyectados sumando lo mismo dos veces. Con una sola fuente no hay d
 
 Lo demás, tal como estaba previsto:
 
-- **Qué se copia se elige por categoría**, no movimiento por movimiento: son ~90 líneas y no
-  ~1.200. La columna que decide es **en cuántos meses aparece** — 12 es mensual, 4 trimestral,
-  1 una vez en el año—, y lo resuelve quien conoce el gasto en vez de un umbral adivinado.
+- **Qué se copia se elige en dos niveles: categoría y proveedor**, no movimiento por
+  movimiento. El proveedor hace falta porque "Telefonía e internet · 12 meses" no dice si son
+  doce pagos a Entel o una mezcla de Entel y GTD, y sin eso se proyecta a ciegas.
+- **Y por cuántos meses.** Cada proveedor trae en cuántos apareció y cuántas veces repetirlo:
+  12 todo el año, 6 un contrato que termina a mitad, 1 un pago anual, 0 no se proyecta. Se
+  toman **los primeros meses del año destino**, no los primeros de la ventana: con un rango de
+  octubre a septiembre, "los primeros seis" tiene que querer decir enero a junio del año que se
+  está armando.
+- Los meses de una categoría se **unen**, no se suman: dos proveedores mensuales son doce
+  meses, no veinticuatro.
 - **Lo generado se distingue de lo cargado a mano** por `movimientos.origen = proyeccion-<año>`.
   Rehacer la proyección borra por origen, así que **nunca pisa lo que alguien escribió**: sin
   eso, nadie se atrevería a rehacerla.

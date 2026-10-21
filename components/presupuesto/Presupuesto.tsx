@@ -357,8 +357,8 @@ export function Presupuesto() {
   const abrirProyeccion = () =>
     setProyectando(resumirPorCategoria(delPresupuesto, ventana, sePresupuesta, tc));
 
-  const aplicarProyeccion = (elegidas: Set<string>) => {
-    const nuevos = proyectar(delPresupuesto, ventana, anio, elegidas, 1 + reajuste / 100);
+  const aplicarProyeccion = (eleccion: Map<string, number>) => {
+    const nuevos = proyectar(delPresupuesto, ventana, anio, eleccion, 1 + reajuste / 100);
     setProyectando(null);
     if (!supabaseConfigurado) return;
     generarProyeccion(crearClienteNavegador(), anio, nuevos)
@@ -671,8 +671,8 @@ export function Presupuesto() {
           ventana={ventana}
           reajuste={reajuste}
           nombreDe={(id) => catalogo.categoriaDe(id).nombre}
-          cuantosMovimientos={(elegidas) =>
-            proyectar(delPresupuesto, ventana, anio, elegidas).length
+          cuantosMovimientos={(eleccion) =>
+            proyectar(delPresupuesto, ventana, anio, eleccion).length
           }
           yaGenerados={movimientos.filter((m) => m.origen === origenDe(anio)).length}
           cancelar={() => setProyectando(null)}

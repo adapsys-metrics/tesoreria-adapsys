@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { clavesDe, mismaFechaEn, origenDe, proyectar, resumirPorCategoria } from "./proyeccion";
+import {
+  claveRama,
+  clavesDe,
+  eleccionCompleta,
+  mismaFechaEn,
+  origenDe,
+  proyectar,
+  resumirPorCategoria,
+} from "./proyeccion";
 import type { Linea, Movimiento } from "./tipos";
 
 const TC = 970;
@@ -31,8 +39,14 @@ const mov = (p: Partial<Movimiento> & { lineas: Linea[] }): Movimiento => ({
 });
 
 const ANIO = { desde: "2026-01-01", hasta: "2026-12-31" };
+
+/** Todas las ramas con todos sus meses, que es el default del cuadro. */
 const TODAS = (ms: Movimiento[]) =>
-  new Set(ms.flatMap((m) => m.lineas.map((l) => l.categoria_id)));
+  eleccionCompleta(resumirPorCategoria(ms, ANIO, () => true, TC));
+
+/** Una sola rama, con los meses que se pidan. */
+const SOLO = (categoria_id: string, contraparte: string, meses: number) =>
+  new Map([[claveRama(categoria_id, contraparte), meses]]);
 
 describe("mismaFechaEn", () => {
   it("conserva el mes y el día: un pago del 14 sigue siendo del 14", () => {
@@ -74,14 +88,14 @@ describe("proyectar", () => {
         lineas: [linea("telefonia-e-internet", -306745), linea("iva-compras", -58281)],
       }),
     ];
-    const [p] = proyectar(ms, ANIO, 2027, new Set(["telefonia-e-internet"]));
+    const [p] = proyectar(ms, ANIO, 2027, SOLO("telefonia-e-internet", "GTD", 12));
     expect(p!.lineas).toHaveLength(2);
     expect(p!.monto).toBe(-365026);
   });
 
   it("no copia un movimiento cuyas categorías no se eligieron", () => {
     const ms = [mov({ lineas: [linea("gastos-de-representacion", -500000)] })];
-    expect(proyectar(ms, ANIO, 2027, new Set(["telefonia-e-internet"]))).toEqual([]);
+    expect(proyectar(ms, ANIO, 2027, SOLO("telefonia-e-internet", "GTD", 12))).toEqual([]);
   });
 
   it("no re-proyecta lo que ya estaba proyectado", () => {
@@ -133,7 +147,7 @@ describe("proyectar", () => {
 
   it("un movimiento sin clasificar no se arrastra", () => {
     const ms = [mov({ lineas: [] })];
-    expect(proyectar(ms, ANIO, 2027, new Set(["lo-que-sea"]))).toEqual([]);
+    expect(proyectar(ms, ANIO, 2027, SOLO("lo-que-sea", "GTD", 12))).toEqual([]);
   });
 });
 
@@ -214,5 +228,117 @@ describe("origenDe y clavesDe", () => {
     const ms = [mov({ lineas: [linea("sueldos", -100, "cargo-a"), linea("iva-compras", -19)] })];
     const p = proyectar(ms, ANIO, 2027, TODAS(ms));
     expect([...clavesDe(p)].sort()).toEqual(["iva-compras", "sueldos>cargo-a"]);
+  });
+});
+
+
+describe("abrir por proveedor", () => {
+  // "Telefonía e internet · 12 meses" no dice si son doce pagos a Entel o una
+  // mezcla de Entel y GTD. Sin abrirla, uno proyecta a ciegas.
+  const dos = () => [
+    ...[1, 2, 3].map((n) =>
+      mov({
+        id: `g${n}`,
+        fecha: `2026-0${n}-14`,
+        contraparte: "GTD",
+        lineas: [linea("telefonia-e-internet", -300000)],
+      })
+    ),
+    ...[1, 2].map((n) =>
+      mov({
+        id: `e${n}`,
+        fecha: `2026-0${n}-20`,
+        contraparte: "Entel",
+        lineas: [linea("telefonia-e-internet", -60000)],
+      })
+    ),
+  ];
+
+  it("una categoría se abre en sus proveedores", () => {
+    const [cat] = resumirPorCategoria(dos(), ANIO, () => true, TC);
+    expect(cat!.ramas.map((r) => r.contraparte)).toEqual(["GTD", "Entel"]);
+  });
+
+  it("cada proveedor trae sus meses y su total", () => {
+    const [cat] = resumirPorCategoria(dos(), ANIO, () => true, TC);
+    const gtd = cat!.ramas.find((r) => r.contraparte === "GTD")!;
+    expect(gtd.meses).toEqual([1, 2, 3]);
+    expect(gtd.total).toBe(900000);
+  });
+
+  it("los meses de la categoría se unen, no se suman", () => {
+    // GTD aparece en enero, febrero y marzo; Entel en enero y febrero. Son tres
+    // meses, no cinco: sumando, una categoría con dos proveedores mensuales
+    // diría 24 meses en un año.
+    const [cat] = resumirPorCategoria(dos(), ANIO, () => true, TC);
+    expect(cat!.meses).toBe(3);
+    expect(cat!.movimientos).toBe(5);
+  });
+
+  it("los proveedores vienen ordenados por lo que más pesa", () => {
+    const [cat] = resumirPorCategoria(dos(), ANIO, () => true, TC);
+    expect(cat!.ramas[0]!.contraparte).toBe("GTD");
+  });
+});
+
+describe("cuántos meses proyecta cada rama", () => {
+  const doceMeses = () =>
+    Array.from({ length: 12 }, (_, i) =>
+      mov({
+        id: `m${i}`,
+        fecha: `2026-${String(i + 1).padStart(2, "0")}-14`,
+        contraparte: "GTD",
+        lineas: [linea("telefonia-e-internet", -100)],
+      })
+    );
+
+  it("doce lo repite todo el año", () => {
+    const r = proyectar(doceMeses(), ANIO, 2027, SOLO("telefonia-e-internet", "GTD", 12));
+    expect(r).toHaveLength(12);
+  });
+
+  it("seis corta el contrato a mitad de año", () => {
+    const r = proyectar(doceMeses(), ANIO, 2027, SOLO("telefonia-e-internet", "GTD", 6));
+    expect(r.map((m) => m.fecha.slice(0, 7))).toEqual([
+      "2027-01", "2027-02", "2027-03", "2027-04", "2027-05", "2027-06",
+    ]);
+  });
+
+  it("uno deja el pago anual una sola vez", () => {
+    const r = proyectar(doceMeses(), ANIO, 2027, SOLO("telefonia-e-internet", "GTD", 1));
+    expect(r).toHaveLength(1);
+    expect(r[0]!.fecha).toBe("2027-01-14");
+  });
+
+  it("cero no proyecta nada", () => {
+    expect(proyectar(doceMeses(), ANIO, 2027, SOLO("telefonia-e-internet", "GTD", 0))).toEqual([]);
+  });
+
+  it("una rama ausente del mapa tampoco", () => {
+    expect(proyectar(doceMeses(), ANIO, 2027, new Map())).toEqual([]);
+  });
+
+  it("los primeros son los del AÑO DESTINO, no los de la ventana", () => {
+    // Con una ventana de octubre a septiembre, "los primeros dos" tienen que ser
+    // enero y febrero del año que se arma, no octubre y noviembre del anterior.
+    const ventana = { desde: "2025-10-01", hasta: "2026-09-30" };
+    const ms = [
+      mov({ id: "1", fecha: "2025-10-14", contraparte: "GTD", lineas: [linea("tel", -100)] }),
+      mov({ id: "2", fecha: "2025-11-14", contraparte: "GTD", lineas: [linea("tel", -100)] }),
+      mov({ id: "3", fecha: "2026-01-14", contraparte: "GTD", lineas: [linea("tel", -100)] }),
+      mov({ id: "4", fecha: "2026-02-14", contraparte: "GTD", lineas: [linea("tel", -100)] }),
+    ];
+    const r = proyectar(ms, ventana, 2027, SOLO("tel", "GTD", 2));
+    expect(r.map((m) => m.fecha.slice(0, 7))).toEqual(["2027-01", "2027-02"]);
+  });
+
+  it("un proveedor se corta sin tocar al otro de la misma categoría", () => {
+    const ms = [
+      mov({ id: "g", fecha: "2026-01-14", contraparte: "GTD", lineas: [linea("tel", -300)] }),
+      mov({ id: "e", fecha: "2026-01-20", contraparte: "Entel", lineas: [linea("tel", -60)] }),
+    ];
+    const r = proyectar(ms, ANIO, 2027, SOLO("tel", "GTD", 1));
+    expect(r).toHaveLength(1);
+    expect(r[0]!.contraparte).toBe("GTD");
   });
 });
