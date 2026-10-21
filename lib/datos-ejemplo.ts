@@ -135,6 +135,7 @@ const crear = (
     estado: extra.estado ?? "proyectado",
     doc_tipo: null,
     hito: null,
+    origen: null,
     lineas: [{ categoria_id: sub(categoria), subcategoria_id: null, doc_tipo: null, monto, glosa: null }],
   };
   return { ...base, ...extra };

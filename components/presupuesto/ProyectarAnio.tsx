@@ -25,6 +25,7 @@ export function ProyectarAnio({
   reajuste,
   nombreDe,
   cuantosMovimientos,
+  yaGenerados,
   confirmar,
   cancelar,
 }: {
@@ -35,6 +36,9 @@ export function ProyectarAnio({
   nombreDe: (categoria_id: string) => string;
   /** Cuántos movimientos saldrían de las categorías elegidas. */
   cuantosMovimientos: (elegidas: Set<string>) => number;
+  /** Cuántos ya se generaron antes para este año. Proyectar los reemplaza, y los
+   *  ajustes que alguien les haya hecho encima se pierden: hay que decirlo. */
+  yaGenerados: number;
   confirmar: (elegidas: Set<string>) => void;
   cancelar: () => void;
 }) {
@@ -84,6 +88,17 @@ export function ProyectarAnio({
           <strong>Meses</strong> dice en cuántos aparece cada una: 12 es mensual, 4
           trimestral, 1 una vez en el año.
         </p>
+
+        {yaGenerados > 0 && (
+          <p className={css.avisoCuadro}>
+            Ya hay <strong>{yaGenerados}</strong>{" "}
+            {yaGenerados === 1 ? "movimiento generado" : "movimientos generados"} para{" "}
+            {anio} y{" "}
+            {yaGenerados === 1 ? "se reemplaza" : "se reemplazan"}. Si les ajustaste
+            montos a mano, esos ajustes se pierden. Lo que cargaste vos desde cero no
+            se toca.
+          </p>
+        )}
 
         <div className={css.barraElegir}>
           <BotonFantasma onClick={todas}>Marcar todas</BotonFantasma>

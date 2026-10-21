@@ -42,6 +42,7 @@ function Banco({ doc_tipo, tipos }: { doc_tipo: DocTipo | null; tipos: (DocTipo 
             estado: "proyectado",
             doc_tipo,
             hito: null,
+            origen: null,
             lineas: [
               { categoria_id: "seguros", subcategoria_id: null, doc_tipo: tipos[0]!, monto: -1_000_000, glosa: "FA1" },
               { categoria_id: "seguros", subcategoria_id: null, doc_tipo: tipos[1]!, monto: -500_000, glosa: "FA2" },

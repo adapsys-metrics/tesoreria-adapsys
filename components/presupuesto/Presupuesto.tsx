@@ -21,7 +21,12 @@ import {
 import { Bitacora, CuadroAjuste, type EnAjuste } from "./Ajustes";
 import { VistaPrevia, compararConLoQueHay, type Previo } from "./VistaPrevia";
 import { ProyectarAnio } from "./ProyectarAnio";
-import { proyectar, resumirPorCategoria, type ResumenCategoria } from "@/lib/proyeccion";
+import {
+  origenDe,
+  proyectar,
+  resumirPorCategoria,
+  type ResumenCategoria,
+} from "@/lib/proyeccion";
 import { generarProyeccion } from "@/lib/supabase/proyeccion";
 import {
   MESES_DEL_ANIO,
@@ -669,6 +674,7 @@ export function Presupuesto() {
           cuantosMovimientos={(elegidas) =>
             proyectar(delPresupuesto, ventana, anio, elegidas).length
           }
+          yaGenerados={movimientos.filter((m) => m.origen === origenDe(anio)).length}
           cancelar={() => setProyectando(null)}
           confirmar={aplicarProyeccion}
         />

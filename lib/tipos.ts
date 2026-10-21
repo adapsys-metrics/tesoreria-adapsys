@@ -154,6 +154,15 @@ export type Movimiento = {
   /** Cuota o hito del plan de pagos pactado con el cliente. Venía en la columna
    *  Action de Quicken y solo lo llevan los cobros de proyectos (0013). */
   hito: number | null;
+  /**
+   * De dónde vino, o null si se creó a mano en la app.
+   *
+   * Lo usa el histórico de Quicken —el nombre del archivo, para poder recargar un
+   * registro sin duplicar (0003)— y la proyección generada de un año
+   * (`proyeccion-2027`). Importa para una cosa: **lo generado se puede rehacer y
+   * lo escrito a mano no se toca**, y eso solo se sabe mirando acá.
+   */
+  origen: string | null;
   /** Vacío = sin clasificar. Una línea = simple. Dos o más = split. */
   lineas: Linea[];
 };

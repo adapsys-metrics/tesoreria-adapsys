@@ -27,6 +27,7 @@ const mov = (parcial: Partial<Movimiento> = {}): Movimiento => ({
   estado: "proyectado",
   doc_tipo: null,
   hito: null,
+  origen: null,
   lineas: [],
   ...parcial,
 });

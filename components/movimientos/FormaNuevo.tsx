@@ -133,6 +133,7 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
       estado,
       doc_tipo: doc,
       hito: null,
+      origen: null,
       lineas: resultado.lineas,
     };
     // Se devuelve el id para dejar el movimiento abierto: es donde se le agregan las

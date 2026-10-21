@@ -48,6 +48,7 @@ const filaCruda = (id: number, extra: Fila = {}): Fila => ({
   estado: "conciliado",
   doc_tipo: null,
   hito: null,
+  origen: null,
   movimiento_lineas: [],
   ...extra,
 });
@@ -136,6 +137,7 @@ describe("cargarMovimientos", () => {
 describe("guardarMovimiento", () => {
   const base: Movimiento = {
     hito: null,
+    origen: null,
     id: "42",
     fecha: "2026-08-14",
     empresa_id: "adap",

@@ -34,6 +34,7 @@ const mov = (p: Partial<Movimiento>): Movimiento => ({
   estado: "conciliado",
   doc_tipo: null,
   hito: null,
+  origen: null,
   lineas: [],
   ...p,
 });
