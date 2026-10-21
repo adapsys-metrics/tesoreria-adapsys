@@ -167,6 +167,10 @@ type Contexto = Estado & {
   /** Una categoría inactiva no se ofrece al clasificar, pero no rompe lo ya
    *  clasificado con ella. Es el reemplazo de borrar cuando está en uso. */
   alternarActiva: (id: string) => void;
+  /** Marca que esta categoría se lleva por cargos: sus subcategorías pasan a pedir
+   *  también el nombre de quien los ocupa. No cambia nada de lo ya clasificado — un
+   *  cargo es una subcategoría como cualquier otra. */
+  alternarPorCargos: (id: string) => void;
   crearGrupo: (nombre: string) => void;
   crearCategoria: (grupo_id: string, nombre: string) => void;
   borrarCategoria: (id: string) => void;
@@ -183,8 +187,12 @@ type Contexto = Estado & {
    *  borrar una subcategoría en uso no deja huérfano nada, la línea conserva su
    *  categoría y solo pierde el detalle. Se muestra igual para poder decidir. */
   usoDeSubcategoria: Map<string, number>;
-  crearSubcategoria: (categoria_id: string, nombre: string) => void;
+  /** En una categoría que va por cargos, el nombre es el del cargo y el titular es
+   *  quien lo ocupa. Van aparte: cuando la persona cambia, el cargo sigue llamándose
+   *  igual y el histórico del presupuesto se puede comparar entre años. */
+  crearSubcategoria: (categoria_id: string, nombre: string, titular?: string) => void;
   renombrarSubcategoria: (id: string, nombre: string) => void;
+  cambiarTitular: (id: string, titular: string) => void;
   alternarActivaSubcategoria: (id: string) => void;
   /** Fija la naturaleza de una subcategoría, o la devuelve a heredar cuando coincide
    *  con la de su categoría. Guardar null y no el valor repetido es lo que hace que
@@ -1003,6 +1011,7 @@ export function ProveedorTesoreria({
       })),
     alternarControlado: (id) => mapCat(id, (c) => ({ ...c, controlado: !c.controlado })),
     alternarActiva: (id) => mapSub(id, (x) => ({ ...x, activa: !x.activa })),
+    alternarPorCargos: (id) => mapSub(id, (x) => ({ ...x, por_cargos: !x.por_cargos })),
     crearGrupo: (nombre) =>
       setEstado((p) => {
         const id = idLibre(nombre, idsDelCatalogo(p));
@@ -1022,6 +1031,7 @@ export function ProveedorTesoreria({
               nombre,
               naturaleza: "operativo",
               activa: true,
+              por_cargos: false,
             },
           ],
         };
@@ -1041,6 +1051,7 @@ export function ProveedorTesoreria({
               p.categorias.find((x) => x.grupo_id === grupo_id)?.naturaleza ??
               "operativo",
             activa: true,
+            por_cargos: false,
           },
         ],
       })),
@@ -1053,7 +1064,7 @@ export function ProveedorTesoreria({
         categorias: p.categorias.filter((x) => x.grupo_id !== id),
       })),
     usoDeSubcategoria,
-    crearSubcategoria: (categoria_id, nombre) =>
+    crearSubcategoria: (categoria_id, nombre, titular) =>
       setEstado((p) => ({
         ...p,
         subcategorias: [
@@ -1066,10 +1077,15 @@ export function ProveedorTesoreria({
             // cambiar de qué lado cae la plata hasta que alguien lo decida.
             naturaleza: null,
             activa: true,
+            // Vacío y null son lo mismo acá: un cargo sin titular es un cargo
+            // vacante, no un cargo con una persona que se llama "".
+            titular: titular?.trim() || null,
           },
         ],
       })),
     renombrarSubcategoria: (id, nombre) => mapSub3(id, (x) => ({ ...x, nombre })),
+    cambiarTitular: (id, titular) =>
+      mapSub3(id, (x) => ({ ...x, titular: titular.trim() || null })),
     cambiarNaturalezaSubcategoria: (id, naturaleza) =>
       setEstado((p) => {
         const sub = p.subcategorias.find((x) => x.id === id);

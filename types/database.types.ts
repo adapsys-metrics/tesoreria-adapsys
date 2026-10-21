@@ -77,6 +77,7 @@ export type Database = {
           nombre: string;
           naturaleza: Naturaleza;
           activa: boolean;
+          por_cargos: boolean;
         };
         Insert: {
           id: string;
@@ -84,6 +85,7 @@ export type Database = {
           nombre: string;
           naturaleza: Naturaleza;
           activa?: boolean;
+          por_cargos?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["categorias"]["Insert"]>;
         Relationships: [
@@ -105,6 +107,8 @@ export type Database = {
           /** null = hereda la de su categoría (0015). */
           naturaleza: Naturaleza | null;
           activa: boolean;
+          /** Quién ocupa el cargo, cuando su categoría va por_cargos (0019). */
+          titular: string | null;
         };
         Insert: {
           id: string;
@@ -112,6 +116,7 @@ export type Database = {
           nombre: string;
           naturaleza?: Naturaleza | null;
           activa?: boolean;
+          titular?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["subcategorias"]["Insert"]>;
         Relationships: [

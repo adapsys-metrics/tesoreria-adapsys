@@ -35,6 +35,7 @@ export function Categorias() {
     cambiarNaturalezaDeGrupo,
     alternarControlado,
     alternarActiva,
+    alternarPorCargos,
     crearGrupo,
     crearCategoria,
     borrarCategoria,
@@ -44,6 +45,7 @@ export function Categorias() {
     renombrarSubcategoria,
     alternarActivaSubcategoria,
     cambiarNaturalezaSubcategoria,
+    cambiarTitular,
     borrarSubcategoria,
     tc,
     editarLinea,
@@ -428,6 +430,28 @@ export function Categorias() {
                             {s.activa ? "activa" : "inactiva"}
                           </button>
 
+                          {/* Una categoría que se lleva por cargos: sus
+                              subcategorías son puestos y piden además quién los
+                              ocupa. No cambia nada de lo ya clasificado — un cargo
+                              es una subcategoría como cualquier otra. */}
+                          <button
+                            type="button"
+                            onClick={() => alternarPorCargos(s.id)}
+                            aria-pressed={s.por_cargos}
+                            title={
+                              s.por_cargos
+                                ? "Se lleva por cargos: cada subcategoría es un puesto y lleva quién lo ocupa"
+                                : "Llevarla por cargos: sus subcategorías pasan a pedir también quién las ocupa"
+                            }
+                            className={clases(
+                              css.insignia,
+                              css.toggle,
+                              !s.por_cargos && css.insigniaFuera
+                            )}
+                          >
+                            {s.por_cargos ? "por cargos" : "sin cargos"}
+                          </button>
+
                           {porBorrar === s.id ? (
                             <Confirmacion
                               que={s.nombre}
@@ -463,6 +487,20 @@ export function Categorias() {
                               aria-label={`Nombre de ${h.nombre}`}
                               className={css.campo}
                             />
+                            {/* El cargo y quién lo ocupa son dos datos. Si fueran
+                                uno, el día que la persona se va habría que
+                                renombrar el cargo y el histórico del presupuesto
+                                pasaría a llamarse por otra persona. */}
+                            {s.por_cargos && (
+                              <input
+                                value={h.titular ?? ""}
+                                onChange={(e) => cambiarTitular(h.id, e.target.value)}
+                                aria-label={`Quién ocupa ${h.nombre}`}
+                                placeholder="vacante"
+                                title="Quién ocupa el cargo. El cargo se queda aunque cambie la persona."
+                                className={clases(css.campo, css.campoTitular, !h.titular && css.vacante)}
+                              />
+                            )}
                             <select
                               value={h.naturaleza ?? s.naturaleza}
                               onChange={(e) =>
@@ -537,11 +575,16 @@ export function Categorias() {
 
                         {creando === s.id ? (
                           <CampoNuevo
-                            etiqueta={`Nombre de la subcategoría nueva en ${s.nombre}`}
+                            etiqueta={
+                              s.por_cargos
+                                ? `Nombre del cargo nuevo en ${s.nombre}`
+                                : `Nombre de la subcategoría nueva en ${s.nombre}`
+                            }
+                            segundo={s.por_cargos ? "Quién lo ocupa (opcional)" : undefined}
                             doblementeAnidado
                             cerrar={() => setCreando(null)}
-                            crear={(nombre) => {
-                              crearSubcategoria(s.id, nombre);
+                            crear={(nombre, titular) => {
+                              crearSubcategoria(s.id, nombre, titular);
                               setBusqueda("");
                             }}
                           />
@@ -550,10 +593,14 @@ export function Categorias() {
                             <button
                               type="button"
                               onClick={() => setCreando(s.id)}
-                              aria-label={`Agregar subcategoría en ${s.nombre}`}
+                              aria-label={
+                                s.por_cargos
+                                  ? `Agregar cargo en ${s.nombre}`
+                                  : `Agregar subcategoría en ${s.nombre}`
+                              }
                               className={css.agregarSub}
                             >
-                              + subcategoría
+                              {s.por_cargos ? "+ cargo" : "+ subcategoría"}
                             </button>
                           </div>
                         )}
@@ -589,21 +636,26 @@ export function Categorias() {
  *  que se está creando, y Escape cancela sin dejar nada a medias. */
 function CampoNuevo({
   etiqueta,
+  segundo,
   crear,
   cerrar,
   anidado,
   doblementeAnidado,
 }: {
   etiqueta: string;
-  crear: (nombre: string) => void;
+  /** Un segundo campo opcional, para los cargos: el nombre del puesto y quién lo
+   *  ocupa se escriben de una vez, que es como se piensa al crearlo. */
+  segundo?: string;
+  crear: (nombre: string, segundo: string) => void;
   cerrar: () => void;
   anidado?: boolean;
   doblementeAnidado?: boolean;
 }) {
   const [nombre, setNombre] = useState("");
+  const [extra, setExtra] = useState("");
   const confirmar = () => {
     const limpio = nombre.trim();
-    if (limpio) crear(limpio);
+    if (limpio) crear(limpio, extra.trim());
     cerrar();
   };
   return (
@@ -628,6 +680,19 @@ function CampoNuevo({
         placeholder={etiqueta}
         className={clases(css.campo, css.campoNuevo)}
       />
+      {segundo && (
+        <input
+          value={extra}
+          onChange={(e) => setExtra(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") confirmar();
+            if (e.key === "Escape") cerrar();
+          }}
+          aria-label={segundo}
+          placeholder={segundo}
+          className={clases(css.campo, css.campoTitular)}
+        />
+      )}
       <BotonFantasma onClick={confirmar}>Crear</BotonFantasma>
       <BotonFantasma onClick={cerrar}>Cancelar</BotonFantasma>
     </div>

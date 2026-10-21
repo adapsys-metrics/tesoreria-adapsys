@@ -79,6 +79,10 @@ export type Categoria = {
   nombre: string;
   naturaleza: Naturaleza;
   activa: boolean;
+  /** Sus subcategorías son cargos y llevan el nombre de quien los ocupa (0019).
+   *  Cambia cómo se piden en el mantenedor, no cómo se agregan: un cargo es una
+   *  subcategoría como cualquier otra. */
+  por_cargos: boolean;
 };
 
 /** Nivel 3, opcional: "Offsite internacional".
@@ -96,6 +100,10 @@ export type Subcategoria = {
    *  no tener subcategoría y necesita saber de qué lado cae. */
   naturaleza: Naturaleza | null;
   activa: boolean;
+  /** Quién ocupa el cargo, cuando su categoría va por cargos. Va aparte del nombre
+   *  para que al cambiar la persona no cambie el nombre del cargo, que es lo que se
+   *  compara contra el año pasado. */
+  titular: string | null;
 };
 
 /** Una línea del split. Siempre tiene categoría: "sin clasificar" se representa con

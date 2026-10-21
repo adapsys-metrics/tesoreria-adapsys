@@ -368,3 +368,82 @@ describe("Una categoría puede ser mixta", () => {
   });
 
 });
+
+describe("Categorías que se llevan por cargos", () => {
+  // "Sueldos" no se controla por persona sino por **cargo**: el cargo persiste
+  // aunque cambie quién lo ocupa, y es la unidad que se presupuesta y que se
+  // presenta al comité. Los cargos son subcategorías suyas, con un dato más.
+
+  const buscar = (texto: string) => {
+    montar(<Categorias />);
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: texto },
+    });
+  };
+
+  it("un cargo lleva su nombre y quién lo ocupa, en campos distintos", () => {
+    // Son dos datos. Si fueran uno, el día que la persona se va habría que
+    // renombrar el cargo y todo el histórico del presupuesto pasaría a llamarse
+    // por otra persona — justo lo que se quiere poder comparar entre años.
+    buscar("Especialista de Finanzas");
+    expect(screen.getByLabelText("Nombre de Especialista de Finanzas")).toBeDefined();
+    expect(screen.getByLabelText("Quién ocupa Especialista de Finanzas")).toBeDefined();
+  });
+
+  it("un cargo puede estar vacante", () => {
+    buscar("Analista de Datos");
+    const campo = screen.getByLabelText("Quién ocupa Analista de Datos") as HTMLInputElement;
+    expect(campo.value).toBe("");
+    expect(campo.placeholder).toBe("vacante");
+  });
+
+  it("cambiar quién lo ocupa no toca el nombre del cargo", () => {
+    buscar("Especialista de Finanzas");
+    fireEvent.change(screen.getByLabelText("Quién ocupa Especialista de Finanzas"), {
+      target: { value: "Otra persona" },
+    });
+    expect(screen.getByLabelText("Nombre de Especialista de Finanzas")).toBeDefined();
+  });
+
+  it("una categoría que no va por cargos no pide quién la ocupa", () => {
+    // El campo aparece solo donde significa algo: en "Offsite internacional" no
+    // hay nadie que lo ocupe.
+    buscar("Offsite");
+    expect(screen.getByLabelText("Nombre de Offsite internacional")).toBeDefined();
+    expect(screen.queryByLabelText("Quién ocupa Offsite internacional")).toBeNull();
+  });
+
+  it("el alta se llama cargo, y pide las dos cosas", () => {
+    buscar("Sueldos");
+    fireEvent.click(screen.getByLabelText("Agregar cargo en Sueldos"));
+    expect(screen.getByLabelText("Nombre del cargo nuevo en Sueldos")).toBeDefined();
+    expect(screen.getByLabelText("Quién lo ocupa (opcional)")).toBeDefined();
+  });
+
+  it("y crea el cargo con su titular", () => {
+    buscar("Sueldos");
+    fireEvent.click(screen.getByLabelText("Agregar cargo en Sueldos"));
+    fireEvent.change(screen.getByLabelText("Nombre del cargo nuevo en Sueldos"), {
+      target: { value: "Consultor Senior" },
+    });
+    fireEvent.change(screen.getByLabelText("Quién lo ocupa (opcional)"), {
+      target: { value: "Alguien" },
+    });
+    fireEvent.click(screen.getByText("Crear"));
+
+    fireEvent.change(screen.getByLabelText("Buscar en el catálogo"), {
+      target: { value: "Consultor Senior" },
+    });
+    const titular = screen.getByLabelText("Quién ocupa Consultor Senior") as HTMLInputElement;
+    expect(titular.value).toBe("Alguien");
+  });
+
+  it("llevarla por cargos es una marca de la categoría, no una excepción en el código", () => {
+    // Para que mañana aplique a otra sin tocar nada: honorarios por rol, por ejemplo.
+    buscar("Arriendo oficina");
+    const marca = screen.getByTitle(/Llevarla por cargos/);
+    expect(screen.queryByLabelText("Agregar cargo en Arriendo oficina")).toBeNull();
+    fireEvent.click(marca);
+    expect(screen.getByLabelText("Agregar cargo en Arriendo oficina")).toBeDefined();
+  });
+});

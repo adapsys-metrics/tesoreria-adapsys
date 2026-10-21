@@ -13,6 +13,7 @@ const CAT: Categoria = {
   nombre: "Equipamiento oficina",
   naturaleza: "operativo",
   activa: true,
+  por_cargos: false,
 };
 const sub = (id: string, naturaleza: Subcategoria["naturaleza"]): Subcategoria => ({
   id,
@@ -20,6 +21,7 @@ const sub = (id: string, naturaleza: Subcategoria["naturaleza"]): Subcategoria =
   nombre: id,
   naturaleza,
   activa: true,
+  titular: null,
 });
 
 const indices = (...subs: Subcategoria[]) => crearIndices([GRUPO], [CAT], subs);

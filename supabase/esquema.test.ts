@@ -69,6 +69,7 @@ beforeAll(async () => {
   await db.exec(leer("migrations/0016_doc_tipo_por_linea.sql"));
   await db.exec(leer("migrations/0017_registro_de_control.sql"));
   await db.exec(leer("migrations/0018_presupuesto_linea_base.sql"));
+  await db.exec(leer("migrations/0019_cargos.sql"));
 }, 60_000);
 
 const contar = async (tabla: string): Promise<number> => {
@@ -135,6 +136,7 @@ describe("migraciones y seed", () => {
       "migrations/0016_doc_tipo_por_linea.sql",
       "migrations/0017_registro_de_control.sql",
       "migrations/0018_presupuesto_linea_base.sql",
+      "migrations/0019_cargos.sql",
     ]) {
       await expect(db.exec(leer(archivo))).resolves.toBeDefined();
     }
@@ -920,5 +922,46 @@ describe("el presupuesto se ajusta dejando registro", () => {
       `select count(*)::int as n from presupuesto_cambios where anio = 2099`
     );
     expect(despues.rows[0]!.n - antes.rows[0]!.n).toBe(1);
+  });
+});
+
+
+describe("los cargos", () => {
+  it("Sueldos queda marcada para llevarse por cargos", async () => {
+    const r = await db.query<{ por_cargos: boolean }>(
+      `select por_cargos from categorias where id = 'sueldos'`
+    );
+    expect(r.rows[0]?.por_cargos).toBe(true);
+  });
+
+  it("y es la única: no se toca el resto del catálogo", async () => {
+    const r = await db.query<{ n: number }>(
+      `select count(*)::int as n from categorias where por_cargos`
+    );
+    expect(r.rows[0]!.n).toBe(1);
+  });
+
+  it("una subcategoría puede llevar quién la ocupa, y puede no llevarlo", async () => {
+    // Un cargo vacante existe, se presupuesta y todavía no lo ocupa nadie.
+    await db.exec(`
+      insert into subcategorias (id, categoria_id, nombre, titular)
+      values ('cargo-con', 'sueldos', 'Especialista de Finanzas', 'Quien sea'),
+             ('cargo-sin', 'sueldos', 'Analista de Datos', null)
+    `);
+    const r = await db.query<{ id: string; titular: string | null }>(
+      `select id, titular from subcategorias where id like 'cargo-%' order by id`
+    );
+    expect(r.rows.map((x) => x.titular)).toEqual(["Quien sea", null]);
+  });
+
+  it("cambiar quién ocupa el cargo no cambia el nombre del cargo", async () => {
+    // Es la razón de que sean dos columnas: el cargo es lo que se compara contra
+    // el año pasado, y si fueran lo mismo, al irse alguien el histórico del
+    // presupuesto pasaría a llamarse por otra persona.
+    await db.exec(`update subcategorias set titular = 'Otra persona' where id = 'cargo-con'`);
+    const r = await db.query<{ nombre: string; titular: string }>(
+      `select nombre, titular from subcategorias where id = 'cargo-con'`
+    );
+    expect(r.rows[0]).toEqual({ nombre: "Especialista de Finanzas", titular: "Otra persona" });
   });
 });

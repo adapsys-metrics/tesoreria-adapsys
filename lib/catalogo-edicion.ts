@@ -105,6 +105,9 @@ export function parsearCatalogo(texto: string, existentes = new Set<string>()): 
       nombre: limpio,
       naturaleza: nat ?? naturaleza,
       activa: true,
+      // Nace sin cargos: llevar una categoría por cargos es una decisión del
+      // maestro, no algo que un listado pegado deba resolver.
+      por_cargos: false,
     });
     return id;
   };
@@ -115,7 +118,9 @@ export function parsearCatalogo(texto: string, existentes = new Set<string>()): 
     const id = idLibre(limpio, tomados);
     tomados.add(id);
     // Hereda: el listado pegado define la estructura, no de qué lado cae cada peso.
-    subcategorias.push({ id, categoria_id, nombre: limpio, naturaleza: null, activa: true });
+    // Sin titular: un listado pegado define la estructura del catálogo, no quién
+    // ocupa qué. Si la categoría va por cargos, se completa después en el maestro.
+    subcategorias.push({ id, categoria_id, nombre: limpio, naturaleza: null, activa: true, titular: null });
   };
 
   for (const cruda of texto.split(/\r?\n/)) {

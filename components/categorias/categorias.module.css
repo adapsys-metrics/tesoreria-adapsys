@@ -447,3 +447,18 @@
 .heredada {
   opacity: 0.55;
 }
+
+/* Quién ocupa un cargo. Va al lado del nombre del puesto y más tenue: el cargo es
+   lo que se presupuesta y se compara entre años; la persona es quién está hoy. */
+.campoTitular {
+  flex: 0 1 190px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+/* Un cargo que existe, se presupuesta y todavía no ocupa nadie. */
+.vacante {
+  font-style: italic;
+  color: var(--muted-claro);
+}

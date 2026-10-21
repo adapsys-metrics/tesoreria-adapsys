@@ -138,6 +138,7 @@ export function crearIndices(
         nombre: id ? `${id} (no existe en el catálogo)` : "Sin clasificar",
         naturaleza: "operativo",
         activa: false,
+        por_cargos: false,
       };
     },
     grupoDe: (id) => porIdCat.get(id) ?? GRUPO_SIN_CLASIFICAR,

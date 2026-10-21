@@ -305,6 +305,31 @@ como vinieron.
 - Líneas fuera del control presupuestario (retiros de socios, préstamos, inversiones) se excluyen
   pero se muestran en una banda aparte para que nadie olvide que existen.
 
+### Una categoría puede llevarse por cargos
+
+`Sueldos` no se controla por lo que se le paga a cada persona sino por lo que cuesta cada
+**cargo**: el cargo persiste aunque cambie quién lo ocupa, y es la unidad en que se
+presupuesta y en que se presenta al comité. Los cargos son **subcategorías** de `Sueldos`
+(§3.1), y cada una lleva además el nombre de quien lo ocupa.
+
+**El cargo y la persona son dos datos.** Si fueran uno, el día que alguien se va habría
+que renombrar la subcategoría y todo el histórico del presupuesto pasaría a llamarse por
+otra persona — justo lo que se quiere poder comparar entre años. Un cargo sin titular es
+un cargo vacante: existe, se presupuesta y todavía no lo ocupa nadie.
+
+Va como marca en la categoría (`categorias.por_cargos`) y no amarrado al id `sueldos`,
+porque es **una forma de llevar una categoría y no una excepción**: el día que quieran
+controlar otra así —honorarios por rol, por ejemplo— es una casilla y no un cambio de
+código. No cambia nada de lo ya clasificado: un cargo es una subcategoría como cualquier
+otra, y el flujo, el presupuesto y los reportes la agregan igual.
+
+**El ejecutado de estas líneas se escribe a mano.** Es una excepción deliberada a "el
+real se calcula de los movimientos", y se decidió después de descartar las alternativas:
+del banco salen el líquido y el pago a PREVIRED, y **PREVIRED es un total para todos**,
+así que no hay forma de atribuirlo por cargo sin que alguien cargue el desglose. Se
+evaluó el libro de remuneraciones y se descartó por depender del formato del proveedor de
+RR.HH. Ver §10.
+
 ### El presupuesto se aprueba, y desde ahí se ajusta dejando registro
 
 Antes de aprobar, editar el anual es **construir**: se reparte sobre los doce meses y no hay
@@ -722,6 +747,37 @@ Consecuencias a resolver cuando se implemente:
   distinguirse, para no pisar lo que alguien escribió.
 - Depende de la distribución mensual del presupuesto (el punto de más arriba): sin ella la
   proyección generada sale lineal y las líneas estacionales quedan mal repartidas.
+
+### El costo de personas se lleva por cargo, y a mano
+
+Decidido después de explorar las fuentes automáticas y descartarlas todas.
+
+El presupuesto por cargo es el **bruto**: el líquido que se transfiere más las
+imposiciones, sin el impuesto único, que se paga al SII en el F29 mezclado con el IVA y
+queda fuera por decisión del equipo. Anual = bruto × 12.
+
+Por qué no se saca del banco: salen **dos pagos** y solo uno se puede abrir por persona.
+La transferencia de sueldos sí; el pago a PREVIRED es **un total para todos**, y de ahí
+no se puede sacar cuánto le toca a cada cargo.
+
+Por qué no se saca del libro de remuneraciones: se analizó uno real y **sirve** —trae
+`CARGO` por persona y la aritmética cierra—, pero el export es propio del proveedor de
+RR.HH. y el equipo prefirió no depender de él. Dos hallazgos de ese análisis que vale
+conservar, porque cambian la cuenta:
+
+- El bruto tiene **cuatro** pedazos, no dos: líquido (68%), previsionales del trabajador
+  (17%), impuesto único (5%) y **anticipos y préstamos (11%)**. Esos últimos no van a
+  PREVIRED — son plata ya adelantada o que se está recuperando.
+- El libro trae **solo el lado del trabajador**. El aporte patronal —SIS, AFC empleador,
+  mutual— va igual en el pago a PREVIRED y no aparece ahí, así que el pago siempre es
+  mayor que la suma de los descuentos del libro.
+
+Si algún día se retoma lo automático, el camino es el **Libro de Remuneraciones
+Electrónico** de la Dirección del Trabajo: formato fijo, conceptos codificados y
+obligatorio para todo proveedor, así que cambiar de app de RR.HH. no lo rompe.
+
+**Falta** la carga mensual del bruto por cargo, que es lo que alimenta el reporte al
+comité.
 
 **Por preguntar al equipo**
 - Estado de cuenta de tarjeta: ¿se carga como un movimiento con todas sus líneas al llegar, o se
