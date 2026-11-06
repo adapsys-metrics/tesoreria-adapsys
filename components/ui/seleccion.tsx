@@ -12,7 +12,7 @@
 // por separado y queda a la vista que son cosas distintas (§4.5).
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { clp } from "@/lib/formato";
+import { clp, usd } from "@/lib/formato";
 import css from "./seleccion.module.css";
 import { clases } from "./primitivas";
 
@@ -175,7 +175,9 @@ export function BarraSeleccion({
             className={css.total}
             style={{ color: total < 0 ? "var(--brick)" : "var(--teal)" }}
           >
-            {(SIMBOLO[moneda] ?? moneda) + clp(total)}
+            {/* La moneda es la clave del mapa, un string: el total sale de los
+                movimientos y ahí solo hay CLP y USD. */}
+            {(SIMBOLO[moneda] ?? moneda) + (moneda === "USD" ? usd(total) : clp(total))}
           </span>
         ))}
       </span>

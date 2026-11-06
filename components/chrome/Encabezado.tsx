@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Cifra, clases } from "@/components/ui/primitivas";
-import { clp } from "@/lib/formato";
+import { clp, usd } from "@/lib/formato";
 import { NOMBRE_APP } from "@/lib/marca";
 import { SelectorEmpresas } from "./SelectorEmpresas";
 import { Sesion } from "./Sesion";
@@ -36,7 +36,7 @@ export function Encabezado() {
   const posicion = efectivo + comprometido;
   const porCobrarTexto =
     porCobrar || porCobrarUsd
-      ? [porCobrar ? "$" + clp(porCobrar) : null, porCobrarUsd ? "US$" + clp(porCobrarUsd) : null]
+      ? [porCobrar ? "$" + clp(porCobrar) : null, porCobrarUsd ? "US$" + usd(porCobrarUsd) : null]
           .filter(Boolean)
           .join("  ")
       : "—";
@@ -83,7 +83,7 @@ export function Encabezado() {
           />
           <Cifra
             rotulo="Saldo USD"
-            texto={"US$" + clp(saldoUsd)}
+            texto={"US$" + usd(saldoUsd)}
             tono="var(--muted)"
             cargando={cargando}
           />

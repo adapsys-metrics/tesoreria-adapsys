@@ -105,6 +105,7 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
             )}
             <input
               type="number"
+              step="any"
               value={l.monto}
               aria-label="Monto de la línea"
               onChange={(e) => editarLinea(m.id, i, "monto", Number(e.target.value) || 0)}

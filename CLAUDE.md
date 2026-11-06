@@ -525,6 +525,16 @@ Costo esperado: entre USD 0 y ~25/mes con este volumen.
 
 ### Formato
 - Montos: `Intl.NumberFormat('es-CL')` — punto de miles, coma decimal.
+- **El peso va sin centavos y el dólar con dos, siempre** (`clp` y `usd` en
+  `lib/formato.ts`). No es simetría rota: la cartola en dólares trae los centavos y es
+  contra ella que se cuadra el saldo, así que redondear a entero deja una diferencia de
+  hasta un dólar por movimiento que después nadie puede explicar — y la columna de saldo
+  deja de ser la suma visible de los montos de arriba. Los dos decimales van **siempre**,
+  también en los montos redondos: en una columna de cifras `4.746` y `4.746,01` no caen
+  alineados. Para elegir por moneda están `montoEn` (el número solo, cuando el símbolo se
+  dibuja aparte) y `conMoneda` (con símbolo).
+- Y por lo mismo, todo campo de monto lleva `step="any"`: con el paso por defecto el
+  navegador marca inválido lo que tenga centavos.
 - Fechas: ISO en la base (`YYYY-MM-DD`), `DD-MM-YY` en pantalla.
 - Egresos negativos internamente. En vistas de presupuesto se muestran en magnitud.
 - Números tabulares en todas las tablas (`font-variant-numeric: tabular-nums`).

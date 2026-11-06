@@ -294,6 +294,7 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
             />
             <input
               type="number"
+              step="any"
               value={f.monto}
               onChange={(e) => editarFila(i, { monto: e.target.value })}
               placeholder="-306745"

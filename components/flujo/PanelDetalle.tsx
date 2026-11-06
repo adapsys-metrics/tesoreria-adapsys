@@ -6,7 +6,7 @@
 
 import { useEffect } from "react";
 import { enCLP } from "@/lib/dominio";
-import { clp } from "@/lib/formato";
+import { clp, usd } from "@/lib/formato";
 import { fechaCorta } from "@/lib/fechas";
 import type { LineaExpandida } from "@/lib/tipos";
 import { Insignia, Pill, clases } from "@/components/ui/primitivas";
@@ -152,7 +152,7 @@ export function PanelDetalle({
                           detalle se abrió desde una celda del flujo, que es CLP (§4.5). */}
                       {m.moneda === "USD" && (
                         <div className={css.montoUsd}>
-                          US${clp(m.monto)} @{m.tipo_cambio ?? tc}
+                          US${usd(m.monto)} @{m.tipo_cambio ?? tc}
                         </div>
                       )}
                       {clp(valor)}

@@ -112,6 +112,9 @@ export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) 
           </span>
           <input
             type="number"
+            // Sin esto el paso es 1 y el navegador marca inválido un monto con
+            // centavos. En dólares los hay: la cartola trae 4.746,01 (§4.5).
+            step="any"
             value={m.monto}
             aria-label="Monto del movimiento"
             onChange={(e) => editarMovimiento(m.id, "monto", Number(e.target.value) || 0)}

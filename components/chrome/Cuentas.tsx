@@ -45,7 +45,7 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Hueco, clases } from "@/components/ui/primitivas";
 import type { CuentaConSaldo } from "@/components/estado/ProveedorTesoreria";
 import { REGISTROS_PROYECCION, claveDeCuenta, totalDeRegistro } from "@/lib/registros";
-import { clp } from "@/lib/formato";
+import { montoEn } from "@/lib/formato";
 import { HOY } from "@/lib/fechas";
 import { contarVencidos, totalVencido } from "@/lib/vencidos";
 import css from "./chrome.module.css";
@@ -163,7 +163,7 @@ function Monto({
       ) : (
         <>
           {moneda === "USD" ? "US$" : "$"}
-          {clp(monto)}
+          {montoEn(monto, moneda)}
         </>
       )}
     </span>

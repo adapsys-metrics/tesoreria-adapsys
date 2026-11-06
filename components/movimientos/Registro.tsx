@@ -19,7 +19,7 @@ import {
   ordenarMovimientos,
   type ColumnaOrden,
 } from "@/lib/orden";
-import { clp } from "@/lib/formato";
+import { clp, conMoneda, montoEn, usd } from "@/lib/formato";
 import { HOY, fechaCorta } from "@/lib/fechas";
 import {
   Cabecera,
@@ -230,7 +230,7 @@ export function Registro() {
           cabecera && (
             <SaldoCabecera
               rotulo={cabecera.rotulo}
-              texto={`${cabecera.moneda === "USD" ? "US$" : "$"}${clp(cabecera.monto)}`}
+              texto={conMoneda(cabecera.monto, cabecera.moneda)}
               negativo={cabecera.monto < 0}
               cargando={cargando}
             />
@@ -568,7 +568,7 @@ export function Registro() {
                             (§4.5), así que el peso de acá es orientativo. */}
                         {m.moneda === "USD" ? (
                           <>
-                            US${clp(m.monto)}
+                            US${usd(m.monto)}
                             <div className={css.montoConvertido}>
                               ${clp(valor)} @{m.tipo_cambio ?? tc}
                             </div>
@@ -584,7 +584,7 @@ export function Registro() {
                               hasta ese punto, atenuado, para que se lea como "acá
                               todavía no pasa nada" y no como un saldo nuevo. */}
                           <span className={m.estado === "proyectado" ? css.saldoQuieto : undefined}>
-                            {clp(saldos.get(m.id) ?? 0)}
+                            {montoEn(saldos.get(m.id) ?? 0, cuentaAbierta?.moneda ?? "CLP")}
                           </span>
                         </td>
                       )}

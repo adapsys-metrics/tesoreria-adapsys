@@ -8,7 +8,7 @@ import { Fragment, useMemo, useState } from "react";
 import { NATURALEZAS } from "@/lib/catalogo";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { enCLP, expandir } from "@/lib/dominio";
-import { clp } from "@/lib/formato";
+import { clp, usd } from "@/lib/formato";
 import {
   ANIO,
   HOY,
@@ -339,7 +339,7 @@ export function Flujo() {
         <Aviso>
           <strong className={css.rotuloAviso}>Fuera del flujo</strong>{" "}
           {fueraDelFlujo.length} movimiento{fueraDelFlujo.length > 1 ? "s" : ""} en dólares por
-          US${clp(fueraDelFlujo.reduce((s, m) => s + m.monto, 0))}. El saldo de las cuentas en
+          US${usd(fueraDelFlujo.reduce((s, m) => s + m.monto, 0))}. El saldo de las cuentas en
           USD tampoco entra.
         </Aviso>
       )}
