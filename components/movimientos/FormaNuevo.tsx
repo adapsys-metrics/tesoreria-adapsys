@@ -13,6 +13,7 @@ import { clp, pct } from "@/lib/formato";
 import { HOY } from "@/lib/fechas";
 import type { DocTipo, Linea, Movimiento } from "@/lib/tipos";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
+import { montoDeTexto } from "@/components/ui/EntradaMonto";
 import { SelectorCuenta } from "./SelectorCuenta";
 import css from "./movimientos.module.css";
 
@@ -71,17 +72,21 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
   );
   const editarFila = (i: number, cambio: Partial<(typeof filas)[number]>) =>
     setFilas((f) => f.map((x, j) => (j === i ? { ...x, ...cambio } : x)));
+
+  /** El monto de una fila, que acá se guarda como texto mientras se escribe. Un
+   *  texto a medio escribir —"", "-"— vale cero: no es una línea todavía. */
+  const montoDe = (f: (typeof filas)[number]) => montoDeTexto(f.monto) ?? 0;
   const [doc, setDoc] = useState<DocTipo>("exento");
 
   // Lo que se muestra es exactamente lo que se va a grabar: mismas líneas, mismo
   // helper de impuesto que usa el editor (§4.3).
   const lineasEscritas: Linea[] = filas
-    .filter((f) => f.categoria !== null && Number(f.monto))
+    .filter((f) => f.categoria !== null && montoDe(f))
     .map((f) => ({
       categoria_id: f.categoria!,
       subcategoria_id: null,
       doc_tipo: null,
-      monto: Number(f.monto),
+      monto: montoDe(f),
       glosa: f.glosa.trim() || null,
     }));
 
@@ -114,7 +119,7 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
 
   // Una fila con monto pero sin categoría no se puede guardar: se perdería, porque
   // solo entran las que tienen las dos cosas.
-  const filaIncompleta = filas.some((f) => Number(f.monto) && f.categoria === null);
+  const filaIncompleta = filas.some((f) => montoDe(f) && f.categoria === null);
   const sinLineas = lineasEscritas.length === 0;
 
   const guardar = () => {
@@ -293,14 +298,16 @@ export function FormaNuevo({ cerrar }: { cerrar: (idCreado?: string) => void }) 
               className={css.inputGlosa}
             />
             <input
-              type="number"
-              step="any"
+              // Texto y no number: con number el navegador descarta el menos
+              // suelto y no se puede escribir un egreso empezando por el signo.
+              type="text"
+              inputMode="decimal"
               value={f.monto}
               onChange={(e) => editarFila(i, { monto: e.target.value })}
               placeholder="-306745"
               aria-label={`Monto de la línea ${i + 1}`}
               className={css.inputMonto}
-              style={{ color: Number(f.monto) < 0 ? "var(--brick)" : "var(--teal)" }}
+              style={{ color: montoDe(f) < 0 ? "var(--brick)" : "var(--teal)" }}
             />
             <button
               type="button"

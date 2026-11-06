@@ -276,6 +276,21 @@ base del impuesto son las líneas de ese tipo; **si ninguna lo dice, son todas**
 apretar el botón ya es decir "esto es afecto", que es el caso corriente y no debería
 obligar a marcar nada.
 
+**Cuando las líneas no suman, hay dos arreglos y la app no puede elegir.** La pregunta es
+cuál de los dos números es el cierto:
+
+- **Manda el monto** —salió de la cartola y falta una línea por escribir—: la diferencia se
+  le carga a una línea.
+- **Mandan las líneas** —al cobro le descontaron algo, comisiones bancarias o una
+  retención—: el que tiene que cambiar es el **monto del movimiento**, porque el monto es el
+  líquido que entró o salió del banco.
+
+El botón "Cuadrar diferencia" resolvía siempre de la primera forma, en silencio. En el
+segundo caso eso no solo da el resultado equivocado: **se ve como un borrado**. La línea de
+comisiones recién escrita es la última, cargarle la diferencia la deja exactamente en cero,
+y parece que el botón borró lo que uno acababa de escribir. Ahora pregunta, con los dos
+números a la vista (`components/movimientos/CuadrarDiferencia.tsx`).
+
 **Tarjetas de crédito.** Un movimiento (el pago del estado de cuenta) con muchas líneas, cada una
 con su propia glosa y categoría. Necesita carga masiva por pegado.
 
@@ -647,6 +662,19 @@ toca las puntas.
 La limpieza va en el `onBlur`, al salir del campo. Lo único que sí corresponde normalizar
 al escribir es lo que tiene un significado distinto —el vacío de un titular es un cargo
 vacante, y ahí `"" → null`—, porque eso no cambia lo que la persona está tecleando.
+
+Y por lo mismo, **un monto no se escribe en un `<input type="number">`**. Al teclear el
+menos solo, el navegador da el valor por incompleto y `e.target.value` devuelve `""`; con
+`Number("") || 0` eso guardaba 0, el campo se redibujaba con ese 0 y **el signo
+desaparecía antes del primer dígito** — no se podía registrar un egreso empezando por el
+menos. Es el mismo error que la fecha: escribir al estado un valor intermedio.
+
+`components/ui/EntradaMonto.tsx` es el campo que va en su lugar: texto mientras se
+escribe, y al estado solo sube lo que ya es un número (`montoDeTexto`, que devuelve
+**null** y no 0 para `""` o `"-"`). Acepta coma o punto como decimal; cuando vienen los
+dos —`90.075,23` pegado de una cartola, `1,234.56` de algo en inglés— manda el **último**,
+que es el decimal. Lo que no se adivina es un punto solo: `5.194` se lee 5,194, que es
+como el campo lo muestra al releerlo.
 
 ### Mientras carga no se muestra ningún número
 

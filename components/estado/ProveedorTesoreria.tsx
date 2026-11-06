@@ -146,7 +146,10 @@ type Contexto = Estado & {
   agregarLinea: (id: string) => void;
   quitarLinea: (id: string, indice: number) => void;
   quitarSplit: (id: string) => void;
+  /** Le carga la diferencia a la última línea: el monto manda. */
   cuadrar: (id: string) => void;
+  /** El monto pasa a ser la suma de las líneas: mandan las líneas. */
+  ajustarMontoALineas: (id: string) => void;
   aplicarImpuesto: (id: string, tipo: "iva" | "bhe") => void;
   pegarLineas: (id: string, texto: string) => void;
   /** Devuelve el id provisorio del movimiento creado. */
@@ -787,6 +790,25 @@ export function ProveedorTesoreria({
   );
 
   /** Empuja el descuadre a la última línea. */
+  /**
+   * El monto pasa a ser la suma de las líneas.
+   *
+   * Es el otro lado de `cuadrar`: ahí el monto manda y la diferencia se le carga
+   * a una línea; acá mandan las líneas. Pasa cada vez que a un cobro le
+   * descuentan algo —comisiones bancarias, una retención— y lo que entró al
+   * banco es menos que la factura: el monto es el líquido (§4.3), así que al
+   * escribir el descuento el monto tiene que bajar.
+   */
+  const ajustarMontoALineas = useCallback(
+    (id: string) =>
+      mapMov(id, (m) =>
+        m.lineas.length
+          ? { ...m, monto: redondearEn(m.lineas.reduce((t, l) => t + l.monto, 0), m.moneda) }
+          : m
+      ),
+    [mapMov]
+  );
+
   const cuadrar = useCallback(
     (id: string) =>
       mapMov(id, (m) => {
@@ -1004,6 +1026,7 @@ export function ProveedorTesoreria({
     quitarLinea,
     quitarSplit,
     cuadrar,
+    ajustarMontoALineas,
     aplicarImpuesto,
     pegarLineas,
     agregarMovimiento,

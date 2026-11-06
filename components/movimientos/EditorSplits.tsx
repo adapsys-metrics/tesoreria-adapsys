@@ -7,12 +7,14 @@
 import { useRef, useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import type { DocTipo } from "@/lib/tipos";
-import { descuadre } from "@/lib/dominio";
+import { descuadre, sumaLineas } from "@/lib/dominio";
 import { montoEn, pct } from "@/lib/formato";
 import type { Movimiento } from "@/lib/tipos";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
 import { clases } from "@/components/ui/primitivas";
+import { EntradaMonto } from "@/components/ui/EntradaMonto";
+import { CuadrarDiferencia } from "./CuadrarDiferencia";
 import css from "./movimientos.module.css";
 
 const EJEMPLO_PEGADO =
@@ -26,12 +28,14 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
     quitarLinea,
     quitarSplit,
     cuadrar,
+    ajustarMontoALineas,
     aplicarImpuesto,
     pegarLineas,
     cuentas,
   } = useTesoreria();
 
   const [pegando, setPegando] = useState(false);
+  const [cuadrando, setCuadrando] = useState(false);
   const texto = useRef("");
 
   const dif = descuadre(m);
@@ -103,12 +107,10 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
                 <option value="honorario">honorario</option>
               </select>
             )}
-            <input
-              type="number"
-              step="any"
-              value={l.monto}
-              aria-label="Monto de la línea"
-              onChange={(e) => editarLinea(m.id, i, "monto", Number(e.target.value) || 0)}
+            <EntradaMonto
+              valor={l.monto}
+              onChange={(n) => editarLinea(m.id, i, "monto", n)}
+              etiqueta="Monto de la línea"
               className={css.inputMonto}
               style={{ color: l.monto < 0 ? "var(--brick)" : "var(--teal)" }}
             />
@@ -128,6 +130,23 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
           </div>
         ))}
       </div>
+
+      {cuadrando && (
+        <CuadrarDiferencia
+          movimiento={m}
+          suma={sumaLineas(m)}
+          diferencia={dif}
+          ajustarMovimiento={() => {
+            ajustarMontoALineas(m.id);
+            setCuadrando(false);
+          }}
+          cargarAUltimaLinea={() => {
+            cuadrar(m.id);
+            setCuadrando(false);
+          }}
+          cancelar={() => setCuadrando(false)}
+        />
+      )}
 
       <div className={css.acciones}>
         <button type="button" onClick={() => agregarLinea(m.id)} className={css.botonAmpliar}>
@@ -159,7 +178,7 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
         {dif !== 0 && (
           <button
             type="button"
-            onClick={() => cuadrar(m.id)}
+            onClick={() => setCuadrando(true)}
             className={clases(css.botonAmpliar, css.botonCuadrar)}
           >
             Cuadrar diferencia

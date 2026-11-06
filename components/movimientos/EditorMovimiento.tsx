@@ -12,6 +12,7 @@ import { enCLP } from "@/lib/dominio";
 import { clp } from "@/lib/formato";
 import type { DocTipo, Movimiento } from "@/lib/tipos";
 import { Pill, clases } from "@/components/ui/primitivas";
+import { EntradaMonto } from "@/components/ui/EntradaMonto";
 import { pasoDe } from "@/lib/cobranza";
 import { EditorSplits } from "./EditorSplits";
 import { SelectorCuenta } from "./SelectorCuenta";
@@ -110,14 +111,10 @@ export function EditorMovimiento({ movimiento: m }: { movimiento: Movimiento }) 
           <span className={css.etiquetaCampo}>
             Monto {m.moneda === "USD" ? "(US$)" : "(CLP)"}
           </span>
-          <input
-            type="number"
-            // Sin esto el paso es 1 y el navegador marca inválido un monto con
-            // centavos. En dólares los hay: la cartola trae 4.746,01 (§4.5).
-            step="any"
-            value={m.monto}
-            aria-label="Monto del movimiento"
-            onChange={(e) => editarMovimiento(m.id, "monto", Number(e.target.value) || 0)}
+          <EntradaMonto
+            valor={m.monto}
+            onChange={(n) => editarMovimiento(m.id, "monto", n)}
+            etiqueta="Monto del movimiento"
             className={css.entrada}
           />
         </label>

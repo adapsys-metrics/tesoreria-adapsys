@@ -846,3 +846,31 @@
   border-color: var(--amber);
   background: var(--amber-soft);
 }
+
+/* ── Cuadrar la diferencia ── */
+
+/* Las dos salidas van una debajo de la otra y cada una con su explicación: la
+   diferencia entre ellas es cuál de los dos números es el cierto, y eso no se
+   deduce de un rótulo de tres palabras. */
+.opcionesCuadre {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 14px 0 4px;
+}
+
+.opcionesCuadre button {
+  width: 100%;
+  text-align: center;
+}
+
+.opcionesCuadre button + .pieOpcion {
+  margin-bottom: 10px;
+}
+
+.pieOpcion {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+}

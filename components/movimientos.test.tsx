@@ -99,14 +99,68 @@ describe("Movimientos", () => {
     expect(screen.getByText("Cuadrar diferencia")).toBeDefined();
   });
 
-  it("cuadrar la diferencia la vuelve a dejar en cero", () => {
+  it("cuadrar pregunta primero: no hay forma de saber cuál número es el cierto", () => {
+    // Resolvía solo, cargándole la diferencia a la última línea. Cuando esa línea
+    // es la que se acaba de escribir —las comisiones que le descontaron a un
+    // cobro— le carga la diferencia justa para dejarla en cero, y se ve como si
+    // el botón hubiera borrado lo recién escrito.
     montar(<Registro />);
     fireEvent.click(screen.getAllByText(/Split · \d+ líneas/)[0]!);
     fireEvent.change(screen.getAllByLabelText("Monto de la línea")[0]!, {
       target: { value: "1" },
     });
     fireEvent.click(screen.getByText("Cuadrar diferencia"));
+    expect(screen.getByRole("dialog", { name: "Cuadrar la diferencia" })).toBeDefined();
+    // Y nada cambió todavía.
+    expect(screen.getByText(/^descuadre /)).toBeDefined();
+  });
+
+  it("ajustar el movimiento lo deja valiendo la suma de las líneas", () => {
+    // El caso del cobro con comisiones: el monto es el líquido que entró al banco
+    // (§4.3), así que al escribir el descuento el que baja es el monto.
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByText(/Split · \d+ líneas/)[0]!);
+    fireEvent.change(screen.getAllByLabelText("Monto de la línea")[0]!, {
+      target: { value: "1" },
+    });
+    fireEvent.click(screen.getByText("Cuadrar diferencia"));
+    const cuadro = within(screen.getByRole("dialog", { name: "Cuadrar la diferencia" }));
+    fireEvent.click(cuadro.getByText(/^Ajustar el movimiento a /));
     expect(screen.getByText("cuadrado")).toBeDefined();
+    expect(screen.queryByRole("dialog", { name: "Cuadrar la diferencia" })).toBeNull();
+  });
+
+  it("y la otra salida sigue estando: cargarle la diferencia a la última línea", () => {
+    // Es la correcta cuando el monto salió de la cartola y lo que falta es una
+    // línea sin escribir. Era la única que había, y por eso molestaba.
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByText(/Split · \d+ líneas/)[0]!);
+    const ultima = () => {
+      const montos = screen.getAllByLabelText("Monto de la línea");
+      return (montos[montos.length - 1]! as HTMLInputElement).value;
+    };
+    const antes = ultima();
+    fireEvent.change(screen.getAllByLabelText("Monto de la línea")[0]!, {
+      target: { value: "1" },
+    });
+    fireEvent.click(screen.getByText("Cuadrar diferencia"));
+    const cuadro = within(screen.getByRole("dialog", { name: "Cuadrar la diferencia" }));
+    fireEvent.click(cuadro.getByText(/^Cargar /));
+    expect(screen.getByText("cuadrado")).toBeDefined();
+    // La que se movió es la última, no la que se estaba escribiendo.
+    expect(ultima()).not.toBe(antes);
+  });
+
+  it("el monto de una línea acepta el menos como primera tecla", () => {
+    // Con `<input type="number">` el menos solo devolvía "" y se guardaba 0: el
+    // campo se redibujaba con ese 0 y el signo no llegaba nunca.
+    montar(<Registro />);
+    fireEvent.click(screen.getAllByText(/Split · \d+ líneas/)[0]!);
+    const monto = screen.getAllByLabelText("Monto de la línea")[0]! as HTMLInputElement;
+    fireEvent.change(monto, { target: { value: "-" } });
+    expect(monto.value).toBe("-");
+    fireEvent.change(monto, { target: { value: "-5194.42" } });
+    expect(monto.value).toBe("-5194.42");
   });
 
   it("el pegado masivo agrega líneas (§4.3)", () => {
