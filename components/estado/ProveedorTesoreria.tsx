@@ -56,6 +56,7 @@ import {
   cuentaPrincipalDe,
   enCLP,
   lineaDeImpuesto,
+  redondearEn,
 } from "@/lib/dominio";
 import { perteneceAlRegistro, saldoDeCuenta, esDeControl } from "@/lib/registros";
 import { pasoDe } from "@/lib/cobranza";
@@ -109,6 +110,10 @@ type Contexto = Estado & {
   /** Mensaje si un cambio no se pudo guardar. Sin esto, la edición se ve aplicada
    *  en pantalla y desaparece al recargar. */
   errorGuardado: string | null;
+  /** Baja el aviso sin recargar. Para cuando ya se sabe qué pasó: el aviso es
+   *  de los que no se van solos —no hay un intento siguiente que lo reemplace—
+   *  y quedaba arriba tapando la pantalla hasta recargar. */
+  descartarErrorGuardado: () => void;
   /** Movimientos y cuentas ya filtrados por el selector global de empresas.
    *  El presupuesto NO usa estos: es consolidado y se salta el filtro (§4.6). */
   movimientosFiltrados: Movimiento[];
@@ -332,6 +337,9 @@ export function ProveedorTesoreria({
   // es donde se cuelan los mutadores que se olvidan de persistir.
   const guardados = useRef<Map<string, Movimiento> | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
+  // Acá arriba, junto al estado que toca: declarado más abajo quedaría usado
+  // antes de existir en el objeto del contexto (§8).
+  const descartarErrorGuardado = useCallback(() => setErrorGuardado(null), []);
 
   const persistirMovimientos = useCallback(
     (previos: Map<string, Movimiento>) => {
@@ -783,10 +791,16 @@ export function ProveedorTesoreria({
     (id: string) =>
       mapMov(id, (m) => {
         if (!m.lineas.length) return m;
-        const dif = Math.round(m.monto - m.lineas.reduce((s, l) => s + l.monto, 0));
+        // A la precisión de la moneda y no al peso: en una cuenta en dólares una
+        // diferencia de 0,23 redondeaba a 0, el botón no hacía nada y el
+        // descuadre seguía ahí hasta que la base rechazaba el movimiento entero.
+        const dif = redondearEn(m.monto - m.lineas.reduce((s, l) => s + l.monto, 0), m.moneda);
         const lineas = [...m.lineas];
         const ultima = lineas[lineas.length - 1]!;
-        lineas[lineas.length - 1] = { ...ultima, monto: ultima.monto + dif };
+        // Y el resultado también se redondea: 90075 + 0,23 en coma flotante puede
+        // dar 90075.22999999999, que viaja a la base como ese literal y vuelve a
+        // descuadrar — justo lo que este botón vino a arreglar.
+        lineas[lineas.length - 1] = { ...ultima, monto: redondearEn(ultima.monto + dif, m.moneda) };
         return { ...m, lineas };
       }),
     [mapMov]
@@ -881,6 +895,10 @@ export function ProveedorTesoreria({
     if (supabaseConfigurado) {
       setCargando(true);
       setErrorCarga(null);
+      // Y el de guardado también: lo que decía era que la pantalla no coincidía
+      // con la base, y releerla es exactamente lo que deja de ser cierto. Sin
+      // esto el aviso sobrevivía al botón que lo resuelve.
+      setErrorGuardado(null);
       const supabase = crearClienteNavegador();
       Promise.all([
         cargarMovimientos(supabase),
@@ -897,6 +915,7 @@ export function ProveedorTesoreria({
         .finally(() => setCargando(false));
       return;
     }
+    setErrorGuardado(null);
     try {
       window.localStorage.removeItem(CLAVE_STORAGE);
     } catch {
@@ -965,6 +984,7 @@ export function ProveedorTesoreria({
     cargando,
     errorCarga,
     errorGuardado,
+    descartarErrorGuardado,
     setEmpresasSeleccionadas: (ids) =>
       // Se limpia la cuenta: si su empresa deja de estar seleccionada, quedaría un
       // filtro invisible mostrando cero movimientos sin explicar por qué.

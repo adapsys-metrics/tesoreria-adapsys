@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import type { DocTipo } from "@/lib/tipos";
 import { descuadre } from "@/lib/dominio";
-import { clp, pct } from "@/lib/formato";
+import { montoEn, pct } from "@/lib/formato";
 import type { Movimiento } from "@/lib/tipos";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
 import { SelectorSubcategoria } from "@/components/ui/SelectorSubcategoria";
@@ -50,7 +50,7 @@ export function EditorSplits({ movimiento: m }: { movimiento: Movimiento }) {
       <div className={css.rotuloLineas}>
         Líneas
         <span className={clases(css.estadoCuadre, dif === 0 ? css.cuadrado : css.descuadrado)}>
-          {dif === 0 ? "cuadrado" : `descuadre ${clp(dif)}`}
+          {dif === 0 ? "cuadrado" : `descuadre ${montoEn(dif, m.moneda)}`}
         </span>
       </div>
 

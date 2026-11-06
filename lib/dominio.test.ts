@@ -4,6 +4,7 @@ import {
   conRetencion,
   cuentaPrincipalDe,
   descuadre,
+  redondearEn,
   enCLP,
   expandir,
   sumaLineas,
@@ -183,6 +184,48 @@ describe("descuadre (§3)", () => {
 
   it("un movimiento sin líneas nunca está descuadrado", () => {
     expect(descuadre(mov({ monto: -5000 }))).toBe(0);
+  });
+
+  it("en dólares se mide al centavo", () => {
+    // Al peso, un descuadre de 0,23 redondeaba a 0: la pantalla decía "cuadrado"
+    // y la base rechazaba el movimiento entero al guardarlo.
+    const m = mov({
+      moneda: "USD",
+      cuenta_id: "a2",
+      monto: -90075.23,
+      lineas: [{ categoria_id: "a", subcategoria_id: null, doc_tipo: null, monto: -90075, glosa: null }],
+    });
+    expect(descuadre(m)).toBe(-0.23);
+  });
+
+  it("pero la basura de coma flotante no es un descuadre", () => {
+    // 53.588,13 + 36.569,16 da 90157.29000000001 en coma flotante. Eso no es una
+    // diferencia de un céntimo de centavo: es cómo se escribe el mismo número.
+    const m = mov({
+      moneda: "USD",
+      cuenta_id: "a2",
+      monto: 90157.29,
+      lineas: [
+        { categoria_id: "a", subcategoria_id: null, doc_tipo: null, monto: 53588.13, glosa: null },
+        { categoria_id: "b", subcategoria_id: null, doc_tipo: null, monto: 36569.16, glosa: null },
+      ],
+    });
+    expect(53588.13 + 36569.16).not.toBe(90157.29);
+    expect(descuadre(m)).toBe(0);
+  });
+});
+
+describe("redondearEn", () => {
+  it("al peso en pesos y al centavo en dólares", () => {
+    expect(redondearEn(90075.23, "CLP")).toBe(90075);
+    expect(redondearEn(90075.234, "USD")).toBe(90075.23);
+    expect(redondearEn(90075.236, "USD")).toBe(90075.24);
+  });
+
+  it("devuelve un número que se escribe limpio", () => {
+    // Es para lo que existe: lo que sale de acá viaja a la base como literal, y
+    // "90075.22999999999" la hace rechazar el movimiento por descuadre.
+    expect(JSON.stringify(redondearEn(90075 + 0.23, "USD"))).toBe("90075.23");
   });
 });
 

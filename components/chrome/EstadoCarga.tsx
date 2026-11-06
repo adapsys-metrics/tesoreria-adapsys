@@ -6,21 +6,46 @@
 // todavía está cargando y una app que falló al cargar muestran las mismas tablas
 // vacías y los mismos saldos en cero que una empresa sin movimientos. En una
 // herramienta de tesorería eso es peor que un error a la vista.
+//
+// Los dos avisos de error llevan **Recargar**, que es lo que de verdad los
+// resuelve: vuelve a leer la base y deja la pantalla diciendo lo que la base
+// dice. El de guardado además se puede **cerrar**, porque es el único que no se
+// va solo —no hay un intento siguiente que lo reemplace— y se quedaba arriba
+// tapando la pantalla hasta recargar. Cerrarlo no arregla nada y el texto lo
+// dice: lo que se ve sigue sin estar en la base.
+//
+// El de carga no se cierra. Ahí lo que está mal son los números de abajo, y
+// bajar el cartel los dejaría a la vista como si fueran buenos.
 
 import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import css from "./chrome.module.css";
 
 export function EstadoCarga() {
-  const { cargando, errorCarga, errorGuardado, movimientos } = useTesoreria();
+  const { cargando, errorCarga, errorGuardado, movimientos, reiniciar, descartarErrorGuardado } =
+    useTesoreria();
 
   // Va primero: un cambio que no se guardó es más urgente que cualquier otra cosa,
   // porque en pantalla se ve aplicado y se pierde al recargar.
   if (errorGuardado) {
     return (
       <div className={css.bandaError} role="alert">
-        <strong>Un cambio no se pudo guardar.</strong> {errorGuardado}
-        <br />
-        Lo que ves en pantalla no está en la base. Recarga la página para ver el estado real.
+        <div className={css.textoBanda}>
+          <strong>Un cambio no se pudo guardar.</strong> {errorGuardado}
+          <br />
+          Lo que ves en pantalla no está en la base. Recarga la página para ver el estado real.
+        </div>
+        <button type="button" onClick={reiniciar} className={css.accionBanda}>
+          Recargar
+        </button>
+        <button
+          type="button"
+          onClick={descartarErrorGuardado}
+          aria-label="Cerrar el aviso"
+          title="Baja el aviso. Lo que se ve en pantalla sigue sin estar en la base."
+          className={css.cerrarBanda}
+        >
+          ×
+        </button>
       </div>
     );
   }
@@ -28,9 +53,14 @@ export function EstadoCarga() {
   if (errorCarga) {
     return (
       <div className={css.bandaError} role="alert">
-        <strong>No se pudieron cargar los movimientos.</strong> {errorCarga}
-        <br />
-        Los saldos y totales que se ven abajo están incompletos: no los uses para decidir nada.
+        <div className={css.textoBanda}>
+          <strong>No se pudieron cargar los movimientos.</strong> {errorCarga}
+          <br />
+          Los saldos y totales que se ven abajo están incompletos: no los uses para decidir nada.
+        </div>
+        <button type="button" onClick={reiniciar} className={css.accionBanda}>
+          Reintentar
+        </button>
       </div>
     );
   }

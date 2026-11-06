@@ -535,6 +535,24 @@ Costo esperado: entre USD 0 y ~25/mes con este volumen.
   dibuja aparte) y `conMoneda` (con símbolo).
 - Y por lo mismo, todo campo de monto lleva `step="any"`: con el paso por defecto el
   navegador marca inválido lo que tenga centavos.
+- **Redondear es por moneda, no `Math.round` a secas** (`redondearEn` en `lib/dominio.ts`).
+  El descuadre de un split y el botón "Cuadrar diferencia" lo usan: al peso, una diferencia
+  de 0,23 en una cuenta en dólares redondeaba a cero, la pantalla decía "cuadrado" y la base
+  rechazaba el movimiento entero al guardarlo. Y al revés, sumar dos montos de dos decimales
+  da `90157.29000000001`: eso no es un descuadre, es cómo se escribe el mismo número, y si
+  viaja a la base como ese literal la constraint lo rechaza.
+
+### Un aviso que no se puede bajar es un aviso que se ignora
+
+Los dos carteles de error llevan **Recargar**, que es lo que de verdad los resuelve: vuelve
+a leer la base y deja la pantalla diciendo lo que la base dice. Y `reiniciar()` tiene que
+limpiar **los dos** errores, no solo el de carga — el de guardado sobrevivía al botón que lo
+arregla y solo se iba recargando el navegador a mano.
+
+El de guardado además se cierra, porque es el único que no se reemplaza solo: no hay un
+intento siguiente que lo pise, así que se quedaba arriba tapando la pantalla. Cerrarlo no
+arregla nada y el texto sigue diciéndolo. El de carga **no** se cierra: ahí lo que está mal
+son los números de abajo, y bajar el cartel los dejaría a la vista como si fueran buenos.
 - Fechas: ISO en la base (`YYYY-MM-DD`), `DD-MM-YY` en pantalla.
 - Egresos negativos internamente. En vistas de presupuesto se muestran en magnitud.
 - Números tabulares en todas las tablas (`font-variant-numeric: tabular-nums`).

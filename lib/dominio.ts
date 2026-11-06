@@ -171,12 +171,32 @@ export const sumaLineas = (m: Movimiento): number =>
   m.lineas.reduce((a, l) => a + l.monto, 0);
 
 /**
+ * Redondea a la precisión de la moneda: al peso en pesos, al centavo en dólares.
+ *
+ * Hace falta en dos lados y por la misma razón. Sumar floats da 90075.229999999996
+ * donde el documento dice 90075,23; eso se ve como un descuadre que no existe, y
+ * si llega a la base se va como ese literal y la constraint rechaza el movimiento
+ * entero. Redondeando a la precisión real de la moneda el número vuelve a
+ * escribirse como lo que es.
+ */
+export const redondearEn = (n: number, moneda: Moneda): number => {
+  const r = moneda === "USD" ? Math.round(n * 100) / 100 : Math.round(n);
+  // Math.round de un negativo diminuto devuelve -0, y aunque -0 === 0 es cierto,
+  // Object.is los distingue: un test que espera 0 falla sin que nada esté mal.
+  return r === 0 ? 0 : r;
+};
+
+/**
  * Diferencia entre el monto del movimiento y la suma de sus líneas. Debe ser 0
  * (§3); la UI avisa el descuadre en vez de corregirlo sola, porque el documento
  * manda y a veces el redondeo legítimo no cuadra al peso.
+ *
+ * Va redondeado a la moneda: en dólares la diferencia se mide al centavo —0,23 es
+ * un descuadre de verdad— y la basura de coma flotante, que es mil veces más
+ * chica, queda en cero.
  */
 export const descuadre = (m: Movimiento): number =>
-  m.lineas.length ? m.monto - sumaLineas(m) : 0;
+  m.lineas.length ? redondearEn(m.monto - sumaLineas(m), m.moneda) : 0;
 
 /**
  * Con qué estado nace un movimiento que se está registrando.
