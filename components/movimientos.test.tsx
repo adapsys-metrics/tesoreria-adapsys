@@ -609,3 +609,102 @@ describe("La empresa al crear un movimiento", () => {
     );
   });
 });
+
+describe("Menú de botón derecho", () => {
+  // En una tabla de 10.530 filas los controles quedan lejos: el que abre el
+  // detalle está al final de la fila, a dos pantallas del proveedor que uno
+  // estaba mirando. El clic derecho los trae al cursor, como en Quicken.
+
+  const filas = () => document.querySelectorAll('tr[data-fila="movimiento"]');
+
+  const abrirMenu = (i = 0) => {
+    montar(<Registro />);
+    fireEvent.contextMenu(filas()[i]!);
+    return within(screen.getByRole("menu"));
+  };
+
+  it("el clic derecho sobre una fila abre el menú", () => {
+    const menu = abrirMenu();
+    expect(menu.getByText("Abrir el detalle")).toBeDefined();
+    expect(menu.getByText("Duplicar movimiento")).toBeDefined();
+    expect(menu.getByText("Borrar movimiento")).toBeDefined();
+  });
+
+  it("sobre un campo no se roba el menú del navegador", () => {
+    // Ahí el menú del navegador es el que sirve —copiar, pegar, corregir— y
+    // quitárselo a alguien que está escribiendo una glosa sería peor que nada.
+    montar(<Registro />);
+    // El selector de cuenta de la propia fila: un control, no texto de la tabla.
+    fireEvent.contextMenu(filas()[0]!.querySelector("select")!);
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("Escape lo cierra", () => {
+    const menu = abrirMenu();
+    fireEvent.keyDown(menu.getByText("Duplicar movimiento"), { key: "Escape" });
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("abrir el detalle hace lo mismo que el botón del final de la fila", () => {
+    const menu = abrirMenu();
+    fireEvent.click(menu.getByText("Abrir el detalle"));
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByLabelText("Monto del movimiento")).toBeDefined();
+  });
+
+  it("duplicar agrega una fila y abre su detalle", () => {
+    montar(<Registro />);
+    const antes = filas().length;
+    fireEvent.contextMenu(filas()[0]!);
+    fireEvent.click(within(screen.getByRole("menu")).getByText("Duplicar movimiento"));
+    expect(filas().length).toBe(antes + 1);
+    expect(screen.getByLabelText("Monto del movimiento")).toBeDefined();
+  });
+
+  it("la copia no se trae el número de documento", () => {
+    // Identifica un papel concreto, así que en la copia está casi siempre mal.
+    // Un valor real y guardable es peor que ninguno (§4.3): nadie revisa un
+    // campo que ya viene lleno.
+    montar(<Registro />);
+    fireEvent.contextMenu(filas()[0]!);
+    fireEvent.click(within(screen.getByRole("menu")).getByText("Abrir el detalle"));
+    fireEvent.change(screen.getByLabelText("Número de documento"), {
+      target: { value: "FA999" },
+    });
+    // La fila lo muestra al lado de la glosa: una sola vez, la del original.
+    expect(screen.getAllByText("FA999")).toHaveLength(1);
+
+    fireEvent.contextMenu(filas()[0]!);
+    fireEvent.click(within(screen.getByRole("menu")).getByText("Duplicar movimiento"));
+    expect(screen.getAllByText("FA999")).toHaveLength(1);
+  });
+
+  it("borrar pregunta antes, y dice cuál es", () => {
+    // Desde el menú uno no llegó abriendo el detalle: puede haber apretado sobre
+    // la fila de al lado. Y no hay deshacer.
+    const menu = abrirMenu();
+    fireEvent.click(menu.getByText("Borrar movimiento"));
+    const cuadro = within(screen.getByRole("dialog", { name: "Confirmar borrado" }));
+    expect(cuadro.getByText(/No se puede deshacer/)).toBeDefined();
+  });
+
+  it("y recién al confirmar lo borra", () => {
+    montar(<Registro />);
+    const antes = filas().length;
+    fireEvent.contextMenu(filas()[0]!);
+    fireEvent.click(within(screen.getByRole("menu")).getByText("Borrar movimiento"));
+    expect(filas().length).toBe(antes);
+    fireEvent.click(screen.getByText("Sí, borrar"));
+    expect(filas().length).toBe(antes - 1);
+  });
+
+  it("cancelar no borra nada", () => {
+    montar(<Registro />);
+    const antes = filas().length;
+    fireEvent.contextMenu(filas()[0]!);
+    fireEvent.click(within(screen.getByRole("menu")).getByText("Borrar movimiento"));
+    fireEvent.click(screen.getByText("Cancelar"));
+    expect(filas().length).toBe(antes);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});

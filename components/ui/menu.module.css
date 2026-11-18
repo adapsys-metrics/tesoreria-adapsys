@@ -1,0 +1,54 @@
+/* Menú de botón derecho. Fijo a la ventana y no al documento: se abre en el
+   punto del cursor, que es una coordenada de pantalla. */
+
+.menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 190px;
+  padding: 4px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--surface);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 14%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.menu:focus {
+  outline: none;
+}
+
+.opcion {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  text-align: left;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* El teclado y el mouse marcan igual: con las flechas y con el puntero se ve lo
+   mismo, así que no hay dos estados que aprender. */
+.marcada {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+
+/* Lo que no se puede deshacer va separado del resto y en magenta, que acá es el
+   color de lo que resta (§8). */
+.peligrosa {
+  margin-top: 4px;
+  border-top: 1px solid var(--rule-soft);
+  border-radius: 0 0 3px 3px;
+  padding-top: 8px;
+  color: var(--brick);
+}
+
+.peligrosa.marcada {
+  background: var(--brick-soft);
+  color: var(--brick);
+}

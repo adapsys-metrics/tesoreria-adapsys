@@ -55,10 +55,12 @@ import {
   TASAS,
   cuentaPrincipalDe,
   enCLP,
+  estadoInicialDe,
   lineaDeImpuesto,
   redondearEn,
 } from "@/lib/dominio";
 import { perteneceAlRegistro, saldoDeCuenta, esDeControl } from "@/lib/registros";
+import { HOY } from "@/lib/fechas";
 import { pasoDe } from "@/lib/cobranza";
 import { pct } from "@/lib/formato";
 import type {
@@ -154,6 +156,8 @@ type Contexto = Estado & {
   pegarLineas: (id: string, texto: string) => void;
   /** Devuelve el id provisorio del movimiento creado. */
   agregarMovimiento: (m: Omit<Movimiento, "id">) => string;
+  /** Copia un movimiento y devuelve el id de la copia. Sin documento ni hito. */
+  duplicarMovimiento: (m: Movimiento) => string;
   /** Borra un movimiento registrado por error. Las líneas se van con él. */
   borrarMovimiento: (id: string) => void;
   reiniciar: () => void;
@@ -895,6 +899,53 @@ export function ProveedorTesoreria({
   }, []);
 
   /**
+   * Una copia del movimiento, lista para editar.
+   *
+   * Es el ⌘D de Quicken y sirve para lo mismo: el cargo que se repite mes a mes
+   * se registra una vez y después se duplica, en vez de volver a escribir
+   * proveedor, categorías y el split entero.
+   *
+   * Lo que **no** se copia es `documento` ni `hito`. Los dos identifican un
+   * papel concreto —el número de factura, la cuota del plan de pagos (§4.8)— así
+   * que en la copia están casi siempre mal, y un valor real y guardable es peor
+   * que ninguno (§4.3): nadie revisa un campo que ya viene lleno. El resto se
+   * copia entero, líneas incluidas.
+   *
+   * Y el estado no se copia: se calcula como el de cualquier alta
+   * (`estadoInicialDe`). Un duplicado es un movimiento nuevo, y la app tiene una
+   * sola regla para cómo nace uno — usar otra acá sería una segunda regla que
+   * nadie puede predecir.
+   *
+   * Recibe el movimiento y no su id: así devuelve el id nuevo en el acto, sin
+   * esperar a que el estado se asiente, y quien llama puede abrir el detalle.
+   */
+  const duplicarMovimiento = useCallback((m: Movimiento): string => {
+    const id = `n${++secuenciaNueva.current}`;
+    setEstado((p) => {
+      const cuenta = p.cuentasBase.find((c) => c.id === m.cuenta_id) ?? null;
+      return {
+        ...p,
+        movimientos: [
+          ...p.movimientos,
+          {
+            ...m,
+            id,
+            documento: null,
+            hito: null,
+            // El origen marca lo que generó la proyección del año (§10). Una
+            // copia hecha a mano no es eso, y si lo dijera, rehacer la
+            // proyección la borraría.
+            origen: null,
+            estado: estadoInicialDe(cuenta, m.fecha, HOY),
+            lineas: m.lineas.map((l) => ({ ...l })),
+          },
+        ],
+      };
+    });
+    return id;
+  }, []);
+
+  /**
    * Borra un movimiento registrado por error.
    *
    * El borrado va primero al estado y después a la base, como el resto de las
@@ -1030,6 +1081,7 @@ export function ProveedorTesoreria({
     aplicarImpuesto,
     pegarLineas,
     agregarMovimiento,
+    duplicarMovimiento,
     borrarMovimiento,
     reiniciar,
 

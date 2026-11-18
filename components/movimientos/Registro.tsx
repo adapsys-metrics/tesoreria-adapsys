@@ -31,6 +31,8 @@ import {
   clases,
 } from "@/components/ui/primitivas";
 import { SelectorCategoria } from "@/components/ui/SelectorCategoria";
+import { MenuContextual, type Punto } from "@/components/ui/MenuContextual";
+import { ConfirmarBorrado } from "./ConfirmarBorrado";
 import { EditorMovimiento } from "./EditorMovimiento";
 import { FormaNuevo } from "./FormaNuevo";
 import { BarraSeleccion, CasillaFila, useSeleccion } from "@/components/ui/seleccion";
@@ -72,6 +74,8 @@ export function Registro() {
     empresas,
     pagar,
     avanzarCobranza,
+    duplicarMovimiento,
+    borrarMovimiento,
     registroSeleccionado,
     catalogo,
     cargando,
@@ -208,6 +212,12 @@ export function Registro() {
 
   const alternar = (id: string) =>
     setAbiertos(abiertos.includes(id) ? abiertos.filter((x) => x !== id) : [...abiertos, id]);
+
+  /** Dónde se abrió el menú de botón derecho y sobre cuál movimiento. */
+  const [menu, setMenu] = useState<{ punto: Punto; movimiento: Movimiento } | null>(null);
+  const [borrando, setBorrando] = useState<Movimiento | null>(null);
+
+  const abrir = (id: string) => setAbiertos((p) => (p.includes(id) ? p : [...p, id]));
 
   const seleccion = useSeleccion(useMemo(() => lista.map((m) => m.id), [lista]));
   const seleccionados = useMemo(
@@ -433,6 +443,15 @@ export function Registro() {
                       // <tr>. Los tests colgaban de "el primer td empieza con fecha",
                       // que se rompió al agregar la columna de selección.
                       data-fila="movimiento"
+                      onContextMenu={(e) => {
+                        // Sobre un campo no: ahí el menú del navegador es el que
+                        // sirve —copiar, pegar, corregir— y quitárselo a alguien
+                        // que está escribiendo una glosa sería peor que no tener
+                        // menú.
+                        if ((e.target as HTMLElement).closest("input, select, textarea")) return;
+                        e.preventDefault();
+                        setMenu({ punto: { x: e.clientX, y: e.clientY }, movimiento: m });
+                      }}
                       className={clases(
                         "fila",
                         vencido && css.filaVencida,
@@ -659,6 +678,51 @@ export function Registro() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {menu && (
+        <MenuContextual
+          punto={menu.punto}
+          etiqueta={`Acciones de ${menu.movimiento.contraparte ?? "el movimiento"}`}
+          cerrar={() => setMenu(null)}
+          opciones={[
+            {
+              etiqueta: abiertos.includes(menu.movimiento.id) ? "Cerrar el detalle" : "Abrir el detalle",
+              onClick: () => {
+                alternar(menu.movimiento.id);
+                setMenu(null);
+              },
+            },
+            {
+              etiqueta: "Duplicar movimiento",
+              titulo:
+                "Copia todo menos el Nº de documento y el hito, y abre el detalle para completarlos",
+              onClick: () => {
+                abrir(duplicarMovimiento(menu.movimiento));
+                setMenu(null);
+              },
+            },
+            {
+              etiqueta: "Borrar movimiento",
+              peligrosa: true,
+              onClick: () => {
+                setBorrando(menu.movimiento);
+                setMenu(null);
+              },
+            },
+          ]}
+        />
+      )}
+
+      {borrando && (
+        <ConfirmarBorrado
+          movimiento={borrando}
+          confirmar={() => {
+            borrarMovimiento(borrando.id);
+            setBorrando(null);
+          }}
+          cancelar={() => setBorrando(null)}
+        />
       )}
 
       <Nota>
