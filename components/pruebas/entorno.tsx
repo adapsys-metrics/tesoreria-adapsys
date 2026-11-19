@@ -9,6 +9,7 @@ import { cleanup, render } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 import { ProveedorTesoreria } from "@/components/estado/ProveedorTesoreria";
 import type { ReactNode } from "react";
+import type { DatosSesion } from "@/lib/supabase/sesion";
 
 /** Cada archivo lo llama una vez, arriba del todo. */
 export const prepararEntorno = () => {
@@ -26,6 +27,24 @@ export const prepararEntorno = () => {
  *  Los que sí miran la entrada la piden explícitamente. */
 export const montar = (ui: ReactNode) =>
   render(<ProveedorTesoreria registroInicial={null}>{ui}</ProveedorTesoreria>);
+
+/** Con un perfil distinto del de siempre. El default del proveedor puede todo,
+ *  que es lo correcto para el resto de los tests: comprueban comportamiento, no
+ *  permisos. */
+export const montarComo = (sesion: DatosSesion, ui: ReactNode) =>
+  render(
+    <ProveedorTesoreria registroInicial={null} sesion={sesion}>
+      {ui}
+    </ProveedorTesoreria>
+  );
+
+/** Un perfil de solo lectura con las pestañas que se le pasen. */
+export const revisor = (vistas: string[] | null): DatosSesion => ({
+  email: "gerente@adapsysgroup.com",
+  nombre: "Gerente General",
+  rol: "revisor",
+  vistas,
+});
 
 /** Con un registro abierto en la barra lateral. */
 export const montarEn = (registro: string, ui: ReactNode) =>

@@ -47,8 +47,10 @@ import {
   guardarCuenta,
   guardarEmpresa,
   guardarProveedor,
+  guardarUsuario,
 } from "@/lib/supabase/maestros";
 import { supabaseConfigurado } from "@/lib/supabase/estado";
+import { SESION_COMPLETA, type DatosSesion } from "@/lib/supabase/sesion";
 import {
   SUB_IVA_COMPRAS,
   SUB_RETENCION_BHE,
@@ -64,17 +66,18 @@ import { HOY } from "@/lib/fechas";
 import { pasoDe } from "@/lib/cobranza";
 import { pct } from "@/lib/formato";
 import type {
+  Categoria,
+  Cuenta,
   DocTipo,
   Empresa,
   Grupo,
-  Proveedor,
-  Subcategoria,
-  Cuenta,
   Linea,
   Movimiento,
   Naturaleza,
-  Categoria,
+  Proveedor,
+  Subcategoria,
   Tasas,
+  Usuario,
 } from "@/lib/tipos";
 
 const CLAVE_STORAGE = "tesoreria:v5";
@@ -96,6 +99,7 @@ type Estado = {
    *  dejaría desactualizado en cuanto entrara un movimiento. */
   cuentasBase: Cuenta[];
   proveedores: Proveedor[];
+  usuarios: Usuario[];
   empresasSeleccionadas: string[];
   /** Registro abierto en la barra lateral, o null para ver todo. Puede ser una
    *  cuenta ("cuenta:a1") o un registro de proyección ("proy:egresos-clp"). */
@@ -109,6 +113,11 @@ type Contexto = Estado & {
   /** Mensaje si la carga desde Supabase falló. Una app vacía por un error de red
    *  se ve igual que una app sin movimientos: hay que decir cuál de las dos es. */
   errorCarga: string | null;
+  /** Quién entró, con su rol y sus pestañas. */
+  sesion: DatosSesion;
+  /** Atajo de `sesion.rol === "editor"`, que es la pregunta que se hace la UI.
+   *  Esconder un botón es cortesía; lo que impide escribir es la RLS (0022). */
+  puedeEditar: boolean;
   /** Mensaje si un cambio no se pudo guardar. Sin esto, la edición se ve aplicada
    *  en pantalla y desaparece al recargar. */
   errorGuardado: string | null;
@@ -221,6 +230,11 @@ type Contexto = Estado & {
    *  cuenta que paga (§10), y eso cambia cuando el banco lo cambia. */
   empresas: Empresa[];
   proveedores: Proveedor[];
+  /** Quién tiene acceso. La lee cualquiera que esté dentro; administrarla es de
+   *  editores (0022). */
+  usuarios: Usuario[];
+  crearUsuario: (email: string, nombre: string) => void;
+  editarUsuario: <K extends keyof Usuario>(email: string, campo: K, valor: Usuario[K]) => void;
   editarEmpresa: <K extends keyof Empresa>(id: string, campo: K, valor: Empresa[K]) => void;
   editarCuenta: <K extends keyof Cuenta>(id: string, campo: K, valor: Cuenta[K]) => void;
   crearProveedor: (nombre: string) => void;
@@ -263,6 +277,9 @@ const estadoInicial = (registro: string | null): Estado => ({
   empresas: EMPRESAS,
   cuentasBase: CUENTAS,
   proveedores: [],
+  // Vacío sin Supabase: la lista de personas vive en la base y no tiene seed
+  // local. En los tests el panel se muestra vacío, que es lo correcto.
+  usuarios: [],
   empresasSeleccionadas: IDS_ADAPSYS,
   registroSeleccionado: registro,
   tc: TC_USD,
@@ -272,12 +289,16 @@ const estadoInicial = (registro: string | null): Estado => ({
 export function ProveedorTesoreria({
   children,
   registroInicial = REGISTRO_DE_ENTRADA,
+  sesion = SESION_COMPLETA,
 }: {
   children: ReactNode;
   /** Con qué registro abre. Existe para que los tests no dependan de cuál sea la
    *  vista de entrada del producto: un test que comprueba que la tabla lista
    *  movimientos no debería romperse porque cambiamos por dónde se entra. */
   registroInicial?: string | null;
+  /** Quién entró y qué puede. Lo resuelve el layout en el servidor; por defecto
+   *  puede todo, que es como corre sin Supabase —tests y previews—. */
+  sesion?: DatosSesion;
 }) {
   const [estado, setEstado] = useState<Estado>(() => estadoInicial(registroInicial));
   // Arranca en true para no escribir los seeds encima de lo que haya guardado antes
@@ -505,6 +526,7 @@ export function ProveedorTesoreria({
     empresas: Map<string, Empresa>;
     cuentas: Map<string, Cuenta>;
     proveedores: Map<string, Proveedor>;
+    usuarios: Map<string, Usuario>;
   } | null>(null);
 
   const persistirMaestros = useCallback(
@@ -512,6 +534,7 @@ export function ProveedorTesoreria({
       empresas: Map<string, Empresa>;
       cuentas: Map<string, Cuenta>;
       proveedores: Map<string, Proveedor>;
+      usuarios: Map<string, Usuario>;
     }) => {
       const supabase = crearClienteNavegador();
       const fallo = (e: Error) => setErrorGuardado(e.message);
@@ -526,12 +549,16 @@ export function ProveedorTesoreria({
         if (previo.proveedores.get(x.id) !== x) guardarProveedor(supabase, x).catch(fallo);
       }
 
+      for (const u of estado.usuarios) {
+        if (previo.usuarios.get(u.email) !== u) guardarUsuario(supabase, u).catch(fallo);
+      }
+
       const vivos = new Set(estado.proveedores.map((x) => x.id));
       for (const id of previo.proveedores.keys()) {
         if (!vivos.has(id)) borrarProveedorEnBase(supabase, id).catch(fallo);
       }
     },
-    [estado.empresas, estado.cuentasBase, estado.proveedores]
+    [estado.empresas, estado.cuentasBase, estado.proveedores, estado.usuarios]
   );
 
   useEffect(() => {
@@ -541,6 +568,7 @@ export function ProveedorTesoreria({
       empresas: new Map(estado.empresas.map((e) => [e.id, e])),
       cuentas: new Map(estado.cuentasBase.map((c) => [c.id, c])),
       proveedores: new Map(estado.proveedores.map((x) => [x.id, x])),
+      usuarios: new Map(estado.usuarios.map((u) => [u.email, u])),
     });
 
     if (maestrosGuardados.current === null) {
@@ -1055,6 +1083,8 @@ export function ProveedorTesoreria({
     ...estado,
     ...derivados,
     cargando,
+    sesion,
+    puedeEditar: sesion.rol === "editor",
     errorCarga,
     errorGuardado,
     descartarErrorGuardado,
@@ -1265,6 +1295,29 @@ export function ProveedorTesoreria({
       })),
     borrarProveedor: (id) =>
       setEstado((p) => ({ ...p, proveedores: p.proveedores.filter((x) => x.id !== id) })),
+    crearUsuario: (email, nombre) =>
+      setEstado((p) => ({
+        ...p,
+        usuarios: [
+          ...p.usuarios,
+          {
+            email: email.trim().toLowerCase(),
+            nombre: nombre.trim(),
+            activo: true,
+            // Nace revisor y sin vistas marcadas. Un alta que ya puede escribir
+            // todo es el mismo problema que un campo con valor por defecto
+            // (§4.3): se guarda sin que nadie lo haya elegido.
+            rol: "revisor",
+            vistas: [],
+            creado_en: new Date().toISOString(),
+          },
+        ],
+      })),
+    editarUsuario: (email, campo, valor) =>
+      setEstado((p) => ({
+        ...p,
+        usuarios: p.usuarios.map((u) => (u.email === email ? { ...u, [campo]: valor } : u)),
+      })),
     cargarProveedores: (filas) => {
       const utiles = filas.filter((f) => f.nombre && !f.problemas.length);
       const clave = (s: string) =>

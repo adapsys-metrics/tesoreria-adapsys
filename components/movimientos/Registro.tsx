@@ -76,6 +76,7 @@ export function Registro() {
     avanzarCobranza,
     duplicarMovimiento,
     borrarMovimiento,
+    puedeEditar,
     registroSeleccionado,
     catalogo,
     cargando,
@@ -309,13 +310,17 @@ export function Registro() {
           %
         </label>
 
-        <button
-          type="button"
-          onClick={() => setNuevo(!nuevo)}
-          className={clases(css.botonNuevo, nuevo && css.botonNuevoActivo)}
-        >
-          {nuevo ? "Cancelar" : "+ Nuevo"}
-        </button>
+        {/* Un perfil de solo lectura no registra: el alta terminaría en el
+            cartel de "no se pudo guardar", porque la base la rechaza (0022). */}
+        {puedeEditar && (
+          <button
+            type="button"
+            onClick={() => setNuevo(!nuevo)}
+            className={clases(css.botonNuevo, nuevo && css.botonNuevoActivo)}
+          >
+            {nuevo ? "Cancelar" : "+ Nuevo"}
+          </button>
+        )}
       </div>
 
       {porMover && (
@@ -685,6 +690,8 @@ export function Registro() {
           punto={menu.punto}
           etiqueta={`Acciones de ${menu.movimiento.contraparte ?? "el movimiento"}`}
           cerrar={() => setMenu(null)}
+          // Un perfil de solo lectura abre el detalle y nada más: duplicar y
+          // borrar escriben, y la base los rechazaría (0022).
           opciones={[
             {
               etiqueta: abiertos.includes(menu.movimiento.id) ? "Cerrar el detalle" : "Abrir el detalle",
@@ -693,23 +700,27 @@ export function Registro() {
                 setMenu(null);
               },
             },
-            {
-              etiqueta: "Duplicar movimiento",
-              titulo:
-                "Copia todo menos el Nº de documento y el hito, y abre el detalle para completarlos",
-              onClick: () => {
-                abrir(duplicarMovimiento(menu.movimiento));
-                setMenu(null);
-              },
-            },
-            {
-              etiqueta: "Borrar movimiento",
-              peligrosa: true,
-              onClick: () => {
-                setBorrando(menu.movimiento);
-                setMenu(null);
-              },
-            },
+            ...(puedeEditar
+              ? [
+                  {
+                    etiqueta: "Duplicar movimiento",
+                    titulo:
+                      "Copia todo menos el Nº de documento y el hito, y abre el detalle para completarlos",
+                    onClick: () => {
+                      abrir(duplicarMovimiento(menu.movimiento));
+                      setMenu(null);
+                    },
+                  },
+                  {
+                    etiqueta: "Borrar movimiento",
+                    peligrosa: true,
+                    onClick: () => {
+                      setBorrando(menu.movimiento);
+                      setMenu(null);
+                    },
+                  },
+                ]
+              : []),
           ]}
         />
       )}

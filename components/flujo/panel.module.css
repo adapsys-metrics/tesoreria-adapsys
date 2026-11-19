@@ -153,3 +153,10 @@
   padding: 6px 0 6px 10px;
   vertical-align: top;
 }
+
+/* La categoría cuando no se puede cambiar: mismo lugar y mismo tamaño que el
+   selector, sin la caja que invita a abrirlo. */
+.categoriaFija {
+  font-size: 11px;
+  color: var(--muted);
+}

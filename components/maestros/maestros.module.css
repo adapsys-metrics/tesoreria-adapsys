@@ -215,3 +215,74 @@
 .empuje {
   flex: 1;
 }
+
+/* ── Usuarios ── */
+
+/* Las seis pestañas en dos columnas: en una sola fila la columna se estira y
+   empuja el resto de la tabla fuera de la pantalla. */
+.vistas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px 12px;
+}
+
+.vista {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.vista input {
+  accent-color: var(--teal);
+}
+
+.alta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--rule-soft);
+  flex-wrap: wrap;
+}
+
+.botonChico {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  padding: 3px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.botonChico:disabled {
+  opacity: 0.45;
+}
+
+.botonChico:not(:disabled):hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+/* Con acceso: el estado normal, en teal como el resto de lo que está en pie. */
+.botonActivo {
+  border-color: var(--teal-soft);
+  color: var(--teal);
+}
+
+.textoTenue {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.pieSeccion {
+  margin: 0;
+  padding: 10px 12px 12px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+  border-top: 1px solid var(--rule-soft);
+}

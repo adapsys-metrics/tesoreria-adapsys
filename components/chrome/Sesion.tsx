@@ -17,48 +17,21 @@
 // cuenta entró.
 //
 // El nombre sale de `usuarios_autorizados`, que es la misma lista que da el
-// acceso y la controla el equipo desde el panel. No del perfil de Google, que
+// acceso y la controla el equipo desde Maestros. No del perfil de Google, que
 // dice lo que cada quien tenga puesto ahí.
+//
+// Ya no lo consulta: el layout resuelve el perfil en el servidor y baja por el
+// contexto, así que acá no queda un segundo viaje a la base para la misma fila.
 
-import { useEffect, useState } from "react";
 import { crearClienteNavegador } from "@/lib/supabase/client";
-import { supabaseConfigurado } from "@/lib/supabase/estado";
+import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import css from "./chrome.module.css";
 
 export function Sesion() {
-  const [correo, setCorreo] = useState<string | null>(null);
-  const [nombre, setNombre] = useState<string | null>(null);
+  const { sesion } = useTesoreria();
+  const { email, nombre, rol } = sesion;
 
-  useEffect(() => {
-    if (!supabaseConfigurado) return;
-    let vigente = true;
-    const supabase = crearClienteNavegador();
-
-    (async () => {
-      const { data } = await supabase.auth.getUser();
-      const email = data.user?.email ?? null;
-      if (!vigente || !email) return;
-      setCorreo(email);
-
-      // La política "propia_fila" deja leer el propio registro y nada más, así
-      // que esto devuelve una fila o ninguna. Si no hay, se muestra el correo:
-      // no tener fila es exactamente el caso que conviene ver.
-      const { data: fila } = await supabase
-        .from("usuarios_autorizados")
-        .select("nombre")
-        .eq("email", email)
-        .maybeSingle();
-      if (vigente) setNombre(fila?.nombre ?? null);
-    })().catch(() => {
-      // Sin sesión no hay nada que mostrar; del acceso se encarga el middleware.
-    });
-
-    return () => {
-      vigente = false;
-    };
-  }, []);
-
-  if (!correo) return null;
+  if (!email) return null;
 
   const salir = async () => {
     await crearClienteNavegador().auth.signOut();
@@ -69,9 +42,18 @@ export function Sesion() {
 
   return (
     <div className={css.sesion}>
-      <span className={css.quien} title={nombre ? `${nombre} · ${correo}` : correo}>
-        {nombre ?? correo}
+      <span className={css.quien} title={nombre ? `${nombre} · ${email}` : email}>
+        {nombre ?? email}
       </span>
+      {/* Solo cuando no se puede escribir. Para los tres editores, que son el
+          caso normal, una insignia que dice "editor" en cada pantalla no agrega
+          nada; para quien entra a mirar, saber que no va a poder guardar explica
+          de antemano por qué los botones no están. */}
+      {rol === "revisor" && (
+        <span className={css.rol} title="Este perfil ve pero no edita">
+          solo lectura
+        </span>
+      )}
       <button type="button" onClick={salir} className={css.salir}>
         Salir
       </button>

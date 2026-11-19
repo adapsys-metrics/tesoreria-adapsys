@@ -34,6 +34,46 @@ lectura, así que no hizo falta tocar permisos. Filtrar solo por
 sociedades, los sueldos por persona y los retiros de socios. Los dos filtros conviven: hay que
 estar en la lista **y** tener correo corporativo.
 
+### Perfiles: quién escribe y qué pestañas ve
+
+Las tres personas de administración pueden todo, y eso sigue siendo correcto. Lo que
+apareció después es otro caso: **el gerente general**, que sí mira los movimientos pero no
+tiene por qué entrar a Categorías ni a Movimientos, y que no debería poder escribir nada.
+
+Son **dos ejes distintos** y se guardan por separado en `usuarios_autorizados`, porque se
+combinan:
+
+- `rol` — `editor` escribe, `revisor` solo lee. Lo hace cumplir la **RLS** (migración 0022):
+  cada tabla tiene una política de lectura para cualquier autorizado y las de escritura
+  colgando de `fn_es_editor()`. Esconder un botón es cortesía con quien no va a poder
+  guardar; lo que impide escribir vive en la base.
+- `vistas` — las pestañas que ve, con las claves de `lib/vistas.ts`. **`null` es todas**, y
+  es como quedaron las filas que ya existían: agregar la columna no le quitó nada a nadie.
+
+**La lista de vistas vive en el código, no en la base.** `lib/vistas.ts` es de donde salen
+el menú, las casillas del panel de usuarios y el corte del middleware. Duplicarla en un
+check de Postgres obligaría a tocar una migración cada vez que se agrega una pantalla, y
+una clave guardada que no corresponde a ninguna vista simplemente no aparece — sobrar no
+concede.
+
+**Esconder una pestaña no esconde su dato.** Quien tenga Flujo de caja ve los movimientos al
+abrir el detalle de un monto. Eso está bien para este caso —el gerente los mira— pero no
+sirve como control de confidencialidad: lo sensible (sueldos por persona, retiros de socios)
+está en las mismas tablas, y filtrarlo por filas haría que los totales del flujo dejen de
+cuadrar. Un informe de tesorería donde la suma no da es peor que no darlo. Si alguna vez
+hace falta de verdad, la salida es **exportar el reporte**, no un perfil con menos filas.
+
+**El menú es pintura; quien corta es el middleware.** La URL se escribe a mano, así que
+`lib/supabase/middleware.ts` comprueba la ruta contra las vistas del perfil y redirige a la
+primera que sí tenga. Un perfil sin ninguna vista **no entra**: se lo rechaza en vez de
+dejarlo en una app sin pestañas, que se vería como una app rota en vez de como un perfil mal
+armado. El panel de usuarios avisa de eso antes de que pase.
+
+**El perfil se resuelve en el servidor**, en el layout, y baja como prop
+(`lib/supabase/sesion.ts`). Resuelto en el cliente habría un render con la respuesta en
+vuelo, y ahí hay que elegir entre mostrarle de más a un revisor por un instante o hacer
+parpadear el menú de los tres editores en cada carga.
+
 ### El problema real
 
 No es que falten funcionalidades: Quicken funciona. El problema es que
@@ -520,7 +560,7 @@ encima porque dos categorías pueden llamarse igual en grupos distintos.
 | **Conciliación** | Lista de `pagado` sin cuadrar. El total es exactamente la diferencia contra la cartola. |
 | **Presupuesto anual** | Dos modos: *construcción* (responsable, ppto año anterior, ppto año, variación, notas) y *control* (ejecutado, % utilizado con marca de avance del año, disponible, proyección de cierre). |
 | **Reportes** | Armador configurable: filas (categoría / grupo / naturaleza / empresa / proveedor), columnas (mes / trimestre / empresa / grupo / naturaleza / total), rango de fechas con presets, filtro de estados y de categorías. Configuraciones guardables. Export CSV. |
-| **Maestros** | Empresas con el número de cuenta que paga, y proveedores con RUT, banco y cuenta. Se cargan pegando las filas del Excel —acá el importador sí se muestra, al revés que en Categorías: los datos ya existen en una planilla—. El RUT se valida con su dígito verificador: el portal rechaza la nómina completa, no la línea mala. Un proveedor se desactiva en vez de borrarse, para conservar sus datos por si vuelve. |
+| **Maestros** | Además de empresas y proveedores, **quién tiene acceso**: nombre, rol y las casillas de las pestañas que ve cada uno (§1). Se administraba desde el panel de Supabase, lo cual alcanza para tres personas que pueden todo y deja de alcanzar apenas hay perfiles: armar uno significaba escribir a mano las claves de vista en un `text[]` y acertar. El correo no se edita —es la llave de la fila y lo que la RLS compara contra el token de Google— y nadie puede quitarse a sí mismo el rol ni el acceso, porque sería cerrar la puerta por dentro. Las filas no se borran: se quita el acceso y queda el registro de quién lo tuvo. Empresas con el número de cuenta que paga, y proveedores con RUT, banco y cuenta. Se cargan pegando las filas del Excel —acá el importador sí se muestra, al revés que en Categorías: los datos ya existen en una planilla—. El RUT se valida con su dígito verificador: el portal rechaza la nómina completa, no la línea mala. Un proveedor se desactiva en vez de borrarse, para conservar sus datos por si vuelve. |
 | **Categorías** | Mantenedor de los tres niveles. Lo que está en uso no se borra: se desactiva. Existe un importador por pegado (`components/categorias/Importador.tsx`) que **no se muestra**: el equipo crea las categorías caso a caso y el panel estorbaba. Se conserva probado, para devolverlo si aparece una carga masiva. |
 
 ---

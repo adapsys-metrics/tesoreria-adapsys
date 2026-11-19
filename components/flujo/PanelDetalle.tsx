@@ -39,7 +39,7 @@ export function PanelDetalle({
    *  como estaba, sin selector de tercer nivel. */
   detallar?: (fila: LineaExpandida, subcategoria_id: string | null) => void;
 }) {
-  const { catalogo } = useTesoreria();
+  const { catalogo, puedeEditar } = useTesoreria();
   const total = detalle.items.reduce((s, m) => s + enCLP(m, tc), 0);
 
   // Acá la selección es lo que más sirve: se abrió el detalle justamente para revisar
@@ -127,14 +127,24 @@ export function PanelDetalle({
                       <div className={css.glosa}>{m.glosa}</div>
                       <div className={css.lineaControles}>
                         {m.indice_linea !== null && <Insignia>línea de split</Insignia>}
-                        <SelectorCategoria
-                          valor={m.categoria_id}
-                          onChange={(id) => reclasificar(m, id)}
-                        />
+                        {/* Un perfil de solo lectura ve la categoría, no el
+                            selector. No es seguridad —de eso se encarga la RLS
+                            (0022)— sino no ofrecer un control que al usarlo va a
+                            terminar en el cartel de "no se pudo guardar". */}
+                        {puedeEditar ? (
+                          <SelectorCategoria
+                            valor={m.categoria_id}
+                            onChange={(id) => reclasificar(m, id)}
+                          />
+                        ) : (
+                          <span className={css.categoriaFija}>
+                            {m.categoria_id ? catalogo.categoriaDe(m.categoria_id).nombre : "sin clasificar"}
+                          </span>
+                        )}
                         {/* Solo aparece si la categoría tiene subcategorías. Acá es
                             donde más sirve: se está mirando el detalle de un monto y
                             es el momento en que uno se da cuenta de que falta precisar. */}
-                        {detallar && (
+                        {detallar && puedeEditar && (
                           <SelectorSubcategoria
                             categoria_id={m.categoria_id}
                             valor={m.subcategoria_id}

@@ -61,6 +61,24 @@ export type Proveedor = {
   activo: boolean;
 };
 
+/**
+ * Quién puede entrar, con qué permisos y a qué pestañas.
+ *
+ * El correo es la llave: es lo que trae el token de Google y lo que compara la
+ * RLS. Por eso no hay `id` — una fila es un correo.
+ */
+export type Usuario = {
+  email: string;
+  nombre: string;
+  activo: boolean;
+  /** `editor` escribe, `revisor` solo lee. Lo hace cumplir la RLS (0022). */
+  rol: "editor" | "revisor";
+  /** Claves de `lib/vistas.ts`. **null es todas** — es como quedaron las filas
+   *  que ya existían cuando se agregó la columna. */
+  vistas: string[] | null;
+  creado_en: string;
+};
+
 /** Nivel 1: "2 GASTOS ADMINISTRACIÓN". Es donde se decide si entra o no al control
  *  presupuestario (§4.6). No confundir con GrupoEmpresa, que agrupa sociedades. */
 export type Grupo = {

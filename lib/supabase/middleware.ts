@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { supabaseConfigurado } from "@/lib/supabase/estado";
+import { primeraVistaDe, puedeVerRuta } from "@/lib/vistas";
 
 const DOMINIO_CORPORATIVO = process.env.NEXT_PUBLIC_DOMINIO_CORPORATIVO ?? "adapsysgroup.com";
 const RUTAS_PUBLICAS = ["/login", "/auth/callback", "/auth/no-autorizado"];
@@ -73,13 +74,29 @@ export async function actualizarSesion(request: NextRequest) {
     // de negada.
     const { data: autorizado } = await supabase
       .from("usuarios_autorizados")
-      .select("email")
+      .select("email, vistas")
       .eq("email", user.email)
       .eq("activo", true)
       .maybeSingle();
 
     if (!autorizado) {
       return await rechazar(supabase, request);
+    }
+
+    // Y qué pestañas tiene este perfil. Esconderlas del menú no alcanza: el menú
+    // es pintura y la URL se escribe a mano. Acá se corta de verdad.
+    //
+    // `vistas` null es "todas", que es como quedaron las filas que ya existían.
+    const vistas = (autorizado as { vistas: string[] | null }).vistas;
+    if (!puedeVerRuta(vistas, request.nextUrl.pathname)) {
+      const destino = primeraVistaDe(vistas);
+      // Sin ninguna vista asignada no hay a dónde mandarlo, y dejarlo en una app
+      // sin pestañas se vería como una app rota. Es un perfil mal armado y
+      // conviene que se note.
+      if (!destino) return await rechazar(supabase, request);
+      const url = request.nextUrl.clone();
+      url.pathname = destino;
+      return NextResponse.redirect(url);
     }
   }
 

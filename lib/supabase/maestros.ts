@@ -7,14 +7,15 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
-import type { Cuenta, Empresa, Proveedor } from "@/lib/tipos";
+import type { Cuenta, Empresa, Proveedor, Usuario } from "@/lib/tipos";
 
 export async function cargarMaestros(supabase: SupabaseClient<Database>): Promise<{
   empresas: Empresa[];
   cuentasBase: Cuenta[];
   proveedores: Proveedor[];
+  usuarios: Usuario[];
 }> {
-  const [emp, ctas, prov] = await Promise.all([
+  const [emp, ctas, prov, usu] = await Promise.all([
     supabase.from("empresas").select("id,nombre,corto,grupo").order("nombre"),
     supabase
       .from("cuentas")
@@ -24,9 +25,15 @@ export async function cargarMaestros(supabase: SupabaseClient<Database>): Promis
       .from("proveedores")
       .select("id,nombre,rut,cod_banco,cuenta,correo,activo")
       .order("nombre"),
+    // La política "autorizados_ven_la_lista" (0022) deja que cualquiera que esté
+    // dentro vea quién más tiene acceso. Administrarla es de editores.
+    supabase
+      .from("usuarios_autorizados")
+      .select("email,nombre,activo,rol,vistas,creado_en")
+      .order("nombre"),
   ]);
 
-  for (const r of [emp, ctas, prov]) {
+  for (const r of [emp, ctas, prov, usu]) {
     if (r.error) throw new Error(`No se pudieron cargar los maestros: ${r.error.message}`);
   }
 
@@ -36,6 +43,7 @@ export async function cargarMaestros(supabase: SupabaseClient<Database>): Promis
     // saldo de la cuenta se concatena en vez de sumarse.
     cuentasBase: (ctas.data ?? []).map((c) => ({ ...c, saldo_inicial: Number(c.saldo_inicial) })),
     proveedores: prov.data ?? [],
+    usuarios: (usu.data ?? []) as Usuario[],
   };
 }
 
@@ -61,6 +69,14 @@ export async function guardarProveedor(
 ): Promise<void> {
   const { error } = await supabase.from("proveedores").upsert(p);
   if (error) throw new Error(`No se pudo guardar "${p.nombre}": ${error.message}`);
+}
+
+export async function guardarUsuario(
+  supabase: SupabaseClient<Database>,
+  u: Usuario
+): Promise<void> {
+  const { error } = await supabase.from("usuarios_autorizados").upsert(u);
+  if (error) throw new Error(`No se pudo guardar a ${u.nombre || u.email}: ${error.message}`);
 }
 
 /** Los proveedores sí se borran: no hay nada colgando de ellos todavía. Un proveedor

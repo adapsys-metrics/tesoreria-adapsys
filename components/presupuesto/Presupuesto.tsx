@@ -86,6 +86,7 @@ const sinMeses = (): Meses => Array<number>(MESES_DEL_ANIO).fill(0);
 
 export function Presupuesto() {
   const {
+    puedeEditar,
     movimientos,
     tc,
     editarLinea,
@@ -454,6 +455,9 @@ export function Presupuesto() {
           </select>
         </label>
 
+        {/* Proyectar y generar escriben cientos de filas. Un perfil de solo
+            lectura ve el presupuesto contra el real, que es a lo que entra. */}
+        {puedeEditar && (
         <div className={css.generador}>
           <button
             type="button"
@@ -530,6 +534,7 @@ export function Presupuesto() {
             </span>
           </label>
         </div>
+        )}
 
         <span className={css.empujeBarra} />
 
@@ -548,7 +553,7 @@ export function Presupuesto() {
             Ajustes del año
             {datos.cambios.length > 0 && ` · ${datos.cambios.length}`}
           </button>
-        ) : (
+        ) : puedeEditar ? (
           <button
             type="button"
             onClick={aprobar}
@@ -558,7 +563,7 @@ export function Presupuesto() {
           >
             Aprobar el presupuesto {anio}
           </button>
-        )}
+        ) : null}
       </div>
 
       {mesesRepetidos(ventana) > 0 && (
@@ -975,7 +980,7 @@ function Fila({
   /** Cuelga de una categoría que ya se nombró arriba. */
   anidada?: boolean;
 }) {
-  const { catalogo } = useTesoreria();
+  const { catalogo, puedeEditar } = useTesoreria();
   // Para devolver el campo a su valor cuando el cuadro de ajuste se cancela: el
   // input es no controlado y si no, queda mostrando un número que no se guardó.
   const [reset, setReset] = useState(0);
@@ -1048,6 +1053,7 @@ function Fila({
 
       <td className={tabla.td}>
         <select
+          disabled={!puedeEditar}
           value={fila.responsable ?? ""}
           aria-label={`Responsable de ${nombre}`}
           onChange={(e) => cambiarMeta("responsable", e.target.value)}
@@ -1069,6 +1075,7 @@ function Fila({
           onBlur={(e) => cambiarAnual(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
           placeholder="0"
+          disabled={!puedeEditar}
           className={css.entradaMonto}
         />
         {/* Dónde se está ajustando el año, línea por línea. Abre la bitácora de

@@ -8,30 +8,19 @@ import { useTesoreria } from "@/components/estado/ProveedorTesoreria";
 import { Cifra, clases } from "@/components/ui/primitivas";
 import { clp, usd } from "@/lib/formato";
 import { NOMBRE_APP } from "@/lib/marca";
+import { vistasDe } from "@/lib/vistas";
 import { SelectorEmpresas } from "./SelectorEmpresas";
 import { Sesion } from "./Sesion";
 import css from "./chrome.module.css";
 
-// Las vistas sin ruta todavía se muestran deshabilitadas en vez de omitirse, para
-// que se vea qué falta y no parezca que el sistema son solo las que están.
-//
-// Conciliación no está y no va a estar: el banco se revisa todos los días y un
-// movimiento se marca pagado justamente porque ya está en la cartola, así que el
-// estado `pagado` no se usa y esa lista sería siempre vacía (§4.1). Lo que sí se
-// mira a diario son los vencidos, y eso vive en el flujo y en la barra lateral.
-const VISTAS = [
-  { href: "/flujo", texto: "Flujo de caja" },
-  { href: "/movimientos", texto: "Movimientos" },
-  { href: "/presupuesto", texto: "Presupuesto anual" },
-  { href: null, texto: "Reportes" },
-  { href: "/categorias", texto: "Categorías" },
-  { href: "/maestros", texto: "Maestros" },
-];
-
 export function Encabezado() {
   const ruta = usePathname();
-  const { efectivo, saldoUsd, porCobrar, porCobrarUsd, comprometido, reiniciar, cargando } =
+  const { efectivo, saldoUsd, porCobrar, porCobrarUsd, comprometido, reiniciar, cargando, sesion } =
     useTesoreria();
+
+  // El menú muestra lo que este perfil tiene. Es cortesía, no seguridad: la URL
+  // se escribe a mano y quien corta de verdad es el middleware.
+  const vistas = vistasDe(sesion.vistas);
 
   const posicion = efectivo + comprometido;
   const porCobrarTexto =
@@ -110,7 +99,7 @@ export function Encabezado() {
       </div>
 
       <nav className={css.nav}>
-        {VISTAS.map((v) =>
+        {vistas.map((v) =>
           v.href ? (
             <Link
               key={v.texto}

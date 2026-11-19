@@ -489,3 +489,16 @@
   border-color: var(--teal);
   color: var(--teal);
 }
+
+/* Marca de solo lectura, al lado del nombre. Discreta: es un dato del perfil, no
+   una advertencia. */
+.rol {
+  font-family: var(--font-sans);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--muted);
+}
